@@ -33556,20 +33556,18 @@ body.ello-modo-trocando .module.active {
 
     if(modo === "empresarial"){
       return {
-        tipo: "EMPRESA",
-        nome: limparValor(dados.razaoSocial) || limparValor(dados.nomeFantasia) || "Dados empresariais não preenchidos",
+        tipo: "EMPRESARIAL",
+        nome: limparValor(dados.razaoSocial) || limparValor(dados.nomeFantasia) || "Razão Social / Nome Fantasia",
         documentoLabel: "CNPJ",
-        documento: limparValor(dados.cnpj) || "Não informado",
-        detalhe: limparValor(dados.emailEmpresarial) || limparValor(dados.telefoneEmpresarial) || ""
+        documento: limparValor(dados.cnpj) || "xx.xxx.xxx/xxxx-xx"
       };
     }
 
     return {
-      tipo: "PESSOA",
-      nome: limparValor(dados.nomeCompleto) || "Dados pessoais não preenchidos",
+      tipo: "PESSOAL",
+      nome: limparValor(dados.nomeCompleto) || "Nome Completo",
       documentoLabel: "CPF",
-      documento: limparValor(dados.cpf) || "Não informado",
-      detalhe: limparValor(dados.email) || limparValor(dados.telefone) || ""
+      documento: limparValor(dados.cpf) || "xxx.xxx.xxx-xx"
     };
   }
 
@@ -33579,73 +33577,44 @@ body.ello-modo-trocando .module.active {
     var css = document.createElement("style");
     css.id = "cmfin-card-resumo-perfil-lateral-style";
     css.textContent = `
-      .cmfin-side-profile-card{
-        margin:14px 12px 10px;
-        padding:17px 18px;
-        border-radius:18px;
-        background:linear-gradient(180deg,rgba(255,255,255,.095),rgba(255,255,255,.055));
-        border:1px solid rgba(255,255,255,.12);
-        box-shadow:0 12px 28px rgba(0,0,0,.10);
+      .cmfin-side-profile-info{
+        margin:16px 26px 16px;
+        padding:0;
         color:#fff;
-        overflow:hidden;
-        position:relative;
-      }
-      .cmfin-side-profile-card::after{
-        content:"";
-        position:absolute;
-        right:-42px;
-        top:-46px;
-        width:116px;
-        height:116px;
-        border-radius:999px;
-        background:radial-gradient(circle,rgba(226,17,32,.22),transparent 68%);
-        pointer-events:none;
+        border:0;
+        background:transparent;
+        box-shadow:none;
       }
       .cmfin-side-profile-type{
-        color:rgba(255,255,255,.62);
-        font-size:11px;
+        color:rgba(255,255,255,.58);
+        font-size:10.5px;
         font-weight:950;
         text-transform:uppercase;
-        letter-spacing:.22em;
-        margin-bottom:10px;
-        position:relative;
-        z-index:1;
+        letter-spacing:.24em;
+        margin-bottom:9px;
+        line-height:1.1;
       }
       .cmfin-side-profile-name{
         color:#fff;
-        font-size:15px;
+        font-size:13.5px;
         font-weight:950;
         line-height:1.25;
-        margin-bottom:7px;
-        position:relative;
-        z-index:1;
+        margin-bottom:6px;
         word-break:break-word;
       }
       .cmfin-side-profile-doc{
-        color:rgba(255,255,255,.74);
-        font-size:12.5px;
-        font-weight:750;
+        color:rgba(255,255,255,.72);
+        font-size:12px;
+        font-weight:800;
         line-height:1.35;
-        position:relative;
-        z-index:1;
         word-break:break-word;
       }
-      .cmfin-side-profile-detail{
-        color:rgba(255,255,255,.48);
-        font-size:11.5px;
-        font-weight:650;
-        margin-top:7px;
-        line-height:1.35;
-        position:relative;
-        z-index:1;
-        word-break:break-word;
-      }
-      .cmfin-side-profile-empty{
-        color:rgba(255,255,255,.52);
+      .cmfin-side-profile-placeholder{
+        color:rgba(255,255,255,.45);
       }
       @media(max-width:920px){
-        .cmfin-side-profile-card{
-          margin:10px 10px 12px;
+        .cmfin-side-profile-info{
+          margin:12px 18px 14px;
         }
       }
     `;
@@ -33665,60 +33634,63 @@ body.ello-modo-trocando .module.active {
     var items = Array.prototype.slice.call(sidebar.querySelectorAll("button, a, .nav-item, [role='button'], li, div"));
     return items.find(function(el){
       var txt = (el.textContent || "").trim().toLowerCase();
-      return txt === "configurações" || txt.indexOf("configurações") >= 0 || txt.indexOf("configuracoes") >= 0;
+      return txt === "configurações" ||
+             txt === "configuracoes" ||
+             txt.indexOf("configurações") >= 0 ||
+             txt.indexOf("configuracoes") >= 0;
     });
   }
 
-  function renderCard(){
+  function renderInfo(){
     ensureStyle();
 
     var sidebar = findSidebar();
     if(!sidebar) return;
 
-    var card = document.getElementById("cmfinSideProfileCard");
-    if(!card){
-      card = document.createElement("div");
-      card.id = "cmfinSideProfileCard";
-      card.className = "cmfin-side-profile-card";
+    var info = document.getElementById("cmfinSideProfileCard");
+    if(!info){
+      info = document.createElement("div");
+      info.id = "cmfinSideProfileCard";
+      info.className = "cmfin-side-profile-info";
 
       var config = findConfigItem(sidebar);
       if(config){
         if(config.parentElement && config.parentElement !== sidebar && config.parentElement.parentElement === sidebar){
-          config.parentElement.insertAdjacentElement("afterend", card);
+          config.parentElement.insertAdjacentElement("afterend", info);
         }else{
-          config.insertAdjacentElement("afterend", card);
+          config.insertAdjacentElement("afterend", info);
         }
       }else{
-        sidebar.appendChild(card);
+        sidebar.appendChild(info);
       }
     }
 
+    info.className = "cmfin-side-profile-info";
+
     var r = getResumoAtual();
-    var vazio = r.nome.indexOf("não preenchidos") >= 0 || r.documento === "Não informado";
+    var placeholder = r.nome === "Nome Completo" || r.nome === "Razão Social / Nome Fantasia";
 
-    card.innerHTML = ''
+    info.innerHTML = ''
       + '<div class="cmfin-side-profile-type">'+r.tipo+'</div>'
-      + '<div class="cmfin-side-profile-name '+(vazio ? "cmfin-side-profile-empty" : "")+'">'+r.nome+'</div>'
-      + '<div class="cmfin-side-profile-doc">'+r.documentoLabel+': '+r.documento+'</div>'
-      + (r.detalhe ? '<div class="cmfin-side-profile-detail">'+r.detalhe+'</div>' : '');
+      + '<div class="cmfin-side-profile-name '+(placeholder ? "cmfin-side-profile-placeholder" : "")+'">'+r.nome+'</div>'
+      + '<div class="cmfin-side-profile-doc">'+r.documentoLabel+': '+r.documento+'</div>';
 
-    card.title = "Resumo do perfil do modo atual";
+    info.title = "Resumo do perfil do modo atual";
   }
 
   function start(){
-    renderCard();
+    renderInfo();
 
-    // Atualiza quando muda de modo, salva perfil ou navega.
-    setInterval(renderCard, 1200);
+    setInterval(renderInfo, 1200);
 
     document.addEventListener("click", function(){
-      setTimeout(renderCard, 250);
-      setTimeout(renderCard, 850);
+      setTimeout(renderInfo, 250);
+      setTimeout(renderInfo, 850);
     }, true);
 
     window.addEventListener("storage", function(e){
       if(e.key === PERFIL_KEY_V2 || e.key === PERFIL_KEY_V1 || e.key === STORAGE_KEY || e.key === STORAGE_KEY_OLD){
-        renderCard();
+        renderInfo();
       }
     });
   }
@@ -33729,7 +33701,7 @@ body.ello-modo-trocando .module.active {
     start();
   }
 
-  window.cmfinAtualizarCardResumoPerfil = renderCard;
+  window.cmfinAtualizarCardResumoPerfil = renderInfo;
 })();
 </script>
 
