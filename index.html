@@ -32254,3 +32254,521 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-historico-sync-js">
+(function(){
+  "use strict";
+
+  var CMFIN_AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var CMFIN_REMEMBERED_KEY = "cmfin_remembered_access_supabase_v1";
+  var CMFIN_DEVICE_KEY = "cmfin_device_id_v1";
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:10180;display:flex;align-items:center;gap:8px;max-width:480px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.94)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.94)";
+    else b.style.background = "rgba(15,23,42,.92)";
+
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4600);
+  }
+
+  function getDeviceId(){
+    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    if(!id){
+      id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
+      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+    }
+    return id;
+  }
+
+  function getSessao(){
+    try{
+      return JSON.parse(
+        localStorage.getItem(CMFIN_AUTH_KEY) ||
+        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        "null"
+      );
+    }catch(e){ return null; }
+  }
+
+  function getLembrado(){
+    try{ return JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_KEY) || "null"); }
+    catch(e){ return null; }
+  }
+
+  function carregarSupabaseLib(){
+    return new Promise(function(resolve, reject){
+      if(window.supabase && window.supabase.createClient){
+        resolve();
+        return;
+      }
+
+      var existente = document.querySelector('script[data-cmfin-supabase-lib="1"]');
+      if(existente){
+        existente.addEventListener("load", resolve);
+        existente.addEventListener("error", reject);
+        return;
+      }
+
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      s.async = true;
+      s.setAttribute("data-cmfin-supabase-lib", "1");
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error("Biblioteca Supabase não carregou.")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getClient(){
+    await carregarSupabaseLib();
+
+    if(window.cmfinSupabaseClient) return window.cmfinSupabaseClient;
+
+    var url = window.SUPABASE_URL || "https://ahpefoaspcxgntrquhej.supabase.co";
+    var key = window.SUPABASE_ANON_KEY || "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+
+    window.cmfinSupabaseClient = window.supabase.createClient(url, key);
+    return window.cmfinSupabaseClient;
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-historico-sync-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-historico-sync-style";
+    css.textContent = `
+      .cmfin-hist-overlay{
+        position:fixed;
+        inset:0;
+        z-index:10160;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        padding:22px;
+        background:rgba(2,6,23,.54);
+        backdrop-filter:blur(8px);
+      }
+      .cmfin-hist-modal{
+        width:min(860px,100%);
+        max-height:88vh;
+        display:flex;
+        flex-direction:column;
+        border-radius:28px;
+        background:#fff;
+        color:#0f172a;
+        overflow:hidden;
+        border:1px solid rgba(15,23,42,.10);
+        box-shadow:0 34px 90px rgba(15,23,42,.34);
+      }
+      .cmfin-hist-head{
+        padding:24px 26px 20px;
+        background:linear-gradient(135deg,#0f3d32,#082f27);
+        color:#fff;
+        position:relative;
+      }
+      .cmfin-hist-head::after{
+        content:"";
+        position:absolute;
+        right:-60px;
+        top:-70px;
+        width:190px;
+        height:190px;
+        border-radius:999px;
+        background:radial-gradient(circle,rgba(239,68,68,.30),transparent 68%);
+      }
+      .cmfin-hist-head span{
+        display:inline-flex;
+        align-items:center;
+        padding:7px 11px;
+        border-radius:999px;
+        background:rgba(255,255,255,.10);
+        border:1px solid rgba(255,255,255,.12);
+        color:rgba(255,255,255,.76);
+        font-size:10px;
+        font-weight:950;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        margin-bottom:12px;
+      }
+      .cmfin-hist-head h2{
+        margin:0;
+        font-size:25px;
+        line-height:1.08;
+        letter-spacing:-.035em;
+        font-weight:950;
+      }
+      .cmfin-hist-head p{
+        margin:9px 0 0;
+        max-width:620px;
+        color:rgba(255,255,255,.70);
+        font-size:13px;
+        line-height:1.5;
+        font-weight:650;
+      }
+      .cmfin-hist-body{
+        padding:18px 22px 22px;
+        overflow:auto;
+      }
+      .cmfin-hist-toolbar{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:12px;
+        margin-bottom:14px;
+      }
+      .cmfin-hist-summary{
+        font-size:12.5px;
+        color:#64748b;
+        font-weight:800;
+      }
+      .cmfin-hist-btn{
+        border:1px solid #d5dae0;
+        border-radius:14px;
+        padding:10px 13px;
+        background:#fff;
+        color:#0f172a;
+        font-size:12px;
+        font-weight:900;
+        cursor:pointer;
+      }
+      .cmfin-hist-btn.primary{
+        background:linear-gradient(135deg,#0f3d32,#0b2f27);
+        color:#fff;
+        border-color:transparent;
+      }
+      .cmfin-hist-list{
+        display:grid;
+        gap:10px;
+      }
+      .cmfin-hist-item{
+        display:grid;
+        grid-template-columns:150px 120px 1fr 160px;
+        gap:12px;
+        align-items:center;
+        padding:13px 14px;
+        border:1px solid #e2e8f0;
+        border-radius:18px;
+        background:#fff;
+      }
+      .cmfin-hist-item small{
+        display:block;
+        color:#94a3b8;
+        font-size:10px;
+        font-weight:950;
+        letter-spacing:.07em;
+        text-transform:uppercase;
+        margin-bottom:4px;
+      }
+      .cmfin-hist-item strong{
+        display:block;
+        color:#0f172a;
+        font-size:12.5px;
+        font-weight:950;
+      }
+      .cmfin-hist-msg{
+        color:#475569;
+        font-size:12.5px;
+        line-height:1.4;
+        font-weight:750;
+      }
+      .cmfin-hist-status{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:max-content;
+        padding:7px 10px;
+        border-radius:999px;
+        font-size:10.5px;
+        font-weight:950;
+        text-transform:uppercase;
+        letter-spacing:.06em;
+      }
+      .cmfin-hist-status.sucesso{
+        background:#dcfce7;
+        color:#166534;
+      }
+      .cmfin-hist-status.falha{
+        background:#fee2e2;
+        color:#991b1b;
+      }
+      .cmfin-hist-status.info{
+        background:#e0f2fe;
+        color:#075985;
+      }
+      .cmfin-hist-empty{
+        padding:26px;
+        border-radius:20px;
+        border:1px dashed #cbd5e1;
+        background:#f8fafc;
+        color:#64748b;
+        font-size:13px;
+        font-weight:800;
+        text-align:center;
+      }
+      .cmfin-hist-footer{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        padding:14px 22px 18px;
+        border-top:1px solid #e2e8f0;
+        background:#fff;
+      }
+      .cmfin-hist-menu-item{
+        display:flex;
+        align-items:center;
+        gap:9px;
+        width:100%;
+        padding:10px 12px;
+        border-radius:12px;
+        border:0;
+        background:transparent;
+        color:inherit;
+        font:inherit;
+        font-size:13px;
+        font-weight:800;
+        text-align:left;
+        cursor:pointer;
+      }
+      .cmfin-hist-menu-item:hover{
+        background:rgba(15,61,50,.08);
+      }
+      @media(max-width:820px){
+        .cmfin-hist-item{
+          grid-template-columns:1fr;
+          gap:9px;
+        }
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function brDate(iso){
+    if(!iso) return "—";
+    try{
+      return new Date(iso).toLocaleString("pt-BR", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+      });
+    }catch(e){ return String(iso); }
+  }
+
+  function statusClass(status){
+    status = String(status || "info").toLowerCase();
+    if(status.indexOf("sucesso") >= 0) return "sucesso";
+    if(status.indexOf("falha") >= 0 || status.indexOf("erro") >= 0) return "falha";
+    return "info";
+  }
+
+  function tipoLabel(tipo){
+    tipo = String(tipo || "sincronizacao");
+    if(tipo === "manual_forcado") return "Salvamento manual";
+    if(tipo === "salvar") return "Salvamento";
+    if(tipo === "carregar") return "Carregamento";
+    return tipo.replace(/_/g, " ");
+  }
+
+  async function buscarHistorico(){
+    var s = getSessao() || getLembrado();
+
+    if(!s || !s.usuario || !s.senha || !s.licenca){
+      toast("Sessão incompleta. Saia e entre novamente marcando Lembrar acesso.", "erro");
+      return null;
+    }
+
+    var client = await getClient();
+
+    var res = await client.rpc("cmfin_listar_historico_sync", {
+      p_usuario: s.usuario,
+      p_senha: s.senha,
+      p_licenca: s.licenca,
+      p_device_id: getDeviceId(),
+      p_limite: 40
+    });
+
+    if(res.error){
+      console.warn("CMFin histórico sync error:", res.error);
+      toast("Erro ao consultar histórico: " + (res.error.message || "verifique o Supabase."), "erro");
+      return null;
+    }
+
+    var data = Array.isArray(res.data) ? res.data[0] : res.data;
+    if(typeof data === "string"){
+      try{ data = JSON.parse(data); }catch(e){}
+    }
+
+    if(!data || !data.ok){
+      toast((data && data.mensagem) || "Não foi possível consultar o histórico.", "erro");
+      return null;
+    }
+
+    return data;
+  }
+
+  function renderLista(data){
+    var list = document.getElementById("cmfinHistList");
+    var summary = document.getElementById("cmfinHistSummary");
+
+    if(!list) return;
+
+    var itens = data && data.itens ? data.itens : [];
+
+    if(summary){
+      summary.textContent = itens.length
+        ? itens.length + " registros recentes encontrados."
+        : "Nenhum registro encontrado ainda.";
+    }
+
+    if(!itens.length){
+      list.innerHTML = '<div class="cmfin-hist-empty">Nenhuma sincronização registrada ainda. Clique em Salvar na Nuvem para gerar o primeiro registro.</div>';
+      return;
+    }
+
+    list.innerHTML = itens.map(function(item){
+      var cls = statusClass(item.status);
+      return ''
+        + '<div class="cmfin-hist-item">'
+        + '  <div><small>Data/Hora</small><strong>'+ brDate(item.criado_em) +'</strong></div>'
+        + '  <div><small>Tipo</small><strong>'+ tipoLabel(item.tipo) +'</strong></div>'
+        + '  <div><small>Mensagem</small><div class="cmfin-hist-msg">'+ (item.mensagem || "—") +'</div></div>'
+        + '  <div><small>Status</small><span class="cmfin-hist-status '+cls+'">'+ (item.status || "info") +'</span></div>'
+        + '</div>';
+    }).join("");
+  }
+
+  async function carregarNoModal(){
+    var list = document.getElementById("cmfinHistList");
+    var summary = document.getElementById("cmfinHistSummary");
+
+    if(list) list.innerHTML = '<div class="cmfin-hist-empty">Carregando histórico...</div>';
+    if(summary) summary.textContent = "Consultando Supabase...";
+
+    try{
+      var data = await buscarHistorico();
+      if(data) renderLista(data);
+      else if(list) list.innerHTML = '<div class="cmfin-hist-empty">Não foi possível carregar o histórico.</div>';
+    }catch(err){
+      console.warn(err);
+      if(list) list.innerHTML = '<div class="cmfin-hist-empty">Erro ao carregar histórico.</div>';
+    }
+  }
+
+  function abrirHistorico(){
+    ensureStyle();
+
+    var overlay = document.getElementById("cmfinHistOverlay");
+    if(!overlay){
+      overlay = document.createElement("div");
+      overlay.id = "cmfinHistOverlay";
+      overlay.className = "cmfin-hist-overlay";
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = ''
+      + '<div class="cmfin-hist-modal" role="dialog" aria-modal="true">'
+      + '  <div class="cmfin-hist-head">'
+      + '    <span>CMFin · Supabase</span>'
+      + '    <h2>Histórico de Sincronização</h2>'
+      + '    <p>Veja quando os dados foram salvos ou carregados na nuvem, com status, horário e dispositivo da licença.</p>'
+      + '  </div>'
+      + '  <div class="cmfin-hist-body">'
+      + '    <div class="cmfin-hist-toolbar">'
+      + '      <div id="cmfinHistSummary" class="cmfin-hist-summary">Consultando Supabase...</div>'
+      + '      <button type="button" class="cmfin-hist-btn primary" data-refresh>Atualizar</button>'
+      + '    </div>'
+      + '    <div id="cmfinHistList" class="cmfin-hist-list"><div class="cmfin-hist-empty">Carregando histórico...</div></div>'
+      + '  </div>'
+      + '  <div class="cmfin-hist-footer">'
+      + '    <button type="button" class="cmfin-hist-btn" data-close>Fechar</button>'
+      + '  </div>'
+      + '</div>';
+
+    overlay.style.display = "flex";
+
+    function close(){
+      overlay.style.display = "none";
+      overlay.innerHTML = "";
+    }
+
+    overlay.addEventListener("click", function handler(e){
+      if(e.target === overlay || e.target.closest("[data-close]")){
+        close();
+        overlay.removeEventListener("click", handler);
+      }
+
+      if(e.target.closest("[data-refresh]")){
+        carregarNoModal();
+      }
+    });
+
+    carregarNoModal();
+  }
+
+  function instalarMenu(){
+    ensureStyle();
+
+    if(document.getElementById("cmfinHistoricoSyncMenuItem")) return;
+
+    var menu = document.getElementById("menuAcoesTopo") ||
+               document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+
+    if(!menu) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinHistoricoSyncMenuItem";
+    btn.className = "cmfin-hist-menu-item";
+    btn.textContent = "Histórico de Sincronização";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes();
+      setTimeout(abrirHistorico, 80);
+    });
+
+    var carregarNuvem = Array.prototype.slice.call(menu.querySelectorAll("button")).find(function(b){
+      return (b.textContent || "").trim().toLowerCase() === "carregar dados da nuvem";
+    });
+
+    if(carregarNuvem && carregarNuvem.nextSibling){
+      menu.insertBefore(btn, carregarNuvem.nextSibling);
+    }else{
+      var sep = document.createElement("div");
+      sep.style.cssText = "height:1px;background:rgba(15,23,42,.08);margin:8px 0;";
+      menu.appendChild(sep);
+      menu.appendChild(btn);
+    }
+  }
+
+  function tick(){
+    instalarMenu();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 800);
+      tick();
+    });
+  }else{
+    setInterval(tick, 800);
+    tick();
+  }
+
+  window.cmfinAbrirHistoricoSincronizacao = abrirHistorico;
+})();
+</script>
+
