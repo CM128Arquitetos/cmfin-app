@@ -8710,7 +8710,7 @@ button[data-clear-filters],
     </div>
   </div>
 </div>
-<button id="cmfinLogoutBtn" type="button" title="Sair do sistema">⎋ Sair</button>
+<button id="cmfinLogoutBtn" type="button" title="Sair do sistema">Sair</button>
 
 
 
@@ -30289,7 +30289,7 @@ body.ello-modo-trocando .module.active {
     box.id = "cmfinCloudActionItems";
     box.style.cssText = "border-top:1px solid rgba(15,23,42,.08);margin-top:6px;padding-top:6px;";
     box.innerHTML = ''
-      + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="load">☁️ Carregar Dados da Nuvem</button>'
+      + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="load">Carregar Dados da Nuvem</button>'
       + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="backup">⬇️ Exportar Backup Local</button>';
 
     menu.appendChild(box);
@@ -33861,6 +33861,101 @@ body.ello-modo-trocando .module.active {
   document.addEventListener("click", function(){
     setTimeout(tick, 80);
     setTimeout(tick, 250);
+  }, true);
+})();
+</script>
+
+
+<script id="cmfin-limpar-icones-interface-js">
+(function(){
+  "use strict";
+
+  function limparTextoBotao(btn, textoFinal){
+    if(!btn) return;
+    var current = (btn.textContent || "").trim();
+
+    if(current !== textoFinal){
+      btn.textContent = textoFinal;
+    }
+
+    // Remove qualquer ícone/svg/span usado apenas como símbolo dentro do botão.
+    Array.prototype.slice.call(btn.children || []).forEach(function(child){
+      var tag = (child.tagName || "").toLowerCase();
+      if(tag === "svg" || tag === "i" || tag === "span"){
+        var txt = (child.textContent || "").trim();
+        if(!txt || txt === "☁️" || txt === "☁" || txt === "⎋" || txt === "↪" || txt === "↩"){
+          child.remove();
+        }
+      }
+    });
+  }
+
+  function normalizarTexto(txt){
+    return String(txt || "").trim()
+      .replace(/^☁️\s*/g, "")
+      .replace(/^☁\s*/g, "")
+      .replace(/^⎋\s*/g, "")
+      .replace(/^↪\s*/g, "")
+      .replace(/^↩\s*/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function ajustar(){
+    var all = Array.prototype.slice.call(document.querySelectorAll("button, a"));
+
+    all.forEach(function(el){
+      var txt = normalizarTexto(el.textContent);
+
+      if(txt === "Carregar Dados da Nuvem"){
+        limparTextoBotao(el, "Carregar Dados da Nuvem");
+        el.classList.add("cmfin-clean-action-label");
+      }
+
+      if(txt === "Sair"){
+        limparTextoBotao(el, "Sair");
+        el.classList.add("cmfin-clean-exit-label");
+      }
+    });
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-limpar-icones-interface-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-limpar-icones-interface-style";
+    css.textContent = `
+      .cmfin-clean-action-label,
+      .cmfin-clean-exit-label{
+        gap:0 !important;
+      }
+      .cmfin-clean-action-label svg,
+      .cmfin-clean-action-label i,
+      .cmfin-clean-exit-label svg,
+      .cmfin-clean-exit-label i{
+        display:none !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    ajustar();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 500);
+      tick();
+    });
+  }else{
+    setInterval(tick, 500);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 300);
   }, true);
 })();
 </script>
