@@ -33960,3 +33960,138 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-reposicionar-info-perfil-lateral-js">
+(function(){
+  "use strict";
+
+  function normalizar(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function findSidebar(){
+    return document.querySelector(".sidebar") ||
+           document.querySelector("aside") ||
+           document.querySelector("[class*='sidebar']") ||
+           null;
+  }
+
+  function findModeToggle(sidebar){
+    if(!sidebar) return null;
+
+    var candidates = Array.prototype.slice.call(sidebar.querySelectorAll("div, section, nav, form"));
+
+    return candidates.find(function(el){
+      var txt = normalizar(el.textContent);
+      var hasPessoal = txt.indexOf("pessoal") >= 0;
+      var hasEmpresarial = txt.indexOf("empresarial") >= 0;
+      var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      var compact = rect ? rect.height <= 90 : true;
+
+      return hasPessoal && hasEmpresarial && compact;
+    }) || null;
+  }
+
+  function findDashboardItem(sidebar){
+    if(!sidebar) return null;
+
+    var items = Array.prototype.slice.call(sidebar.querySelectorAll("button, a, .nav-item, [role='button'], li, div"));
+
+    return items.find(function(el){
+      var txt = normalizar(el.textContent);
+      return txt === "dashboard" || txt.indexOf("dashboard") >= 0;
+    }) || null;
+  }
+
+  function reposicionar(){
+    var sidebar = findSidebar();
+    var info = document.getElementById("cmfinSideProfileCard");
+
+    if(!sidebar || !info) return;
+
+    info.classList.add("cmfin-side-profile-info-top");
+
+    var modeToggle = findModeToggle(sidebar);
+    var dashboard = findDashboardItem(sidebar);
+
+    // Prioridade: depois dos botões Pessoal/Empresarial.
+    if(modeToggle){
+      var insertAfter = modeToggle;
+
+      // Se o toggle estiver dentro de um wrapper direto da sidebar, usa o wrapper como referência.
+      if(modeToggle.parentElement && modeToggle.parentElement !== sidebar && modeToggle.parentElement.parentElement === sidebar){
+        insertAfter = modeToggle.parentElement;
+      }
+
+      if(insertAfter.nextElementSibling !== info){
+        insertAfter.insertAdjacentElement("afterend", info);
+      }
+      return;
+    }
+
+    // Alternativa: antes do Dashboard.
+    if(dashboard){
+      if(dashboard.parentElement && dashboard.parentElement !== sidebar && dashboard.parentElement.parentElement === sidebar){
+        dashboard.parentElement.insertAdjacentElement("beforebegin", info);
+      }else{
+        dashboard.insertAdjacentElement("beforebegin", info);
+      }
+    }
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-reposicionar-info-perfil-lateral-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-reposicionar-info-perfil-lateral-style";
+    css.textContent = `
+      #cmfinSideProfileCard.cmfin-side-profile-info-top{
+        margin:14px 26px 18px !important;
+        padding:0 !important;
+        border:0 !important;
+        background:transparent !important;
+        box-shadow:none !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-type{
+        font-size:10px !important;
+        letter-spacing:.24em !important;
+        margin-bottom:8px !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-name{
+        font-size:13px !important;
+        line-height:1.25 !important;
+        margin-bottom:5px !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-doc{
+        font-size:11.5px !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    reposicionar();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 700);
+      tick();
+    });
+  }else{
+    setInterval(tick, 700);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 600);
+  }, true);
+})();
+</script>
+
