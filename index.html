@@ -8656,20 +8656,16 @@ button[data-clear-filters],
   .cmfin-login-field input::placeholder{color:rgba(255,255,255,.32);}
   .cmfin-login-field input:focus{border-color:rgba(239,68,68,.72);box-shadow:0 0 0 4px rgba(239,68,68,.12);background:rgba(255,255,255,.085);}
   .cmfin-login-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:2px;color:rgba(255,255,255,.63);font-size:12px;font-weight:700;}
-  .cmfin-login-options label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;white-space:nowrap;flex-wrap:nowrap;}
+  .cmfin-login-options label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
   .cmfin-login-options input{accent-color:#ef4444;}
   .cmfin-login-error{display:none;padding:11px 12px;border:1px solid rgba(239,68,68,.28);border-radius:14px;background:rgba(239,68,68,.11);color:#fecaca;font-size:12px;line-height:1.35;font-weight:800;}
   .cmfin-login-error.show{display:block;}
   .cmfin-login-btn{width:100%;height:54px;border:none;border-radius:17px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:14px;font-weight:950;letter-spacing:.02em;cursor:pointer;box-shadow:0 18px 34px rgba(185,28,28,.28);transition:transform .18s ease,filter .18s ease;}
   .cmfin-login-btn:hover{transform:translateY(-1px);filter:brightness(1.05);}
   .cmfin-login-footer{position:relative;z-index:1;margin-top:18px;text-align:center;color:rgba(255,255,255,.45);font-size:11px;line-height:1.45;}
-  #cmfinLogoutBtn{position:static;z-index:auto;display:none;align-items:center;gap:7px;border:1px solid #d5dae0;border-radius:14px;padding:12px 16px;background:#fff;color:var(--text);box-shadow:none;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;}
-  #cmfinLogoutBtn:hover{filter:brightness(.98);}
-  body.cmfin-authenticated #cmfinLogoutBtn{display:inline-flex;}
-  #cmfinLicenseBadge{display:none;}
-  body.cmfin-authenticated #cmfinLicenseBadge{display:inline-flex;}
-  .cmfin-top-license-badge{align-items:center;gap:8px;max-width:460px;padding:11px 15px;border-radius:999px;background:linear-gradient(135deg, rgba(6,95,70,.10), rgba(16,185,129,.07));border:1px solid rgba(6,95,70,.18);color:#073b31;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:12px;font-weight:900;white-space:nowrap;letter-spacing:.01em;}.cmfin-top-license-badge::before{content:"";width:8px;height:8px;border-radius:999px;background:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,.14);flex:0 0 auto;}
-  @media(max-width:620px){#cmfinLoginOverlay{padding:16px}.cmfin-login-card{padding:28px 20px 23px;border-radius:24px}.cmfin-login-head h2{font-size:22px}.cmfin-login-logo{width:185px}.cmfin-top-license-badge{max-width:100%;white-space:normal;border-radius:18px}}
+  #cmfinLogoutBtn{position:fixed;right:22px;bottom:22px;z-index:9990;display:none;border:1px solid rgba(15,23,42,.12);border-radius:999px;padding:11px 15px;background:rgba(255,255,255,.94);color:#0f172a;box-shadow:0 14px 36px rgba(15,23,42,.16);font-size:12px;font-weight:900;cursor:pointer;}
+  body.cmfin-authenticated #cmfinLogoutBtn{display:inline-flex;align-items:center;gap:7px;}
+  @media(max-width:620px){#cmfinLoginOverlay{padding:16px}.cmfin-login-card{padding:28px 20px 23px;border-radius:24px}.cmfin-login-head h2{font-size:22px}.cmfin-login-logo{width:185px}#cmfinLogoutBtn{right:14px;bottom:14px}}
 </style>
 
 </head>
@@ -8697,7 +8693,7 @@ button[data-clear-filters],
         <input id="cmfinLoginLicenca" autocomplete="off" placeholder="Ex.: CMFIN-2026-ELTON" />
       </div>
       <div class="cmfin-login-options">
-        <label><input type="checkbox" id="cmfinLembrarAcesso" checked /><span style="white-space:nowrap;">Lembrar acesso</span></label>
+        <label><input type="checkbox" id="cmfinLembrarAcesso" checked /> Lembrar acesso</label>
       </div>
       <div class="cmfin-login-error" id="cmfinLoginErro">Usuário, senha ou licença inválidos.</div>
       <button class="cmfin-login-btn" type="submit">Entrar no sistema</button>
@@ -10592,14 +10588,6 @@ button[data-clear-filters],
           <div class="file-note" id="varComprovanteAtual">Este campo aparece para pagamentos em PIX. Anexe ou substitua o comprovante ao editar o gasto.</div>
         </div>
 
-        <div id="campoBoletoVariavel" style="grid-column:1 / -1;">
-          <label>Boleto / Documento de Cobrança • OPCIONAL</label>
-          <input type="file" id="varBoleto" accept="image/*,.pdf" onchange="sugerirNomeComprovante('varBoleto','varBoletoNome')" />
-          <label style="margin-top:10px;">Nome do boleto no cadastro</label>
-          <input id="varBoletoNome" placeholder="Ex.: Boleto Material de Obra - Junho 2026" />
-          <div class="file-note" id="varBoletoAtual">Nenhum boleto anexado para o mês selecionado.</div>
-        </div>
-
         <div id="camposParcelamentoVariavel" style="display:none; grid-column:1 / -1; border:1px solid var(--line); background:var(--panel-soft); border-radius:16px; padding:12px;">
           <div class="grid-2">
             <div>
@@ -11004,7 +10992,7 @@ button[data-clear-filters],
           <h2>Nova Categoria</h2>
           <p>Cadastre uma categoria para reutilizar nos lançamentos.</p>
         </div>
-        <button class="btn btn-secondary btn-small" onclick="fecharModalCategoria()">Fechar</button>
+        <button class="btn btn-secondary btn-small" onclick="fecharModais()">Fechar</button>
       </div>
       <div class="form-col">
         <div>
@@ -11013,7 +11001,7 @@ button[data-clear-filters],
         </div>
       </div>
       <div class="actions" style="margin-top:16px;">
-        <button class="btn btn-secondary" onclick="fecharModalCategoria()">Cancelar</button>
+        <button class="btn btn-secondary" onclick="fecharModais()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarNovaCategoria()">Salvar Categoria</button>
       </div>
     </div>
@@ -12291,11 +12279,6 @@ button[data-clear-filters],
       document.querySelectorAll(".modal-backdrop").forEach(m => m.style.display = "none");
     }
 
-    function fecharModalCategoria() {
-      const modal = document.getElementById("modalCategoria");
-      if (modal) modal.style.display = "none";
-    }
-
     function alternarRegras() {
       const c = document.getElementById("conteudoRegras");
       const b = document.getElementById("btnRegras");
@@ -12365,8 +12348,7 @@ button[data-clear-filters],
         document.getElementById("tercCategoria").value = nome;
       }
 
-      fecharModalCategoria();
-      origemNovaCategoria = null;
+      fecharModais();
     }
 
     function preencherAnos() {
@@ -13551,7 +13533,7 @@ button[data-clear-filters],
 
     function obterComprovanteDoItem(item, tipo, mesReferencia) {
       if (!item) return null;
-      if (tipo === "boletosFixos" || tipo === "boletosVariaveis") return obterBoletoDoItem(item, mesReferencia);
+      if (tipo === "boletosFixos") return obterBoletoDoItem(item, mesReferencia);
       const mes = mesParaComprovante(mesReferencia);
       if (usarComprovanteMensalEmpresarial(tipo)) {
         const mensal = (item.comprovantesPorMes && item.comprovantesPorMes[mes]) || null;
@@ -13613,10 +13595,10 @@ button[data-clear-filters],
       return `<button type="button" class="attachment-link" onclick="abrirComprovante('${tipo}', ${id}, '${mes}')">📎 ${escaparHtml(comprovante.nome || 'Comprovante')}</button>`;
     }
 
-    function linkBoleto(boleto, id, mesReferencia, tipo = "boletosFixos") {
+    function linkBoleto(boleto, id, mesReferencia) {
       if (!boleto || !boleto.dados) return "";
       const mes = mesParaComprovante(mesReferencia);
-      return `<button type="button" class="attachment-link boleto-link" onclick="abrirComprovante('${tipo}', ${id}, '${mes}')">🧾 ${escaparHtml(boleto.nome || 'Boleto')}</button>`;
+      return `<button type="button" class="attachment-link boleto-link" onclick="abrirComprovante('boletosFixos', ${id}, '${mes}')">🧾 ${escaparHtml(boleto.nome || 'Boleto')}</button>`;
     }
 
     function textoBoletoAtual(boleto) {
@@ -13632,7 +13614,6 @@ button[data-clear-filters],
     function listaPorTipoComprovante(tipo) {
       if (tipo === "fixos") return gastosFixos;
       if (tipo === "boletosFixos") return gastosFixos;
-      if (tipo === "boletosVariaveis") return gastosVariaveis;
       if (tipo === "variaveis") return gastosVariaveis;
       if (tipo === "terceirizados") return pagamentosTerceirizados;
       if (tipo === "arquitetos") return pagamentosArquitetos;
@@ -13663,7 +13644,7 @@ button[data-clear-filters],
       const download = document.getElementById("comprovanteDownload");
       const titulo = document.getElementById("comprovanteTituloArquivo");
       if (inputNome) inputNome.value = nome;
-      if (titulo) titulo.innerText = (comprovanteContextoAtual.tipo === "boletosFixos" || comprovanteContextoAtual.tipo === "boletosVariaveis" ? "Boleto: " : "Comprovante: ") + nome;
+      if (titulo) titulo.innerText = (comprovanteContextoAtual.tipo === "boletosFixos" ? "Boleto: " : "Comprovante: ") + nome;
       if (download) {
         download.href = comp.dados;
         download.download = nome;
@@ -13687,7 +13668,7 @@ button[data-clear-filters],
       const comp = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
       if (!item || !comp || !novoNome) return alert("Informe um nome para o comprovante.");
 
-      if (comprovanteContextoAtual.tipo === "boletosFixos" || comprovanteContextoAtual.tipo === "boletosVariaveis") {
+      if (comprovanteContextoAtual.tipo === "boletosFixos") {
         const mes = mesParaComprovante(comprovanteContextoAtual.mesReferencia);
         item.boletosPorMes = { ...(item.boletosPorMes || {}), [mes]: { ...comp, nome: novoNome } };
         item.boleto = null;
@@ -13725,12 +13706,6 @@ button[data-clear-filters],
       if (varComprovanteNome) varComprovanteNome.value = "";
       const varComprovanteAtual = document.getElementById("varComprovanteAtual");
       if (varComprovanteAtual) varComprovanteAtual.innerText = "Nenhum comprovante anexado. Este campo aparece para pagamentos em PIX.";
-      const varBoleto = document.getElementById("varBoleto");
-      if (varBoleto) varBoleto.value = "";
-      const varBoletoNome = document.getElementById("varBoletoNome");
-      if (varBoletoNome) varBoletoNome.value = "";
-      const varBoletoAtual = document.getElementById("varBoletoAtual");
-      if (varBoletoAtual) varBoletoAtual.innerText = "Nenhum boleto anexado para o mês selecionado.";
       setValorMes("varPrimeiraFatura", document.getElementById("dashboardMes")?.value || mesAtual());
       const varPrimeiraFaturaCampo = document.getElementById("varPrimeiraFatura");
       if (varPrimeiraFaturaCampo) varPrimeiraFaturaCampo.dataset.sugerido = "1";
@@ -13767,13 +13742,6 @@ button[data-clear-filters],
       if (varComprovanteNome) varComprovanteNome.value = item.comprovante?.nome || "";
       const varComprovanteAtual = document.getElementById("varComprovanteAtual");
       if (varComprovanteAtual) varComprovanteAtual.innerText = textoComprovanteAtual(item.comprovante);
-      const boletoAtualVariavel = obterBoletoDoItem(item, item.mesReferencia || item.primeiraFatura || (item.data ? item.data.slice(0,7) : mesAtual()));
-      const varBoleto = document.getElementById("varBoleto");
-      if (varBoleto) varBoleto.value = "";
-      const varBoletoNome = document.getElementById("varBoletoNome");
-      if (varBoletoNome) varBoletoNome.value = boletoAtualVariavel?.nome || "";
-      const varBoletoAtual = document.getElementById("varBoletoAtual");
-      if (varBoletoAtual) varBoletoAtual.innerText = textoBoletoAtual(boletoAtualVariavel);
       setValorMes("varPrimeiraFatura", item.primeiraFatura || (item.data ? item.data.slice(0,7) : mesAtual()));
       const varPrimeiraEdit = document.getElementById("varPrimeiraFatura");
       if (varPrimeiraEdit) varPrimeiraEdit.dataset.sugerido = "0";
@@ -13854,7 +13822,6 @@ button[data-clear-filters],
       const mesReferenciaEscolhido = document.getElementById("varMesReferencia").value || document.getElementById("dashboardMes").value || (document.getElementById("varData").value || hoje()).slice(0,7);
       const vencimentoManual = document.getElementById("varVencimento")?.value || "";
       const novoComprovante = aplicarNomeComprovante(await lerArquivoComoBase64(document.getElementById("varComprovante")?.files?.[0]), "varComprovanteNome");
-      const novoBoleto = aplicarNomeComprovante(await lerArquivoComoBase64(document.getElementById("varBoleto")?.files?.[0]), "varBoletoNome");
 
       if (!descricao || !valorTotal) return alert("Preencha Descrição e Valor.");
 
@@ -13877,25 +13844,20 @@ button[data-clear-filters],
         const valor = valorTotal;
         const data = document.getElementById("varData").value || hoje();
 
-        gastosVariaveis = gastosVariaveis.map(item => {
-          if (item.id !== Number(editId)) return item;
-          let atualizado = {
-            ...item,
-            ...base,
-            comprovante: forma === "Pix" ? comprovanteFinalPix(novoComprovante, item.comprovante, "varComprovanteNome") : null,
-            data,
-            dataCompra: document.getElementById("varData").value || item.dataCompra || data,
-            mesReferencia: mesReferenciaEscolhido,
-            vencimento: vencimentoManual || (ehFormaCartao(forma) ? calcularVencimentoCartaoVariavel(document.getElementById("varPrimeiraFatura").value || mesReferenciaEscolhido, base.banco) : ""),
-            valor,
-            parcela: deveParcelarPorEscolha("var", forma) ? (item.parcela || "1/1") : "",
-            primeiraFatura: deveParcelarPorEscolha("var", forma) ? (document.getElementById("varPrimeiraFatura").value || data.slice(0,7)) : null,
-            totalParcelas: deveParcelarPorEscolha("var", forma) ? Number(document.getElementById("varParcelas").value || 1) : null,
-            status: base.status || item.status || "Pendente"
-          };
-          atualizado = aplicarBoletoMensalAoItem(atualizado, mesReferenciaEscolhido, novoBoleto, "varBoletoNome", true);
-          return atualizado;
-        });
+        gastosVariaveis = gastosVariaveis.map(item => item.id === Number(editId) ? {
+          ...item,
+          ...base,
+          comprovante: forma === "Pix" ? comprovanteFinalPix(novoComprovante, item.comprovante, "varComprovanteNome") : null,
+          data,
+          dataCompra: document.getElementById("varData").value || item.dataCompra || data,
+          mesReferencia: mesReferenciaEscolhido,
+          vencimento: vencimentoManual || (ehFormaCartao(forma) ? calcularVencimentoCartaoVariavel(document.getElementById("varPrimeiraFatura").value || mesReferenciaEscolhido, base.banco) : ""),
+          valor,
+          parcela: deveParcelarPorEscolha("var", forma) ? (item.parcela || "1/1") : "",
+          primeiraFatura: deveParcelarPorEscolha("var", forma) ? (document.getElementById("varPrimeiraFatura").value || data.slice(0,7)) : null,
+          totalParcelas: deveParcelarPorEscolha("var", forma) ? Number(document.getElementById("varParcelas").value || 1) : null,
+          status: base.status || item.status || "Pendente"
+        } : item);
 
         salvarDados();
         fecharModais();
@@ -13925,8 +13887,6 @@ button[data-clear-filters],
             primeiraFatura,
             totalParcelas: qtdParcelas,
             status: base.status || "Pendente",
-            boleto: novoBoleto || null,
-            boletosPorMes: novoBoleto ? { [mesFatura]: novoBoleto } : {},
             ordemManual: Date.now() + i
           });
         }
@@ -13943,8 +13903,6 @@ button[data-clear-filters],
           primeiraFatura: null,
           totalParcelas: null,
           status: base.status || "Pendente",
-          boleto: novoBoleto || null,
-          boletosPorMes: novoBoleto ? { [mesReferenciaEscolhido]: novoBoleto } : {},
           ordemManual: Date.now()
         });
       }
@@ -16734,7 +16692,6 @@ button[data-clear-filters],
                 <div style="display:flex; flex-direction:column; justify-content:center; min-height:28px;">
                   <strong>${i.descricao}</strong>
                   ${i.descricaoServico ? `<div class="muted"><strong>Serviço:</strong> ${i.descricaoServico}</div>` : ""}
-                  ${linkBoleto(obterBoletoDoItem(i, mesReferenciaVariavel(i)), i.id, mesReferenciaVariavel(i), "boletosVariaveis")}
                   ${linkComprovante(i.comprovante, "variaveis", i.id)}
                 </div>
               </div>
@@ -29266,7 +29223,6 @@ body.ello-modo-trocando .module.active {
     var overlay = document.getElementById("cmfinLoginOverlay");
     if(overlay) overlay.style.display = "none";
     atualizarBadgeLicenca();
-    posicionarControlesTopo();
   }
 
   function bloquearSistema(){
@@ -29342,40 +29298,6 @@ body.ello-modo-trocando .module.active {
     return data || { ok:false, mensagem:"Resposta vazia do servidor de licenças." };
   }
 
-  function posicionarControlesTopo(){
-    var host = document.querySelector(".topbar .actions");
-    if(!host) return;
-
-    var menuWrap = host.querySelector(".actions-menu-wrap");
-    var badge = document.getElementById("cmfinLicenseBadge");
-    var logout = document.getElementById("cmfinLogoutBtn");
-
-    if(badge){
-      if(!badge.classList.contains("cmfin-top-license-badge")){
-        badge.classList.add("cmfin-top-license-badge");
-      }
-      if(menuWrap){
-        host.insertBefore(badge, menuWrap);
-      }else{
-        host.insertBefore(badge, host.firstChild);
-      }
-    }
-
-    if(logout){
-      if(menuWrap){
-        if(badge && badge.parentElement === host){
-          if(badge.nextSibling !== logout){
-            host.insertBefore(logout, badge.nextSibling);
-          }
-        }else{
-          host.insertBefore(logout, menuWrap);
-        }
-      }else{
-        host.appendChild(logout);
-      }
-    }
-  }
-
   function atualizarBadgeLicenca(){
     var s = getSessao(localStorage) || getSessao(sessionStorage);
     if(!sessaoMinima(s)) return;
@@ -29384,52 +29306,12 @@ body.ello-modo-trocando .module.active {
     if(!b){
       b = document.createElement("div");
       b.id = "cmfinLicenseBadge";
-      b.className = "cmfin-top-license-badge";
-      b.style.cssText = "";
+      b.style.cssText = "position:fixed;left:22px;bottom:22px;z-index:9989;display:flex;align-items:center;gap:8px;max-width:340px;padding:10px 13px;border-radius:999px;background:rgba(15,23,42,.88);color:#fff;box-shadow:0 14px 36px rgba(15,23,42,.18);font-size:11px;font-weight:800;backdrop-filter:blur(12px);";
       document.body.appendChild(b);
     }
 
-    var val = s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "";
-    b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + val;
-    posicionarControlesTopo();
-  }
-
-  async function entrarComAcessoLembrado(){
-    var salvo = getAcessoLembrado();
-    if(!salvo || !salvo.usuario || !salvo.senha || !salvo.licenca) return false;
-
-    try{
-      bloquearSistema();
-      mostrarErro("Validando licença salva...");
-
-      var resultado = await validarSupabase(salvo.usuario, salvo.senha, salvo.licenca);
-
-      if(!resultado || !resultado.ok){
-        limparSessao();
-        // Se a licença foi bloqueada/vencida, mantém os campos preenchidos para conferência,
-        // mas não entra automaticamente.
-        mostrarErro((resultado && resultado.mensagem) || "Licença bloqueada, vencida ou inválida.");
-        return false;
-      }
-
-      var u = {
-        usuario: resultado.usuario || salvo.usuario,
-        senha: salvo.senha,
-        cliente: resultado.cliente || salvo.cliente || salvo.usuario,
-        licenca: resultado.licenca || salvo.licenca,
-        validade: resultado.validade || salvo.validade || null
-      };
-
-      salvarSessao(u, localStorage);
-      salvarAcessoLembrado(u);
-      ocultarErro();
-      liberarSistema();
-      return true;
-    }catch(err){
-      console.warn("Não foi possível validar o acesso lembrado", err);
-      mostrarErro("Não foi possível validar a licença salva. Verifique a internet ou entre manualmente.");
-      return false;
-    }
+    var val = s.validade ? " · validade " + String(s.validade).split("-").reverse().join("/") : "";
+    b.textContent = "Licença ativa: " + (s.cliente || s.usuario || "Cliente") + val;
   }
 
   async function revalidarSessaoSalva(){
@@ -29451,18 +29333,12 @@ body.ello-modo-trocando .module.active {
 
       var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", sessao.licenca);
 
-      // Se a sessão antiga não guardou a senha, tenta usar o acesso lembrado.
+      // Como versões antigas não guardavam a senha na sessão, se não houver senha salva,
+      // forçamos o login novamente para validar corretamente com o Supabase.
       if(!sessao.senha){
-        var salvo = getAcessoLembrado();
-        if(salvo && salvo.usuario && salvo.senha && salvo.licenca){
-          sessao.senha = salvo.senha;
-          sessao.usuario = sessao.usuario || salvo.usuario;
-          sessao.licenca = sessao.licenca || salvo.licenca;
-        }else{
-          limparSessao();
-          mostrarErro("Por segurança, entre novamente para revalidar sua licença online.");
-          return false;
-        }
+        limparSessao();
+        mostrarErro("Por segurança, entre novamente para revalidar sua licença online.");
+        return false;
       }
 
       if(!resultado || !resultado.ok){
@@ -29499,14 +29375,11 @@ body.ello-modo-trocando .module.active {
     var lembrarEl = document.getElementById("cmfinLembrarAcesso");
     var form = document.getElementById("cmfinLoginForm");
 
-    var acessoLembrado = getAcessoLembrado();
-    if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || localStorage.getItem(CMFIN_LAST_USER_KEY) || "";
-    if(senhaEl && !senhaEl.value && acessoLembrado && acessoLembrado.senha) senhaEl.value = acessoLembrado.senha || "";
-    if(licencaEl && !licencaEl.value && acessoLembrado && acessoLembrado.licenca) licencaEl.value = acessoLembrado.licenca || "";
+    if(usuarioEl && !usuarioEl.value) usuarioEl.value = localStorage.getItem(CMFIN_LAST_USER_KEY) || "";
 
     var footer = document.querySelector(".cmfin-login-footer");
     if(footer){
-      footer.innerHTML = "CMFin — Gestão Financeira Inteligente";
+      footer.innerHTML = "CMFin — Gestão Financeira Inteligente<br />Validação online via Supabase.";
     }
 
     setTimeout(function(){
@@ -29515,8 +29388,6 @@ body.ello-modo-trocando .module.active {
         else if(senhaEl) senhaEl.focus();
       } catch(e){}
     }, 80);
-
-    if(lembrarEl && acessoLembrado) lembrarEl.checked = true;
 
     if(form && !form.getAttribute("data-cmfin-login-ok")){
       form.setAttribute("data-cmfin-login-ok", "1");
@@ -29547,12 +29418,8 @@ body.ello-modo-trocando .module.active {
             validade: r.validade || null
           };
 
-          if(lembrarEl && lembrarEl.checked) {
-            salvarSessao(u, localStorage);
-            salvarAcessoLembrado(u);
-          } else {
-            salvarSessao(u, sessionStorage);
-          }
+          if(lembrarEl && lembrarEl.checked) salvarSessao(u, localStorage);
+          else salvarSessao(u, sessionStorage);
 
           ocultarErro();
           liberarSistema();
@@ -29570,7 +29437,6 @@ body.ello-modo-trocando .module.active {
       sair.setAttribute("data-cmfin-logout-ok", "1");
       sair.addEventListener("click", function(){
         limparSessao();
-        limparAcessoLembrado();
         var b = document.getElementById("cmfinLicenseBadge");
         if(b) b.remove();
         bloquearSistema();
@@ -29580,14 +29446,294 @@ body.ello-modo-trocando .module.active {
       });
     }
 
-    posicionarControlesTopo();
-    revalidarSessaoSalva().then(function(ok){
-      if(!ok) entrarComAcessoLembrado();
-    });
+    revalidarSessaoSalva();
   }
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciarLogin);
   else iniciarLogin();
+})();
+</script>
+
+
+<script id="cmfin-cloud-sync-js">
+(function(){
+  "use strict";
+
+  var CMFIN_AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var CMFIN_DEVICE_KEY = "cmfin_device_id_v1";
+  var CMFIN_CLOUD_TIMER = null;
+  var CMFIN_CLOUD_READY = false;
+  var CMFIN_CLOUD_LOADING = false;
+  var CMFIN_CLOUD_LAST_SAVE = 0;
+  var CMFIN_CLOUD_KEYS_CACHE = null;
+  var CMFIN_CLOUD_IGNORE_PREFIXES = [
+    "cmfin_auth_session_supabase",
+    "cmfin_remembered_access_supabase",
+    "cmfin_last_user",
+    "cmfin_device_id"
+  ];
+
+  function getDeviceId(){
+    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    if(!id){
+      id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
+      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+    }
+    return id;
+  }
+
+  function getSessao(){
+    try { return JSON.parse(localStorage.getItem(CMFIN_AUTH_KEY) || sessionStorage.getItem(CMFIN_AUTH_KEY) || "null"); }
+    catch(e){ return null; }
+  }
+
+  function getSupabaseClient(){
+    if(!window.supabase || !window.supabase.createClient){
+      throw new Error("Biblioteca Supabase não carregou.");
+    }
+
+    if(window.cmfinSupabaseClient) return window.cmfinSupabaseClient;
+
+    var url = window.SUPABASE_URL || "https://ahpefoaspcxgntrquhej.supabase.co";
+    var key = window.SUPABASE_ANON_KEY || "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+
+    window.cmfinSupabaseClient = window.supabase.createClient(url, key);
+    return window.cmfinSupabaseClient;
+  }
+
+  function shouldIgnoreKey(k){
+    if(!k) return true;
+    for(var i = 0; i < CMFIN_CLOUD_IGNORE_PREFIXES.length; i++){
+      if(k.indexOf(CMFIN_CLOUD_IGNORE_PREFIXES[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  function descobrirChavesCMFin(){
+    if(CMFIN_CLOUD_KEYS_CACHE) return CMFIN_CLOUD_KEYS_CACHE;
+
+    var keys = [];
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(!shouldIgnoreKey(k)) keys.push(k);
+    }
+
+    // Se o sistema usa chaves específicas, elas entram automaticamente.
+    // Se ainda estiver vazio, na primeira alteração o listener de setItem adiciona.
+    CMFIN_CLOUD_KEYS_CACHE = keys;
+    return keys;
+  }
+
+  function coletarDadosLocais(){
+    var dados = {};
+    var keys = descobrirChavesCMFin();
+
+    for(var i = 0; i < keys.length; i++){
+      var k = keys[i];
+      if(shouldIgnoreKey(k)) continue;
+      try {
+        dados[k] = localStorage.getItem(k);
+      } catch(e){}
+    }
+
+    return {
+      versao: "cmfin-cloud-v1",
+      origem: location.hostname || "local",
+      salvo_em: new Date().toISOString(),
+      localStorage: dados
+    };
+  }
+
+  function aplicarDadosNaTela(dados){
+    if(!dados || !dados.localStorage) return false;
+
+    CMFIN_CLOUD_LOADING = true;
+
+    Object.keys(dados.localStorage).forEach(function(k){
+      if(shouldIgnoreKey(k)) return;
+      try {
+        localStorage.setItem(k, dados.localStorage[k]);
+      } catch(e){}
+    });
+
+    CMFIN_CLOUD_LOADING = false;
+    return true;
+  }
+
+  function atualizarBadgeCloud(texto, tipo){
+    var id = "cmfinCloudBadge";
+    var b = document.getElementById(id);
+
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:9991;display:flex;align-items:center;gap:8px;max-width:420px;padding:10px 13px;border-radius:999px;background:rgba(15,23,42,.90);color:#fff;box-shadow:0 14px 36px rgba(15,23,42,.18);font-size:11px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.92)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.92)";
+    else b.style.background = "rgba(15,23,42,.90)";
+
+    b.textContent = texto;
+
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){
+      if(b) b.style.display = "none";
+    }, 4200);
+
+    b.style.display = "flex";
+  }
+
+  async function carregarDadosNuvem(){
+    var s = getSessao();
+    if(!s || !s.usuario || !s.senha || !s.licenca) return false;
+
+    try{
+      var client = getSupabaseClient();
+
+      atualizarBadgeCloud("Consultando dados na nuvem...", "info");
+
+      var res = await client.rpc("cmfin_carregar_dados", {
+        p_usuario: s.usuario,
+        p_senha: s.senha,
+        p_licenca: s.licenca,
+        p_device_id: getDeviceId()
+      });
+
+      if(res.error){
+        console.warn("CMFin cloud load error:", res.error);
+        atualizarBadgeCloud("Não foi possível carregar a nuvem.", "erro");
+        return false;
+      }
+
+      var data = Array.isArray(res.data) ? res.data[0] : res.data;
+
+      if(!data || !data.ok){
+        atualizarBadgeCloud((data && data.mensagem) || "Nuvem indisponível.", "erro");
+        return false;
+      }
+
+      if(data.existe && data.dados){
+        aplicarDadosNaTela(data.dados);
+        atualizarBadgeCloud("Dados carregados da nuvem.", "ok");
+
+        // Recarrega uma vez para o app redesenhar tudo com os dados vindos da nuvem.
+        if(!sessionStorage.getItem("cmfin_cloud_loaded_once")){
+          sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
+          setTimeout(function(){ location.reload(); }, 450);
+        }
+      }else{
+        atualizarBadgeCloud("Nenhum backup online ainda. Criando primeiro salvamento...", "info");
+        agendarSalvarDadosNuvem(1200);
+      }
+
+      CMFIN_CLOUD_READY = true;
+      return true;
+    }catch(err){
+      console.warn("CMFin cloud load failed:", err);
+      atualizarBadgeCloud("Erro ao consultar a nuvem.", "erro");
+      return false;
+    }
+  }
+
+  async function salvarDadosNuvem(){
+    if(CMFIN_CLOUD_LOADING) return false;
+
+    var s = getSessao();
+    if(!s || !s.usuario || !s.senha || !s.licenca) return false;
+
+    var now = Date.now();
+    if(now - CMFIN_CLOUD_LAST_SAVE < 2500) return false;
+    CMFIN_CLOUD_LAST_SAVE = now;
+
+    try{
+      var client = getSupabaseClient();
+      var pacote = coletarDadosLocais();
+
+      var res = await client.rpc("cmfin_salvar_dados", {
+        p_usuario: s.usuario,
+        p_senha: s.senha,
+        p_licenca: s.licenca,
+        p_device_id: getDeviceId(),
+        p_dados: pacote,
+        p_extras: {
+          url: location.href,
+          user_agent: navigator.userAgent,
+          salvo_em: new Date().toISOString()
+        }
+      });
+
+      if(res.error){
+        console.warn("CMFin cloud save error:", res.error);
+        atualizarBadgeCloud("Falha ao salvar na nuvem.", "erro");
+        return false;
+      }
+
+      var data = Array.isArray(res.data) ? res.data[0] : res.data;
+
+      if(!data || !data.ok){
+        atualizarBadgeCloud((data && data.mensagem) || "Não foi possível salvar na nuvem.", "erro");
+        return false;
+      }
+
+      atualizarBadgeCloud("Dados salvos na nuvem.", "ok");
+      return true;
+    }catch(err){
+      console.warn("CMFin cloud save failed:", err);
+      atualizarBadgeCloud("Erro ao salvar na nuvem.", "erro");
+      return false;
+    }
+  }
+
+  function agendarSalvarDadosNuvem(delay){
+    clearTimeout(CMFIN_CLOUD_TIMER);
+    CMFIN_CLOUD_TIMER = setTimeout(salvarDadosNuvem, delay || 1800);
+  }
+
+  // Monitora alterações no localStorage feitas pelo próprio sistema.
+  var originalSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value){
+    var r = originalSetItem(key, value);
+
+    if(!shouldIgnoreKey(key)){
+      CMFIN_CLOUD_KEYS_CACHE = null;
+      if(CMFIN_CLOUD_READY && !CMFIN_CLOUD_LOADING){
+        agendarSalvarDadosNuvem(1800);
+      }
+    }
+
+    return r;
+  };
+
+  var originalRemoveItem = localStorage.removeItem.bind(localStorage);
+  localStorage.removeItem = function(key){
+    var r = originalRemoveItem(key);
+
+    if(!shouldIgnoreKey(key)){
+      CMFIN_CLOUD_KEYS_CACHE = null;
+      if(CMFIN_CLOUD_READY && !CMFIN_CLOUD_LOADING){
+        agendarSalvarDadosNuvem(1800);
+      }
+    }
+
+    return r;
+  };
+
+  window.cmfinSalvarDadosNuvem = salvarDadosNuvem;
+  window.cmfinCarregarDadosNuvem = carregarDadosNuvem;
+
+  window.addEventListener("beforeunload", function(){
+    // Tentativa final. Por ser assíncrona, pode não concluir em alguns navegadores,
+    // mas os salvamentos automáticos durante o uso já cobrem o fluxo principal.
+    try { salvarDadosNuvem(); } catch(e){}
+  });
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(function(){
+      carregarDadosNuvem();
+    }, 1400);
+  });
 })();
 </script>
 
