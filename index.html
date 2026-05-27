@@ -33482,228 +33482,6 @@ body.ello-modo-trocando .module.active {
 </script>
 
 
-<script id="cmfin-card-resumo-perfil-lateral-js">
-(function(){
-  "use strict";
-
-  var PERFIL_KEY_V2 = "cmfin_perfil_por_modo_v2";
-  var PERFIL_KEY_V1 = "cmfin_perfil_usuario_v1";
-  var STORAGE_KEY = "cmfin_gestao_financeira_inteligente_dados";
-  var STORAGE_KEY_OLD = "ello_gestao_inteligente_dados";
-
-  function carregarBase(){
-    try{
-      var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD) || "{}";
-      return JSON.parse(raw) || {};
-    }catch(e){
-      return {};
-    }
-  }
-
-  function normalizarModo(modo){
-    modo = String(modo || "").toLowerCase();
-    if(modo.indexOf("empres") >= 0) return "empresarial";
-    return "pessoal";
-  }
-
-  function detectarModoAtual(){
-    var base = carregarBase();
-
-    if(base.modoAtual){
-      return normalizarModo(base.modoAtual);
-    }
-
-    try{
-      var activeToggle = document.querySelector(".mode-toggle .active, .modo-toggle .active, .segmented .active");
-      if(activeToggle){
-        var t = (activeToggle.textContent || "").toLowerCase();
-        if(t.indexOf("empres") >= 0) return "empresarial";
-        if(t.indexOf("pessoal") >= 0) return "pessoal";
-      }
-    }catch(e){}
-
-    return "pessoal";
-  }
-
-  function getPerfil(){
-    try{
-      var p = JSON.parse(localStorage.getItem(PERFIL_KEY_V2) || "{}");
-      if(p && (p.pessoal || p.empresarial)){
-        p.pessoal = p.pessoal || {};
-        p.empresarial = p.empresarial || {};
-        return p;
-      }
-    }catch(e){}
-
-    try{
-      var old = JSON.parse(localStorage.getItem(PERFIL_KEY_V1) || "{}");
-      old.pessoal = old.pessoal || {};
-      old.empresarial = old.empresarial || {};
-      return old;
-    }catch(e){}
-
-    return {pessoal:{}, empresarial:{}};
-  }
-
-  function limparValor(v){
-    return String(v || "").trim();
-  }
-
-  function getResumoAtual(){
-    var modo = detectarModoAtual();
-    var perfil = getPerfil();
-    var dados = perfil[modo] || {};
-
-    if(modo === "empresarial"){
-      return {
-        tipo: "EMPRESARIAL",
-        nome: limparValor(dados.razaoSocial) || limparValor(dados.nomeFantasia) || "Razão Social / Nome Fantasia",
-        documentoLabel: "CNPJ",
-        documento: limparValor(dados.cnpj) || "xx.xxx.xxx/xxxx-xx"
-      };
-    }
-
-    return {
-      tipo: "PESSOAL",
-      nome: limparValor(dados.nomeCompleto) || "Nome Completo",
-      documentoLabel: "CPF",
-      documento: limparValor(dados.cpf) || "xxx.xxx.xxx-xx"
-    };
-  }
-
-  function ensureStyle(){
-    if(document.getElementById("cmfin-card-resumo-perfil-lateral-style")) return;
-
-    var css = document.createElement("style");
-    css.id = "cmfin-card-resumo-perfil-lateral-style";
-    css.textContent = `
-      .cmfin-side-profile-info{
-        margin:16px 26px 16px;
-        padding:0;
-        color:#fff;
-        border:0;
-        background:transparent;
-        box-shadow:none;
-      }
-      .cmfin-side-profile-type{
-        color:rgba(255,255,255,.58);
-        font-size:10.5px;
-        font-weight:950;
-        text-transform:uppercase;
-        letter-spacing:.24em;
-        margin-bottom:9px;
-        line-height:1.1;
-      }
-      .cmfin-side-profile-name{
-        color:#fff;
-        font-size:13.5px;
-        font-weight:950;
-        line-height:1.25;
-        margin-bottom:6px;
-        word-break:break-word;
-      }
-      .cmfin-side-profile-doc{
-        color:rgba(255,255,255,.72);
-        font-size:12px;
-        font-weight:800;
-        line-height:1.35;
-        word-break:break-word;
-      }
-      .cmfin-side-profile-placeholder{
-        color:rgba(255,255,255,.45);
-      }
-      @media(max-width:920px){
-        .cmfin-side-profile-info{
-          margin:12px 18px 14px;
-        }
-      }
-    `;
-    document.head.appendChild(css);
-  }
-
-  function findSidebar(){
-    return document.querySelector(".sidebar") ||
-           document.querySelector("aside") ||
-           document.querySelector("[class*='sidebar']") ||
-           null;
-  }
-
-  function findConfigItem(sidebar){
-    if(!sidebar) return null;
-
-    var items = Array.prototype.slice.call(sidebar.querySelectorAll("button, a, .nav-item, [role='button'], li, div"));
-    return items.find(function(el){
-      var txt = (el.textContent || "").trim().toLowerCase();
-      return txt === "configurações" ||
-             txt === "configuracoes" ||
-             txt.indexOf("configurações") >= 0 ||
-             txt.indexOf("configuracoes") >= 0;
-    });
-  }
-
-  function renderInfo(){
-    ensureStyle();
-
-    var sidebar = findSidebar();
-    if(!sidebar) return;
-
-    var info = document.getElementById("cmfinSideProfileCard");
-    if(!info){
-      info = document.createElement("div");
-      info.id = "cmfinSideProfileCard";
-      info.className = "cmfin-side-profile-info";
-
-      var config = findConfigItem(sidebar);
-      if(config){
-        if(config.parentElement && config.parentElement !== sidebar && config.parentElement.parentElement === sidebar){
-          config.parentElement.insertAdjacentElement("afterend", info);
-        }else{
-          config.insertAdjacentElement("afterend", info);
-        }
-      }else{
-        sidebar.appendChild(info);
-      }
-    }
-
-    info.className = "cmfin-side-profile-info";
-
-    var r = getResumoAtual();
-    var placeholder = r.nome === "Nome Completo" || r.nome === "Razão Social / Nome Fantasia";
-
-    info.innerHTML = ''
-      + '<div class="cmfin-side-profile-type">'+r.tipo+'</div>'
-      + '<div class="cmfin-side-profile-name '+(placeholder ? "cmfin-side-profile-placeholder" : "")+'">'+r.nome+'</div>'
-      + '<div class="cmfin-side-profile-doc">'+r.documentoLabel+': '+r.documento+'</div>';
-
-    info.title = "Resumo do perfil do modo atual";
-  }
-
-  function start(){
-    renderInfo();
-
-    setInterval(renderInfo, 1200);
-
-    document.addEventListener("click", function(){
-      setTimeout(renderInfo, 250);
-      setTimeout(renderInfo, 850);
-    }, true);
-
-    window.addEventListener("storage", function(e){
-      if(e.key === PERFIL_KEY_V2 || e.key === PERFIL_KEY_V1 || e.key === STORAGE_KEY || e.key === STORAGE_KEY_OLD){
-        renderInfo();
-      }
-    });
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", start);
-  }else{
-    start();
-  }
-
-  window.cmfinAtualizarCardResumoPerfil = renderInfo;
-})();
-</script>
 
 
 <script id="cmfin-ajuste-exportar-importar-ambos-modal-js">
@@ -33961,7 +33739,9 @@ body.ello-modo-trocando .module.active {
 </script>
 
 
-<script id="cmfin-reposicionar-info-perfil-lateral-js">
+
+
+<script id="cmfin-top-actions-nowrap-js">
 (function(){
   "use strict";
 
@@ -33970,104 +33750,182 @@ body.ello-modo-trocando .module.active {
       .trim()
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
   }
 
-  function findSidebar(){
-    return document.querySelector(".sidebar") ||
-           document.querySelector("aside") ||
-           document.querySelector("[class*='sidebar']") ||
-           null;
+  function isTopActionText(txt){
+    txt = normalizar(txt);
+
+    return txt === "salvar na nuvem" ||
+           txt.indexOf("licenca ativa") >= 0 ||
+           txt === "sair" ||
+           txt === "acoes" ||
+           txt === "+ novo registro" ||
+           txt === "novo registro";
   }
 
-  function findModeToggle(sidebar){
-    if(!sidebar) return null;
+  function cleanSairAndCloudIcons(el){
+    var txt = (el.textContent || "").trim();
 
-    var candidates = Array.prototype.slice.call(sidebar.querySelectorAll("div, section, nav, form"));
+    txt = txt
+      .replace(/^☁️\s*/g, "")
+      .replace(/^☁\s*/g, "")
+      .replace(/^⎋\s*/g, "")
+      .replace(/^↪\s*/g, "")
+      .replace(/^↩\s*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    return candidates.find(function(el){
-      var txt = normalizar(el.textContent);
-      var hasPessoal = txt.indexOf("pessoal") >= 0;
-      var hasEmpresarial = txt.indexOf("empresarial") >= 0;
+    if(normalizar(txt) === "sair"){
+      el.textContent = "Sair";
+    }
+
+    if(normalizar(txt) === "carregar dados da nuvem"){
+      el.textContent = "Carregar Dados da Nuvem";
+    }
+  }
+
+  function findLikelyTopbar(){
+    var candidates = Array.prototype.slice.call(document.querySelectorAll("header, .topbar, .page-header, .toolbar, .actions, .header-actions, main > div, .content > div"));
+
+    var scored = candidates.map(function(el){
+      var txt = normalizar(el.textContent || "");
+      var score = 0;
+      if(txt.indexOf("salvar na nuvem") >= 0) score += 4;
+      if(txt.indexOf("licenca ativa") >= 0) score += 4;
+      if(txt.indexOf("novo registro") >= 0) score += 3;
+      if(txt.indexOf("acoes") >= 0) score += 2;
+      if(txt.indexOf("sair") >= 0) score += 1;
+
       var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-      var compact = rect ? rect.height <= 90 : true;
+      if(rect && rect.top < 180) score += 2;
+      if(rect && rect.height < 120) score += 1;
 
-      return hasPessoal && hasEmpresarial && compact;
-    }) || null;
+      return {el:el, score:score};
+    }).filter(function(x){ return x.score >= 4; });
+
+    scored.sort(function(a,b){ return b.score - a.score; });
+    return scored.length ? scored[0].el : null;
   }
 
-  function findDashboardItem(sidebar){
-    if(!sidebar) return null;
+  function aplicar(){
+    var all = Array.prototype.slice.call(document.querySelectorAll("button, a, span, div"));
 
-    var items = Array.prototype.slice.call(sidebar.querySelectorAll("button, a, .nav-item, [role='button'], li, div"));
+    all.forEach(function(el){
+      cleanSairAndCloudIcons(el);
 
-    return items.find(function(el){
-      var txt = normalizar(el.textContent);
-      return txt === "dashboard" || txt.indexOf("dashboard") >= 0;
-    }) || null;
-  }
-
-  function reposicionar(){
-    var sidebar = findSidebar();
-    var info = document.getElementById("cmfinSideProfileCard");
-
-    if(!sidebar || !info) return;
-
-    info.classList.add("cmfin-side-profile-info-top");
-
-    var modeToggle = findModeToggle(sidebar);
-    var dashboard = findDashboardItem(sidebar);
-
-    // Prioridade: depois dos botões Pessoal/Empresarial.
-    if(modeToggle){
-      var insertAfter = modeToggle;
-
-      // Se o toggle estiver dentro de um wrapper direto da sidebar, usa o wrapper como referência.
-      if(modeToggle.parentElement && modeToggle.parentElement !== sidebar && modeToggle.parentElement.parentElement === sidebar){
-        insertAfter = modeToggle.parentElement;
+      var txt = el.textContent || "";
+      if(isTopActionText(txt)){
+        el.classList.add("cmfin-nowrap-action");
       }
+    });
 
-      if(insertAfter.nextElementSibling !== info){
-        insertAfter.insertAdjacentElement("afterend", info);
-      }
-      return;
+    // Localiza os botões de ação do topo e agrupa visualmente sem quebra.
+    var buttons = Array.prototype.slice.call(document.querySelectorAll("button, a")).filter(function(el){
+      return isTopActionText(el.textContent || "");
+    });
+
+    buttons.forEach(function(btn){
+      btn.classList.add("cmfin-top-fixed-button");
+      btn.style.whiteSpace = "nowrap";
+      btn.style.flexShrink = "0";
+      btn.style.wordBreak = "normal";
+      btn.style.overflowWrap = "normal";
+    });
+
+    // Aplica no container mais provável da barra superior.
+    var topbar = findLikelyTopbar();
+    if(topbar){
+      topbar.classList.add("cmfin-top-actions-fixed-row");
     }
 
-    // Alternativa: antes do Dashboard.
-    if(dashboard){
-      if(dashboard.parentElement && dashboard.parentElement !== sidebar && dashboard.parentElement.parentElement === sidebar){
-        dashboard.parentElement.insertAdjacentElement("beforebegin", info);
-      }else{
-        dashboard.insertAdjacentElement("beforebegin", info);
+    // Se o container direto dos botões for outro, corrige também.
+    buttons.forEach(function(btn){
+      var p = btn.parentElement;
+      if(!p) return;
+
+      var siblingText = normalizar(p.textContent || "");
+      if(
+        siblingText.indexOf("salvar na nuvem") >= 0 ||
+        siblingText.indexOf("licenca ativa") >= 0 ||
+        siblingText.indexOf("novo registro") >= 0 ||
+        siblingText.indexOf("acoes") >= 0
+      ){
+        p.classList.add("cmfin-top-actions-fixed-row");
       }
-    }
+    });
+
+    // Garante que subtítulos/descritivos possam quebrar linha normalmente.
+    Array.prototype.slice.call(document.querySelectorAll("p, small, .subtitle, .description, .desc, [class*='desc'], [class*='subtitle']")).forEach(function(el){
+      el.classList.add("cmfin-allow-text-wrap");
+    });
   }
 
   function ensureStyle(){
-    if(document.getElementById("cmfin-reposicionar-info-perfil-lateral-style")) return;
+    if(document.getElementById("cmfin-top-actions-nowrap-style")) return;
 
     var css = document.createElement("style");
-    css.id = "cmfin-reposicionar-info-perfil-lateral-style";
+    css.id = "cmfin-top-actions-nowrap-style";
     css.textContent = `
-      #cmfinSideProfileCard.cmfin-side-profile-info-top{
-        margin:14px 26px 18px !important;
-        padding:0 !important;
-        border:0 !important;
-        background:transparent !important;
-        box-shadow:none !important;
+      .cmfin-nowrap-action,
+      .cmfin-top-fixed-button{
+        white-space:nowrap !important;
+        word-break:normal !important;
+        overflow-wrap:normal !important;
+        flex-shrink:0 !important;
+        min-width:max-content !important;
       }
-      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-type{
-        font-size:10px !important;
-        letter-spacing:.24em !important;
-        margin-bottom:8px !important;
+
+      .cmfin-top-actions-fixed-row{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        flex-wrap:nowrap !important;
+        gap:10px !important;
+        min-width:max-content !important;
+        white-space:nowrap !important;
       }
-      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-name{
-        font-size:13px !important;
-        line-height:1.25 !important;
-        margin-bottom:5px !important;
+
+      .cmfin-top-actions-fixed-row > *{
+        flex-shrink:0 !important;
       }
-      #cmfinSideProfileCard.cmfin-side-profile-info-top .cmfin-side-profile-doc{
-        font-size:11.5px !important;
+
+      .cmfin-top-actions-fixed-row button,
+      .cmfin-top-actions-fixed-row a,
+      .cmfin-top-actions-fixed-row span{
+        white-space:nowrap !important;
+        word-break:normal !important;
+        overflow-wrap:normal !important;
+      }
+
+      .cmfin-allow-text-wrap,
+      p.cmfin-allow-text-wrap,
+      small.cmfin-allow-text-wrap{
+        white-space:normal !important;
+        word-break:normal !important;
+        overflow-wrap:break-word !important;
+        min-width:0 !important;
+      }
+
+      /* Mantém o título + ações com comportamento consistente */
+      header,
+      .topbar,
+      .page-header,
+      .toolbar{
+        overflow:visible !important;
+      }
+
+      /* Em telas menores, a área de conteúdo pode encolher, mas os botões não quebram */
+      @media(max-width:1180px){
+        .cmfin-top-actions-fixed-row{
+          gap:8px !important;
+        }
+
+        .cmfin-top-fixed-button{
+          padding-left:12px !important;
+          padding-right:12px !important;
+        }
       }
     `;
     document.head.appendChild(css);
@@ -34075,7 +33933,7 @@ body.ello-modo-trocando .module.active {
 
   function tick(){
     ensureStyle();
-    reposicionar();
+    aplicar();
   }
 
   if(document.readyState === "loading"){
@@ -34089,9 +33947,341 @@ body.ello-modo-trocando .module.active {
   }
 
   document.addEventListener("click", function(){
-    setTimeout(tick, 120);
-    setTimeout(tick, 600);
+    setTimeout(tick, 100);
+    setTimeout(tick, 500);
   }, true);
+
+  window.addEventListener("resize", function(){
+    setTimeout(tick, 120);
+  });
+})();
+</script>
+
+
+<script id="cmfin-info-perfil-estavel-js">
+(function(){
+  "use strict";
+
+  var PERFIL_KEY_V2 = "cmfin_perfil_por_modo_v2";
+  var PERFIL_KEY_V1 = "cmfin_perfil_usuario_v1";
+  var STORAGE_KEY = "cmfin_gestao_financeira_inteligente_dados";
+  var STORAGE_KEY_OLD = "ello_gestao_inteligente_dados";
+  var LAST_SIGNATURE = "";
+  var LAST_MODE = "";
+  var LAST_CONTAINER = null;
+
+  function normalizar(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function carregarBase(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD) || "{}";
+      return JSON.parse(raw) || {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function normalizarModo(modo){
+    modo = normalizar(modo);
+    if(modo.indexOf("empres") >= 0) return "empresarial";
+    return "pessoal";
+  }
+
+  function detectarModoAtual(){
+    var base = carregarBase();
+    if(base && base.modoAtual) return normalizarModo(base.modoAtual);
+
+    try{
+      var active = document.querySelector(".mode-toggle .active, .modo-toggle .active, .segmented .active, [aria-pressed='true']");
+      if(active){
+        var t = normalizar(active.textContent);
+        if(t.indexOf("empres") >= 0) return "empresarial";
+        if(t.indexOf("pessoal") >= 0) return "pessoal";
+      }
+
+      var all = Array.prototype.slice.call(document.querySelectorAll("button, a, span, div"));
+      var activeBtn = all.find(function(el){
+        var t = normalizar(el.textContent);
+        var cls = normalizar(el.className || "");
+        return (t === "empresarial" || t === "pessoal") && cls.indexOf("active") >= 0;
+      });
+
+      if(activeBtn) return normalizarModo(activeBtn.textContent);
+    }catch(e){}
+
+    return "pessoal";
+  }
+
+  function getPerfil(){
+    try{
+      var p = JSON.parse(localStorage.getItem(PERFIL_KEY_V2) || "{}");
+      if(p && (p.pessoal || p.empresarial)){
+        p.pessoal = p.pessoal || {};
+        p.empresarial = p.empresarial || {};
+        return p;
+      }
+    }catch(e){}
+
+    try{
+      var old = JSON.parse(localStorage.getItem(PERFIL_KEY_V1) || "{}");
+      old.pessoal = old.pessoal || {};
+      old.empresarial = old.empresarial || {};
+      return old;
+    }catch(e){}
+
+    return {pessoal:{}, empresarial:{}};
+  }
+
+  function limparValor(v){
+    return String(v || "").trim();
+  }
+
+  function escapeHTML(v){
+    return String(v || "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+
+  function getResumoAtual(){
+    var modo = detectarModoAtual();
+    var perfil = getPerfil();
+    var dados = perfil[modo] || {};
+
+    if(modo === "empresarial"){
+      return {
+        modo: modo,
+        tipo: "EMPRESARIAL",
+        nome: limparValor(dados.razaoSocial) || limparValor(dados.nomeFantasia) || "Razão Social / Nome Fantasia",
+        documentoLabel: "CNPJ",
+        documento: limparValor(dados.cnpj) || "xx.xxx.xxx/xxxx-xx"
+      };
+    }
+
+    return {
+      modo: modo,
+      tipo: "PESSOAL",
+      nome: limparValor(dados.nomeCompleto) || "Nome Completo",
+      documentoLabel: "CPF",
+      documento: limparValor(dados.cpf) || "xxx.xxx.xxx-xx"
+    };
+  }
+
+  function findSidebar(){
+    return document.querySelector(".sidebar") ||
+           document.querySelector("aside") ||
+           document.querySelector("[class*='sidebar']") ||
+           null;
+  }
+
+  function findModeToggle(sidebar){
+    if(!sidebar) return null;
+
+    var nodes = Array.prototype.slice.call(sidebar.querySelectorAll("div, section, nav"));
+    var best = null;
+    var bestScore = -1;
+
+    nodes.forEach(function(el){
+      var txt = normalizar(el.textContent);
+      if(!(txt.indexOf("pessoal") >= 0 && txt.indexOf("empresarial") >= 0)) return;
+
+      var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      var score = 0;
+
+      if(rect){
+        if(rect.height <= 80) score += 5;
+        if(rect.top < 220) score += 3;
+        if(rect.width > 120) score += 1;
+      }
+
+      var buttons = el.querySelectorAll("button, a, span");
+      if(buttons.length >= 2 && buttons.length <= 6) score += 3;
+
+      if(score > bestScore){
+        bestScore = score;
+        best = el;
+      }
+    });
+
+    return best;
+  }
+
+  function findDashboardItem(sidebar){
+    if(!sidebar) return null;
+
+    var nodes = Array.prototype.slice.call(sidebar.querySelectorAll("button, a, .nav-item, [role='button'], li"));
+    return nodes.find(function(el){
+      var txt = normalizar(el.textContent);
+      return txt === "dashboard" || txt.indexOf("dashboard") >= 0;
+    }) || null;
+  }
+
+  function getStableContainer(){
+    var sidebar = findSidebar();
+    if(!sidebar) return null;
+
+    var mode = findModeToggle(sidebar);
+    if(mode){
+      var ref = mode;
+      if(mode.parentElement && mode.parentElement !== sidebar && mode.parentElement.parentElement === sidebar){
+        ref = mode.parentElement;
+      }
+      return { sidebar: sidebar, ref: ref, position: "after" };
+    }
+
+    var dashboard = findDashboardItem(sidebar);
+    if(dashboard){
+      var refDash = dashboard;
+      if(dashboard.parentElement && dashboard.parentElement !== sidebar && dashboard.parentElement.parentElement === sidebar){
+        refDash = dashboard.parentElement;
+      }
+      return { sidebar: sidebar, ref: refDash, position: "before" };
+    }
+
+    return { sidebar: sidebar, ref: sidebar.firstElementChild, position: "after" };
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-info-perfil-estavel-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-info-perfil-estavel-style";
+    css.textContent = `
+      #cmfinSideProfileCard.cmfin-side-profile-info-stable{
+        width:calc(100% - 52px) !important;
+        margin:12px 26px 16px !important;
+        padding:0 !important;
+        border:0 !important;
+        background:transparent !important;
+        box-shadow:none !important;
+        color:#fff !important;
+        flex-shrink:0 !important;
+        position:relative !important;
+        opacity:1 !important;
+        visibility:visible !important;
+        transform:none !important;
+        transition:none !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-stable .cmfin-side-profile-type{
+        color:rgba(255,255,255,.58) !important;
+        font-size:10px !important;
+        font-weight:950 !important;
+        text-transform:uppercase !important;
+        letter-spacing:.24em !important;
+        margin:0 0 8px !important;
+        line-height:1.1 !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-stable .cmfin-side-profile-name{
+        color:#fff !important;
+        font-size:13px !important;
+        font-weight:950 !important;
+        line-height:1.22 !important;
+        margin:0 0 5px !important;
+        word-break:break-word !important;
+        overflow-wrap:break-word !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-stable .cmfin-side-profile-doc{
+        color:rgba(255,255,255,.74) !important;
+        font-size:11.5px !important;
+        font-weight:850 !important;
+        line-height:1.32 !important;
+        margin:0 !important;
+        word-break:break-word !important;
+      }
+      #cmfinSideProfileCard.cmfin-side-profile-info-stable .cmfin-side-profile-placeholder{
+        color:rgba(255,255,255,.48) !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function renderInfo(force){
+    ensureStyle();
+
+    var stable = getStableContainer();
+    if(!stable || !stable.sidebar) return;
+
+    var info = document.getElementById("cmfinSideProfileCard");
+    if(!info){
+      info = document.createElement("div");
+      info.id = "cmfinSideProfileCard";
+    }
+
+    info.className = "cmfin-side-profile-info-stable";
+
+    // Posiciona somente quando necessário, para evitar flicker.
+    var desiredParent = stable.ref && stable.ref.parentElement ? stable.ref.parentElement : stable.sidebar;
+    var needsMove = info.parentElement !== desiredParent;
+
+    if(!needsMove && stable.position === "after"){
+      needsMove = stable.ref.nextElementSibling !== info;
+    }
+
+    if(!needsMove && stable.position === "before"){
+      needsMove = stable.ref.previousElementSibling !== info;
+    }
+
+    if(needsMove){
+      if(stable.position === "before"){
+        stable.ref.insertAdjacentElement("beforebegin", info);
+      }else{
+        stable.ref.insertAdjacentElement("afterend", info);
+      }
+      LAST_CONTAINER = desiredParent;
+    }
+
+    var r = getResumoAtual();
+    var signature = [r.modo, r.tipo, r.nome, r.documento].join("|");
+
+    if(!force && signature === LAST_SIGNATURE && r.modo === LAST_MODE) return;
+
+    LAST_SIGNATURE = signature;
+    LAST_MODE = r.modo;
+
+    var placeholder = r.nome === "Nome Completo" || r.nome === "Razão Social / Nome Fantasia";
+
+    info.innerHTML = ''
+      + '<div class="cmfin-side-profile-type">'+escapeHTML(r.tipo)+'</div>'
+      + '<div class="cmfin-side-profile-name '+(placeholder ? "cmfin-side-profile-placeholder" : "")+'">'+escapeHTML(r.nome)+'</div>'
+      + '<div class="cmfin-side-profile-doc">'+escapeHTML(r.documentoLabel)+': '+escapeHTML(r.documento)+'</div>';
+  }
+
+  function start(){
+    renderInfo(true);
+
+    // Intervalo mais leve e sem recriar o HTML quando nada muda.
+    setInterval(function(){ renderInfo(false); }, 1800);
+
+    document.addEventListener("click", function(){
+      setTimeout(function(){ renderInfo(false); }, 220);
+      setTimeout(function(){ renderInfo(false); }, 850);
+    }, true);
+
+    window.addEventListener("storage", function(e){
+      if(e.key === PERFIL_KEY_V2 || e.key === PERFIL_KEY_V1 || e.key === STORAGE_KEY || e.key === STORAGE_KEY_OLD){
+        renderInfo(true);
+      }
+    });
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start);
+  }else{
+    start();
+  }
+
+  window.cmfinAtualizarCardResumoPerfil = function(){
+    LAST_SIGNATURE = "";
+    renderInfo(true);
+  };
 })();
 </script>
 
