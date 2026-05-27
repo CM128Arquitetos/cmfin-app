@@ -29926,3 +29926,586 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-cloud-panel-js">
+(function(){
+  "use strict";
+
+  var CMFIN_AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var CMFIN_CLOUD_STATUS_KEY = "cmfin_cloud_status_v1";
+  var CMFIN_PANEL_ID = "cmfinCloudSyncPanel";
+
+  function brDateTime(iso){
+    if(!iso) return "Ainda não registrado";
+    try{
+      return new Date(iso).toLocaleString("pt-BR", {
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+      });
+    }catch(e){
+      return String(iso);
+    }
+  }
+
+  function getSessao(){
+    try{
+      return JSON.parse(
+        localStorage.getItem(CMFIN_AUTH_KEY) ||
+        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        "null"
+      );
+    }catch(e){
+      return null;
+    }
+  }
+
+  function getStatus(){
+    try{
+      return JSON.parse(localStorage.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}");
+    }catch(e){
+      return {};
+    }
+  }
+
+  function setStatus(update){
+    var atual = getStatus();
+    var novo = Object.assign({}, atual, update || {});
+    localStorage.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
+    renderCloudPanelValues();
+    return novo;
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:9999;display:flex;align-items:center;gap:8px;max-width:440px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.94)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.94)";
+    else b.style.background = "rgba(15,23,42,.92)";
+
+    b.textContent = texto;
+    b.style.display = "flex";
+
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){
+      b.style.display = "none";
+    }, 4200);
+  }
+
+  function findConfigContainer(){
+    var candidates = [
+      "#configuracoes",
+      "#configuracoesPanel",
+      "#configuracoes-panel",
+      "#module-configuracoes",
+      "#config",
+      ".configuracoes",
+      ".configuracoes-panel",
+      ".module.active",
+      "main .module.active",
+      ".content .module.active",
+      "main",
+      ".content"
+    ];
+
+    for(var i=0;i<candidates.length;i++){
+      var el = document.querySelector(candidates[i]);
+      if(el && el.offsetParent !== null) return el;
+    }
+
+    return document.body;
+  }
+
+  function painelHTML(){
+    return ''
+    + '<section id="'+CMFIN_PANEL_ID+'" class="cmfin-cloud-panel">'
+    + '  <div class="cmfin-cloud-panel-head">'
+    + '    <div>'
+    + '      <span class="cmfin-cloud-eyebrow">Sincronização em Nuvem</span>'
+    + '      <h2>Dados financeiros online</h2>'
+    + '      <p>Acompanhe o status do backup no Supabase e controle manualmente o salvamento ou carregamento dos dados.</p>'
+    + '    </div>'
+    + '    <div class="cmfin-cloud-status-pill" data-cloud-field="statusPill">Verificando...</div>'
+    + '  </div>'
+    + '  <div class="cmfin-cloud-grid">'
+    + '    <div class="cmfin-cloud-info-card">'
+    + '      <small>Status</small>'
+    + '      <strong data-cloud-field="status">Aguardando sincronização</strong>'
+    + '      <span data-cloud-field="statusDesc">O CMFin mantém backup local e sincronização online quando a licença está ativa.</span>'
+    + '    </div>'
+    + '    <div class="cmfin-cloud-info-card">'
+    + '      <small>Último salvamento</small>'
+    + '      <strong data-cloud-field="ultimoSalvamento">Ainda não registrado</strong>'
+    + '      <span>Registro da última tentativa concluída de salvamento na nuvem.</span>'
+    + '    </div>'
+    + '    <div class="cmfin-cloud-info-card">'
+    + '      <small>Último carregamento</small>'
+    + '      <strong data-cloud-field="ultimoCarregamento">Ainda não registrado</strong>'
+    + '      <span>Quando os dados foram consultados ou restaurados do Supabase.</span>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="cmfin-cloud-user-box">'
+    + '    <div><small>Usuário</small><strong data-cloud-field="usuario">—</strong></div>'
+    + '    <div><small>Cliente</small><strong data-cloud-field="cliente">—</strong></div>'
+    + '    <div><small>Licença</small><strong data-cloud-field="licenca">—</strong></div>'
+    + '    <div><small>Origem</small><strong>Supabase + backup local</strong></div>'
+    + '  </div>'
+    + '  <div class="cmfin-cloud-actions">'
+    + '    <button type="button" class="cmfin-cloud-btn primary" data-cloud-action="save">Salvar agora na nuvem</button>'
+    + '    <button type="button" class="cmfin-cloud-btn" data-cloud-action="load">Carregar dados da nuvem</button>'
+    + '    <button type="button" class="cmfin-cloud-btn" data-cloud-action="backup">Exportar backup local</button>'
+    + '  </div>'
+    + '  <div class="cmfin-cloud-note">'
+    + '    <strong>Importante:</strong> o backup local continua ativo no navegador. A nuvem permite recuperar os dados e acessar em outro dispositivo autorizado pela licença.'
+    + '  </div>'
+    + '</section>';
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-cloud-panel-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-cloud-panel-style";
+    css.textContent = `
+      .cmfin-cloud-panel{
+        margin:18px 0 22px;
+        padding:22px;
+        border-radius:24px;
+        background:linear-gradient(135deg, rgba(8,47,39,.98), rgba(15,61,50,.95));
+        border:1px solid rgba(255,255,255,.12);
+        box-shadow:0 22px 58px rgba(15,23,42,.16);
+        color:#fff;
+        position:relative;
+        overflow:hidden;
+      }
+      .cmfin-cloud-panel::before{
+        content:"";
+        position:absolute;
+        inset:-120px -120px auto auto;
+        width:280px;
+        height:280px;
+        border-radius:999px;
+        background:radial-gradient(circle, rgba(239,68,68,.28), transparent 66%);
+        pointer-events:none;
+      }
+      .cmfin-cloud-panel *{box-sizing:border-box}
+      .cmfin-cloud-panel-head{
+        display:flex;
+        align-items:flex-start;
+        justify-content:space-between;
+        gap:18px;
+        position:relative;
+        z-index:1;
+      }
+      .cmfin-cloud-eyebrow{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding:7px 11px;
+        border-radius:999px;
+        background:rgba(255,255,255,.08);
+        border:1px solid rgba(255,255,255,.10);
+        color:rgba(255,255,255,.72);
+        font-size:10px;
+        font-weight:950;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+        margin-bottom:10px;
+      }
+      .cmfin-cloud-panel h2{
+        margin:0;
+        color:#fff;
+        font-size:23px;
+        line-height:1.05;
+        letter-spacing:-.03em;
+        font-weight:950;
+      }
+      .cmfin-cloud-panel p{
+        margin:9px 0 0;
+        max-width:760px;
+        color:rgba(255,255,255,.68);
+        font-size:13px;
+        line-height:1.55;
+        font-weight:650;
+      }
+      .cmfin-cloud-status-pill{
+        flex:0 0 auto;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:10px 13px;
+        border-radius:999px;
+        background:rgba(16,185,129,.14);
+        border:1px solid rgba(16,185,129,.24);
+        color:#d1fae5;
+        font-size:11px;
+        font-weight:950;
+        white-space:nowrap;
+      }
+      .cmfin-cloud-grid{
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:12px;
+        margin-top:18px;
+        position:relative;
+        z-index:1;
+      }
+      .cmfin-cloud-info-card{
+        padding:16px;
+        border-radius:18px;
+        background:rgba(255,255,255,.07);
+        border:1px solid rgba(255,255,255,.10);
+      }
+      .cmfin-cloud-info-card small,
+      .cmfin-cloud-user-box small{
+        display:block;
+        color:rgba(255,255,255,.55);
+        font-size:10px;
+        font-weight:950;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+        margin-bottom:7px;
+      }
+      .cmfin-cloud-info-card strong{
+        display:block;
+        color:#fff;
+        font-size:15px;
+        line-height:1.25;
+        font-weight:950;
+      }
+      .cmfin-cloud-info-card span{
+        display:block;
+        margin-top:7px;
+        color:rgba(255,255,255,.62);
+        font-size:12px;
+        line-height:1.45;
+        font-weight:650;
+      }
+      .cmfin-cloud-user-box{
+        display:grid;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:10px;
+        margin-top:12px;
+        padding:14px;
+        border-radius:18px;
+        background:rgba(0,0,0,.16);
+        border:1px solid rgba(255,255,255,.08);
+        position:relative;
+        z-index:1;
+      }
+      .cmfin-cloud-user-box strong{
+        color:#fff;
+        font-size:13px;
+        font-weight:900;
+        word-break:break-word;
+      }
+      .cmfin-cloud-actions{
+        display:flex;
+        flex-wrap:wrap;
+        gap:10px;
+        margin-top:15px;
+        position:relative;
+        z-index:1;
+      }
+      .cmfin-cloud-btn{
+        border:1px solid rgba(255,255,255,.14);
+        border-radius:14px;
+        background:rgba(255,255,255,.08);
+        color:#fff;
+        padding:11px 14px;
+        font-size:12px;
+        font-weight:950;
+        cursor:pointer;
+        transition:.18s ease;
+      }
+      .cmfin-cloud-btn:hover{
+        transform:translateY(-1px);
+        background:rgba(255,255,255,.13);
+      }
+      .cmfin-cloud-btn.primary{
+        background:linear-gradient(135deg,#ef4444,#dc2626);
+        border-color:rgba(255,255,255,.10);
+        box-shadow:0 14px 30px rgba(220,38,38,.22);
+      }
+      .cmfin-cloud-note{
+        margin-top:14px;
+        padding:12px 14px;
+        border-radius:16px;
+        background:rgba(255,255,255,.06);
+        border:1px dashed rgba(255,255,255,.16);
+        color:rgba(255,255,255,.68);
+        font-size:12px;
+        line-height:1.45;
+        position:relative;
+        z-index:1;
+      }
+      .cmfin-cloud-note strong{color:#fff}
+      @media(max-width:900px){
+        .cmfin-cloud-panel-head{flex-direction:column}
+        .cmfin-cloud-grid{grid-template-columns:1fr}
+        .cmfin-cloud-user-box{grid-template-columns:1fr 1fr}
+      }
+      @media(max-width:560px){
+        .cmfin-cloud-user-box{grid-template-columns:1fr}
+        .cmfin-cloud-panel{padding:18px}
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function renderCloudPanelValues(){
+    var panel = document.getElementById(CMFIN_PANEL_ID);
+    if(!panel) return;
+
+    var s = getSessao() || {};
+    var st = getStatus();
+
+    var status = st.status || "Sincronização ativa";
+    var statusDesc = st.statusDesc || "Sistema pronto para salvar e carregar dados online.";
+    var pill = st.pill || "Nuvem ativa";
+
+    var map = {
+      status: status,
+      statusDesc: statusDesc,
+      statusPill: pill,
+      ultimoSalvamento: brDateTime(st.ultimoSalvamento),
+      ultimoCarregamento: brDateTime(st.ultimoCarregamento),
+      usuario: s.usuario || "—",
+      cliente: s.cliente || s.usuario || "—",
+      licenca: s.licenca || "—"
+    };
+
+    Object.keys(map).forEach(function(k){
+      var el = panel.querySelector('[data-cloud-field="'+k+'"]');
+      if(el) el.textContent = map[k];
+    });
+  }
+
+  function mountCloudPanel(){
+    ensureStyle();
+
+    var host = findConfigContainer();
+    if(!host) return;
+
+    var existing = document.getElementById(CMFIN_PANEL_ID);
+    if(existing){
+      renderCloudPanelValues();
+      return;
+    }
+
+    var wrap = document.createElement("div");
+    wrap.innerHTML = painelHTML();
+    var panel = wrap.firstElementChild;
+
+    // Tenta colocar após o título de Configurações; se não encontrar, coloca no começo do container ativo.
+    var firstCard = host.querySelector(".card, .panel, section, .settings-card");
+    if(firstCard && firstCard.parentElement === host){
+      host.insertBefore(panel, firstCard);
+    }else{
+      host.insertBefore(panel, host.firstChild);
+    }
+
+    panel.addEventListener("click", async function(e){
+      var btn = e.target.closest("[data-cloud-action]");
+      if(!btn) return;
+
+      var action = btn.getAttribute("data-cloud-action");
+
+      if(action === "save"){
+        btn.disabled = true;
+        btn.textContent = "Salvando...";
+        toast("Salvando dados na nuvem...", "info");
+
+        try{
+          if(typeof window.cmfinSalvarDadosNuvem === "function"){
+            var ok = await window.cmfinSalvarDadosNuvem();
+            setStatus({
+              status: ok ? "Sincronizado" : "Falha ao sincronizar",
+              statusDesc: ok ? "Último salvamento concluído com sucesso." : "Não foi possível confirmar o salvamento.",
+              pill: ok ? "Sincronizado" : "Verificar conexão",
+              ultimoSalvamento: ok ? new Date().toISOString() : getStatus().ultimoSalvamento
+            });
+            toast(ok ? "Dados salvos na nuvem." : "Falha ao salvar na nuvem.", ok ? "ok" : "erro");
+          }else{
+            toast("Função de salvamento ainda não carregou.", "erro");
+          }
+        }catch(err){
+          console.warn(err);
+          toast("Erro ao salvar na nuvem.", "erro");
+        }finally{
+          btn.disabled = false;
+          btn.textContent = "Salvar agora na nuvem";
+          renderCloudPanelValues();
+        }
+      }
+
+      if(action === "load"){
+        if(!confirm("Deseja carregar os dados da nuvem? Isso pode substituir os dados locais atuais por uma versão salva online.")) return;
+
+        btn.disabled = true;
+        btn.textContent = "Carregando...";
+        toast("Carregando dados da nuvem...", "info");
+
+        try{
+          if(typeof window.cmfinCarregarDadosNuvem === "function"){
+            var ok2 = await window.cmfinCarregarDadosNuvem();
+            setStatus({
+              status: ok2 ? "Dados carregados" : "Falha ao carregar",
+              statusDesc: ok2 ? "Último carregamento concluído com sucesso." : "Não foi possível carregar os dados online.",
+              pill: ok2 ? "Carregado da nuvem" : "Verificar nuvem",
+              ultimoCarregamento: ok2 ? new Date().toISOString() : getStatus().ultimoCarregamento
+            });
+            toast(ok2 ? "Dados carregados da nuvem." : "Falha ao carregar dados.", ok2 ? "ok" : "erro");
+          }else{
+            toast("Função de carregamento ainda não carregou.", "erro");
+          }
+        }catch(err){
+          console.warn(err);
+          toast("Erro ao carregar dados da nuvem.", "erro");
+        }finally{
+          btn.disabled = false;
+          btn.textContent = "Carregar dados da nuvem";
+          renderCloudPanelValues();
+        }
+      }
+
+      if(action === "backup"){
+        try{
+          var backup = {};
+          for(var i=0;i<localStorage.length;i++){
+            var key = localStorage.key(i);
+            backup[key] = localStorage.getItem(key);
+          }
+
+          var blob = new Blob([JSON.stringify({
+            sistema:"CMFin",
+            tipo:"Backup local",
+            exportado_em:new Date().toISOString(),
+            dados:backup
+          }, null, 2)], {type:"application/json;charset=utf-8"});
+
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "backup-local-cmfin-" + new Date().toISOString().slice(0,10) + ".json";
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function(){
+            URL.revokeObjectURL(a.href);
+            a.remove();
+          }, 700);
+
+          toast("Backup local exportado.", "ok");
+        }catch(err){
+          console.warn(err);
+          toast("Erro ao exportar backup local.", "erro");
+        }
+      }
+    });
+
+    renderCloudPanelValues();
+  }
+
+  function shouldShowPanel(){
+    var text = "";
+    try{
+      var active = document.querySelector(".module.active, main, .content");
+      text = (active ? active.innerText : document.body.innerText || "").toLowerCase();
+    }catch(e){}
+
+    var hash = (location.hash || "").toLowerCase();
+    var navActive = "";
+    try{
+      var activeNav = document.querySelector(".active, [aria-current='page']");
+      navActive = activeNav ? activeNav.textContent.toLowerCase() : "";
+    }catch(e){}
+
+    return hash.indexOf("config") >= 0 ||
+           text.indexOf("personalização") >= 0 ||
+           text.indexOf("backup e importação") >= 0 ||
+           text.indexOf("configurações") >= 0 ||
+           navActive.indexOf("configura") >= 0;
+  }
+
+  function tick(){
+    if(shouldShowPanel()) mountCloudPanel();
+    renderCloudPanelValues();
+  }
+
+  // Cria um wrapper leve nas funções de nuvem para registrar data no painel.
+  function wrapCloudFunctions(){
+    if(window.__cmfinCloudPanelWrapped) return;
+    if(typeof window.cmfinSalvarDadosNuvem !== "function" || typeof window.cmfinCarregarDadosNuvem !== "function") return;
+
+    var originalSave = window.cmfinSalvarDadosNuvem;
+    var originalLoad = window.cmfinCarregarDadosNuvem;
+
+    window.cmfinSalvarDadosNuvem = async function(){
+      var ok = await originalSave.apply(this, arguments);
+      if(ok){
+        setStatus({
+          status:"Sincronizado",
+          statusDesc:"Último salvamento concluído com sucesso.",
+          pill:"Sincronizado",
+          ultimoSalvamento:new Date().toISOString()
+        });
+      }
+      return ok;
+    };
+
+    window.cmfinCarregarDadosNuvem = async function(){
+      var ok = await originalLoad.apply(this, arguments);
+      if(ok){
+        setStatus({
+          status:"Dados carregados",
+          statusDesc:"Último carregamento concluído com sucesso.",
+          pill:"Nuvem ativa",
+          ultimoCarregamento:new Date().toISOString()
+        });
+      }
+      return ok;
+    };
+
+    window.__cmfinCloudPanelWrapped = true;
+  }
+
+  function start(){
+    setStatus({
+      status:getStatus().status || "Sincronização ativa",
+      statusDesc:getStatus().statusDesc || "Sistema pronto para salvar e carregar dados online.",
+      pill:getStatus().pill || "Nuvem ativa"
+    });
+
+    setInterval(function(){
+      wrapCloudFunctions();
+      tick();
+    }, 1000);
+
+    document.addEventListener("click", function(){
+      setTimeout(tick, 350);
+      setTimeout(tick, 900);
+    }, true);
+
+    window.addEventListener("hashchange", function(){
+      setTimeout(tick, 400);
+    });
+
+    tick();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start);
+  }else{
+    start();
+  }
+})();
+</script>
+
