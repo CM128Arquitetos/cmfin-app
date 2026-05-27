@@ -30498,3 +30498,227 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-cloud-force-save-patch-js">
+(function(){
+  "use strict";
+
+  var CMFIN_AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var CMFIN_DEVICE_KEY = "cmfin_device_id_v1";
+  var CMFIN_CLOUD_STATUS_KEY = "cmfin_cloud_status_v2";
+  var CMFIN_IGNORE_PREFIXES = [
+    "cmfin_auth_session_supabase",
+    "cmfin_remembered_access_supabase",
+    "cmfin_last_user",
+    "cmfin_device_id",
+    "supabase.auth.token"
+  ];
+
+  function getSessao(){
+    try{
+      return JSON.parse(
+        localStorage.getItem(CMFIN_AUTH_KEY) ||
+        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        "null"
+      );
+    }catch(e){
+      return null;
+    }
+  }
+
+  function getAcessoLembrado(){
+    try{
+      return JSON.parse(localStorage.getItem("cmfin_remembered_access_supabase_v1") || "null");
+    }catch(e){
+      return null;
+    }
+  }
+
+  function getDeviceId(){
+    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    if(!id){
+      id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
+      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+    }
+    return id;
+  }
+
+  function shouldIgnore(k){
+    if(!k) return true;
+    for(var i=0;i<CMFIN_IGNORE_PREFIXES.length;i++){
+      if(k.indexOf(CMFIN_IGNORE_PREFIXES[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  function coletarLocalStorage(){
+    var dados = {};
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(shouldIgnore(k)) continue;
+      try{ dados[k] = localStorage.getItem(k); }catch(e){}
+    }
+
+    return {
+      versao: "cmfin-cloud-manual-v1",
+      origem: location.hostname || "local",
+      salvo_em: new Date().toISOString(),
+      localStorage: dados
+    };
+  }
+
+  function setStatus(update){
+    try{
+      var atual = JSON.parse(localStorage.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}");
+      var novo = Object.assign({}, atual, update || {});
+      localStorage.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
+    }catch(e){}
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:9999;display:flex;align-items:center;gap:8px;max-width:460px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.94)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.94)";
+    else b.style.background = "rgba(15,23,42,.92)";
+
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4400);
+  }
+
+  function carregarSupabaseLib(){
+    return new Promise(function(resolve, reject){
+      if(window.supabase && window.supabase.createClient){
+        resolve();
+        return;
+      }
+
+      var existente = document.querySelector('script[data-cmfin-supabase-lib="1"]');
+      if(existente){
+        existente.addEventListener("load", resolve);
+        existente.addEventListener("error", reject);
+        return;
+      }
+
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      s.async = true;
+      s.setAttribute("data-cmfin-supabase-lib", "1");
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error("Biblioteca Supabase não carregou.")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getClient(){
+    await carregarSupabaseLib();
+
+    if(window.cmfinSupabaseClient) return window.cmfinSupabaseClient;
+
+    var url = window.SUPABASE_URL || "https://ahpefoaspcxgntrquhej.supabase.co";
+    var key = window.SUPABASE_ANON_KEY || "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+
+    window.cmfinSupabaseClient = window.supabase.createClient(url, key);
+    return window.cmfinSupabaseClient;
+  }
+
+  async function salvarManualForcado(){
+    var sessao = getSessao() || {};
+    var lembrado = getAcessoLembrado() || {};
+
+    var usuario = sessao.usuario || lembrado.usuario;
+    var senha = sessao.senha || lembrado.senha;
+    var licenca = sessao.licenca || lembrado.licenca;
+
+    if(!usuario || !senha || !licenca){
+      toast("Não foi possível salvar: sessão incompleta. Saia e entre novamente marcando Lembrar acesso.", "erro");
+      return false;
+    }
+
+    try{
+      toast("Salvando dados na nuvem...", "info");
+
+      var client = await getClient();
+      var pacote = coletarLocalStorage();
+
+      var res = await client.rpc("cmfin_salvar_dados", {
+        p_usuario: usuario,
+        p_senha: senha,
+        p_licenca: licenca,
+        p_device_id: getDeviceId(),
+        p_dados: pacote,
+        p_extras: {
+          url: location.href,
+          user_agent: navigator.userAgent,
+          salvo_em: new Date().toISOString(),
+          tipo: "manual_forcado"
+        }
+      });
+
+      if(res.error){
+        console.warn("CMFin manual cloud save error:", res.error);
+        toast("Falha ao salvar na nuvem: " + (res.error.message || "erro no Supabase"), "erro");
+        return false;
+      }
+
+      var data = Array.isArray(res.data) ? res.data[0] : res.data;
+      if(typeof data === "string"){
+        try{ data = JSON.parse(data); }catch(e){}
+      }
+
+      if(!data || !data.ok){
+        toast((data && data.mensagem) || "Não foi possível salvar na nuvem.", "erro");
+        return false;
+      }
+
+      setStatus({
+        status: "Sincronizado",
+        pill: "Sincronizado",
+        ultimoSalvamento: new Date().toISOString()
+      });
+
+      toast("Dados salvos na nuvem.", "ok");
+      return true;
+    }catch(err){
+      console.warn("CMFin manual save failed:", err);
+      toast("Erro ao salvar na nuvem.", "erro");
+      return false;
+    }
+  }
+
+  function interceptarBotoes(){
+    document.addEventListener("click", function(e){
+      var t = e.target;
+      if(!t) return;
+
+      var btn = t.closest("#cmfinCloudSaveTopBtn, [data-cloud-action='save']");
+      if(!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      var oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+
+      salvarManualForcado().finally(function(){
+        btn.disabled = false;
+        btn.textContent = oldText || "Salvar na Nuvem";
+      });
+    }, true);
+  }
+
+  window.cmfinSalvarManualForcadoNuvem = salvarManualForcado;
+  interceptarBotoes();
+})();
+</script>
+
