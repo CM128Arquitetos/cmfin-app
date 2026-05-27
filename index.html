@@ -30722,3 +30722,623 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-backup-avancado-js">
+(function(){
+  "use strict";
+
+  var CMFIN_IGNORE_PREFIXES = [
+    "cmfin_auth_session_supabase",
+    "cmfin_remembered_access_supabase",
+    "cmfin_last_user",
+    "cmfin_device_id",
+    "supabase.auth.token"
+  ];
+
+  var MODULOS = [
+    {id:"recebimentos", nome:"Recebimentos", termos:["receb","receita","entrada","cliente","receiv"]},
+    {id:"gastos_fixos", nome:"Gastos Fixos", termos:["gasto_fixo","gastos_fixos","fixo","fixos","despesa_fixa"]},
+    {id:"gastos_variaveis", nome:"Gastos Variáveis", termos:["gasto_variavel","gastos_variaveis","variavel","variaveis","despesa_variavel"]},
+    {id:"cartoes", nome:"Cartões", termos:["cartao","cartão","cartoes","cartões","credit","fatura"]},
+    {id:"bancos", nome:"Bancos e Contas", termos:["banco","bancos","conta","contas","saldo"]},
+    {id:"terceiros", nome:"Terceiros", termos:["terceiro","terceiros","emprestimo","empréstimo","pessoa"]},
+    {id:"cofre", nome:"Cofre", termos:["cofre","reserva","guardar","guardado"]},
+    {id:"objetivos", nome:"Objetivos", termos:["objetivo","objetivos","meta","metas"]},
+    {id:"categorias", nome:"Categorias", termos:["categoria","categorias"]},
+    {id:"configuracoes", nome:"Configurações", termos:["config","configuracao","configuração","preferencia","preferência","tema","modo","personalizacao","personalização"]}
+  ];
+
+  function shouldIgnore(k){
+    if(!k) return true;
+    for(var i=0;i<CMFIN_IGNORE_PREFIXES.length;i++){
+      if(k.indexOf(CMFIN_IGNORE_PREFIXES[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:10050;display:flex;align-items:center;gap:8px;max-width:460px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.94)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.94)";
+    else b.style.background = "rgba(15,23,42,.92)";
+
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4400);
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-backup-avancado-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-backup-avancado-style";
+    css.textContent = `
+      .cmfin-backup-overlay{
+        position:fixed;
+        inset:0;
+        z-index:10040;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        padding:22px;
+        background:rgba(2,6,23,.54);
+        backdrop-filter:blur(8px);
+      }
+      .cmfin-backup-modal{
+        width:min(720px,100%);
+        border-radius:28px;
+        background:#ffffff;
+        color:#0f172a;
+        border:1px solid rgba(15,23,42,.10);
+        box-shadow:0 34px 90px rgba(15,23,42,.34);
+        overflow:hidden;
+      }
+      .cmfin-backup-head{
+        padding:24px 26px 20px;
+        background:linear-gradient(135deg,#0f3d32,#082f27);
+        color:#fff;
+        position:relative;
+      }
+      .cmfin-backup-head::after{
+        content:"";
+        position:absolute;
+        right:-60px;
+        top:-70px;
+        width:190px;
+        height:190px;
+        border-radius:999px;
+        background:radial-gradient(circle,rgba(239,68,68,.30),transparent 68%);
+      }
+      .cmfin-backup-eyebrow{
+        display:inline-flex;
+        align-items:center;
+        padding:7px 11px;
+        border-radius:999px;
+        background:rgba(255,255,255,.10);
+        border:1px solid rgba(255,255,255,.12);
+        color:rgba(255,255,255,.76);
+        font-size:10px;
+        font-weight:950;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        margin-bottom:12px;
+      }
+      .cmfin-backup-head h2{
+        margin:0;
+        font-size:25px;
+        line-height:1.08;
+        letter-spacing:-.035em;
+        font-weight:950;
+      }
+      .cmfin-backup-head p{
+        margin:9px 0 0;
+        max-width:610px;
+        color:rgba(255,255,255,.70);
+        font-size:13px;
+        line-height:1.55;
+        font-weight:650;
+      }
+      .cmfin-backup-body{
+        padding:22px 26px 24px;
+      }
+      .cmfin-backup-step{display:none;}
+      .cmfin-backup-step.active{display:block;}
+      .cmfin-backup-options{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:14px;
+      }
+      .cmfin-backup-option{
+        border:1px solid #e2e8f0;
+        border-radius:20px;
+        padding:18px;
+        background:linear-gradient(180deg,#fff,#f8fafc);
+        cursor:pointer;
+        text-align:left;
+        transition:.18s ease;
+      }
+      .cmfin-backup-option:hover{
+        transform:translateY(-1px);
+        border-color:rgba(15,61,50,.28);
+        box-shadow:0 14px 32px rgba(15,23,42,.08);
+      }
+      .cmfin-backup-option strong{
+        display:block;
+        font-size:15px;
+        font-weight:950;
+        margin-bottom:7px;
+        color:#0f172a;
+      }
+      .cmfin-backup-option span{
+        display:block;
+        font-size:12.5px;
+        line-height:1.45;
+        color:#64748b;
+        font-weight:650;
+      }
+      .cmfin-module-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+        max-height:310px;
+        overflow:auto;
+        padding-right:4px;
+      }
+      .cmfin-module-btn{
+        border:1px solid #e2e8f0;
+        border-radius:16px;
+        padding:13px 14px;
+        background:#fff;
+        color:#0f172a;
+        font-size:13px;
+        font-weight:900;
+        text-align:left;
+        cursor:pointer;
+      }
+      .cmfin-module-btn:hover{
+        background:#f8fafc;
+        border-color:rgba(15,61,50,.25);
+      }
+      .cmfin-backup-actions{
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        margin-top:18px;
+        border-top:1px solid #e2e8f0;
+        padding-top:16px;
+      }
+      .cmfin-backup-btn{
+        border:1px solid #d5dae0;
+        border-radius:14px;
+        padding:11px 14px;
+        background:#fff;
+        color:#0f172a;
+        font-size:12.5px;
+        font-weight:900;
+        cursor:pointer;
+      }
+      .cmfin-backup-btn.primary{
+        background:linear-gradient(135deg,#0f3d32,#0b2f27);
+        color:#fff;
+        border-color:transparent;
+      }
+      .cmfin-backup-file{
+        width:100%;
+        border:1px dashed #cbd5e1;
+        border-radius:18px;
+        padding:18px;
+        background:#f8fafc;
+        color:#475569;
+        font-size:13px;
+        font-weight:800;
+      }
+      .cmfin-backup-muted{
+        margin:0 0 14px;
+        color:#64748b;
+        font-size:13px;
+        line-height:1.55;
+        font-weight:650;
+      }
+      .cmfin-backup-warning{
+        margin-top:14px;
+        border-radius:16px;
+        padding:13px 14px;
+        background:#fff7ed;
+        border:1px solid #fed7aa;
+        color:#9a3412;
+        font-size:12.5px;
+        line-height:1.45;
+        font-weight:750;
+      }
+      .cmfin-backup-action-item{
+        display:flex;
+        align-items:center;
+        gap:9px;
+        width:100%;
+        padding:10px 12px;
+        border-radius:12px;
+        border:0;
+        background:transparent;
+        color:inherit;
+        font:inherit;
+        font-size:13px;
+        font-weight:800;
+        text-align:left;
+        cursor:pointer;
+      }
+      .cmfin-backup-action-item:hover{
+        background:rgba(15,61,50,.08);
+      }
+      @media(max-width:640px){
+        .cmfin-backup-options,.cmfin-module-grid{grid-template-columns:1fr}
+        .cmfin-backup-actions{flex-direction:column-reverse}
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function getAllData(){
+    var dados = {};
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(shouldIgnore(k)) continue;
+      try{ dados[k] = localStorage.getItem(k); }catch(e){}
+    }
+    return dados;
+  }
+
+  function getModuleData(moduloId){
+    var modulo = MODULOS.find(function(m){ return m.id === moduloId; });
+    if(!modulo) return {};
+
+    var dados = {};
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(shouldIgnore(k)) continue;
+
+      var lk = String(k).toLowerCase();
+      var match = modulo.termos.some(function(t){ return lk.indexOf(t.toLowerCase()) >= 0; });
+
+      if(match){
+        try{ dados[k] = localStorage.getItem(k); }catch(e){}
+      }
+    }
+
+    return dados;
+  }
+
+  function buildBackup(tipo, moduloId){
+    var modulo = MODULOS.find(function(m){ return m.id === moduloId; }) || null;
+    var dados = tipo === "modulo" && modulo ? getModuleData(modulo.id) : getAllData();
+
+    return {
+      sistema:"CMFin",
+      versao:"backup-v2",
+      tipo: tipo === "modulo" ? "modulo_especifico" : "backup_completo",
+      modulo: modulo ? {id:modulo.id,nome:modulo.nome} : null,
+      exportado_em:new Date().toISOString(),
+      dados:dados
+    };
+  }
+
+  function baixarArquivo(obj, nome){
+    var blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 700);
+  }
+
+  function baixarBackupCompleto(){
+    var obj = buildBackup("completo");
+    baixarArquivo(obj, "backup-completo-cmfin-" + new Date().toISOString().slice(0,10) + ".cmfin");
+    toast("Cópia de segurança completa baixada.", "ok");
+  }
+
+  function baixarBackupModulo(moduloId){
+    var obj = buildBackup("modulo", moduloId);
+    var qtd = obj.dados ? Object.keys(obj.dados).length : 0;
+
+    if(qtd === 0){
+      var mod = obj.modulo ? obj.modulo.nome : "módulo";
+      if(!confirm("Não encontrei dados específicos para " + mod + ". Ainda deseja baixar uma cópia vazia desse módulo?")) return;
+    }
+
+    var nome = (obj.modulo ? obj.modulo.id : "modulo");
+    baixarArquivo(obj, "backup-" + nome + "-cmfin-" + new Date().toISOString().slice(0,10) + ".cmfin");
+    toast("Cópia do módulo baixada.", "ok");
+  }
+
+  function criarBackupSegurancaAntesImportar(){
+    try{
+      var obj = buildBackup("completo");
+      baixarArquivo(obj, "backup-seguranca-antes-restaurar-cmfin-" + new Date().toISOString().slice(0,10) + ".cmfin");
+    }catch(e){}
+  }
+
+  function aplicarDados(dados){
+    if(!dados || typeof dados !== "object") return 0;
+    var count = 0;
+
+    Object.keys(dados).forEach(function(k){
+      if(shouldIgnore(k)) return;
+      try{
+        localStorage.setItem(k, dados[k]);
+        count++;
+      }catch(e){}
+    });
+
+    return count;
+  }
+
+  function lerArquivo(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){
+        try{
+          resolve(JSON.parse(String(reader.result || "{}")));
+        }catch(e){
+          reject(new Error("Arquivo inválido ou corrompido."));
+        }
+      };
+      reader.onerror = function(){ reject(new Error("Não foi possível ler o arquivo.")); };
+      reader.readAsText(file, "utf-8");
+    });
+  }
+
+  function abrirModal(modo){
+    ensureStyle();
+
+    var overlay = document.getElementById("cmfinBackupOverlay");
+    if(!overlay){
+      overlay = document.createElement("div");
+      overlay.id = "cmfinBackupOverlay";
+      overlay.className = "cmfin-backup-overlay";
+      document.body.appendChild(overlay);
+    }
+
+    var titulo = modo === "importar" ? "Restaurar Cópia de Segurança" : "Baixar Cópia de Segurança";
+    var desc = modo === "importar"
+      ? "Escolha um arquivo de backup e defina se deseja restaurar tudo ou apenas um módulo específico."
+      : "Escolha se deseja baixar uma cópia completa do CMFin ou somente um módulo específico.";
+
+    overlay.innerHTML = ''
+      + '<div class="cmfin-backup-modal" role="dialog" aria-modal="true">'
+      + '  <div class="cmfin-backup-head">'
+      + '    <span class="cmfin-backup-eyebrow">CMFin · Segurança dos Dados</span>'
+      + '    <h2>'+titulo+'</h2>'
+      + '    <p>'+desc+'</p>'
+      + '  </div>'
+      + '  <div class="cmfin-backup-body">'
+      + '    <div class="cmfin-backup-step active" data-step="tipo">'
+      + '      <div class="cmfin-backup-options">'
+      + '        <button type="button" class="cmfin-backup-option" data-opcao="completo"><strong>Backup Completo</strong><span>Inclui todos os módulos e dados salvos no CMFin.</span></button>'
+      + '        <button type="button" class="cmfin-backup-option" data-opcao="modulo"><strong>Módulo Específico</strong><span>Permite escolher uma área do sistema, como gastos, recebimentos, cartões ou categorias.</span></button>'
+      + '      </div>'
+      + '    </div>'
+      + '    <div class="cmfin-backup-step" data-step="modulo">'
+      + '      <p class="cmfin-backup-muted">Escolha o módulo desejado:</p>'
+      + '      <div class="cmfin-module-grid">'+ MODULOS.map(function(m){ return '<button type="button" class="cmfin-module-btn" data-modulo="'+m.id+'">'+m.nome+'</button>'; }).join("") +'</div>'
+      + '    </div>'
+      + '    <div class="cmfin-backup-step" data-step="arquivo">'
+      + '      <p class="cmfin-backup-muted">Selecione o arquivo de backup salvo anteriormente.</p>'
+      + '      <input class="cmfin-backup-file" type="file" accept=".cmfin,.json,application/json" data-file-input />'
+      + '      <div class="cmfin-backup-warning">Antes de restaurar, o CMFin baixa automaticamente uma cópia de segurança do estado atual.</div>'
+      + '    </div>'
+      + '    <div class="cmfin-backup-actions">'
+      + '      <button type="button" class="cmfin-backup-btn" data-close>Cancelar</button>'
+      + '      <button type="button" class="cmfin-backup-btn" data-back style="display:none">Voltar</button>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+
+    overlay.style.display = "flex";
+
+    var escolha = {tipo:null, modulo:null, arquivo:null};
+
+    function setStep(step){
+      overlay.querySelectorAll(".cmfin-backup-step").forEach(function(el){
+        el.classList.toggle("active", el.getAttribute("data-step") === step);
+      });
+      var back = overlay.querySelector("[data-back]");
+      if(back) back.style.display = step === "tipo" ? "none" : "inline-flex";
+    }
+
+    function close(){
+      overlay.style.display = "none";
+      overlay.innerHTML = "";
+    }
+
+    async function concluirImportacao(){
+      var input = overlay.querySelector("[data-file-input]");
+      var file = input && input.files && input.files[0];
+
+      if(!file){
+        toast("Selecione um arquivo de backup.", "erro");
+        return;
+      }
+
+      try{
+        var backup = await lerArquivo(file);
+
+        if(!backup || !backup.dados){
+          toast("Arquivo de backup inválido.", "erro");
+          return;
+        }
+
+        var dadosParaAplicar = backup.dados;
+
+        if(escolha.tipo === "modulo"){
+          if(escolha.modulo){
+            var moduloBackup = backup.modulo && backup.modulo.id;
+            if(backup.tipo === "modulo_especifico" && moduloBackup && moduloBackup !== escolha.modulo){
+              if(!confirm("O arquivo parece ser de outro módulo. Deseja importar mesmo assim?")) return;
+            }
+          }
+        }
+
+        var msg = escolha.tipo === "completo"
+          ? "Isso irá restaurar o backup completo e poderá substituir dados atuais. Deseja continuar?"
+          : "Isso irá restaurar apenas o módulo escolhido e poderá substituir dados atuais desse módulo. Deseja continuar?";
+
+        if(!confirm(msg)) return;
+
+        criarBackupSegurancaAntesImportar();
+
+        var count = aplicarDados(dadosParaAplicar);
+
+        toast("Cópia restaurada com sucesso. Recarregando...", "ok");
+        close();
+
+        setTimeout(function(){ location.reload(); }, 850);
+      }catch(err){
+        console.warn(err);
+        toast(err.message || "Erro ao importar backup.", "erro");
+      }
+    }
+
+    overlay.addEventListener("click", function(e){
+      if(e.target === overlay) close();
+
+      var closeBtn = e.target.closest("[data-close]");
+      if(closeBtn) close();
+
+      var back = e.target.closest("[data-back]");
+      if(back){
+        if(modo === "importar" && escolha.tipo){
+          escolha.tipo = null;
+          escolha.modulo = null;
+          setStep("tipo");
+        }else{
+          setStep("tipo");
+        }
+      }
+
+      var opcao = e.target.closest("[data-opcao]");
+      if(opcao){
+        escolha.tipo = opcao.getAttribute("data-opcao");
+
+        if(modo === "exportar"){
+          if(escolha.tipo === "completo"){
+            baixarBackupCompleto();
+            close();
+          }else{
+            setStep("modulo");
+          }
+        }else{
+          if(escolha.tipo === "completo"){
+            setStep("arquivo");
+          }else{
+            setStep("modulo");
+          }
+        }
+      }
+
+      var modulo = e.target.closest("[data-modulo]");
+      if(modulo){
+        escolha.modulo = modulo.getAttribute("data-modulo");
+
+        if(modo === "exportar"){
+          baixarBackupModulo(escolha.modulo);
+          close();
+        }else{
+          setStep("arquivo");
+        }
+      }
+    });
+
+    overlay.addEventListener("change", function(e){
+      if(e.target && e.target.matches("[data-file-input]")){
+        concluirImportacao();
+      }
+    });
+  }
+
+  function instalarItensMenuAcoes(){
+    ensureStyle();
+
+    // Renomeia item antigo, se existir.
+    document.querySelectorAll("[data-cmfin-cloud-menu='backup']").forEach(function(btn){
+      btn.textContent = "Baixar Cópia de Segurança";
+    });
+
+    // Adiciona item de restaurar, se ainda não existir.
+    if(document.getElementById("cmfinRestoreBackupMenuItem")) return;
+
+    var menu =
+      document.querySelector(".actions-menu, .dropdown-menu, .menu-popover, .actions-dropdown, [data-actions-menu]") ||
+      document.getElementById("cmfinCloudActionItems") ||
+      null;
+
+    if(!menu) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinRestoreBackupMenuItem";
+    btn.className = "cmfin-backup-action-item";
+    btn.setAttribute("data-cmfin-backup-menu", "restore");
+    btn.textContent = "Restaurar Cópia de Segurança";
+
+    if(menu.id === "cmfinCloudActionItems"){
+      menu.appendChild(btn);
+    }else{
+      var box = document.createElement("div");
+      box.id = "cmfinBackupAdvancedActionItems";
+      box.style.cssText = "border-top:1px solid rgba(15,23,42,.08);margin-top:6px;padding-top:6px;";
+      box.appendChild(btn);
+      menu.appendChild(box);
+    }
+  }
+
+  document.addEventListener("click", function(e){
+    var backupBtn = e.target.closest("[data-cmfin-cloud-menu='backup']");
+    if(backupBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      abrirModal("exportar");
+      return false;
+    }
+
+    var restoreBtn = e.target.closest("[data-cmfin-backup-menu='restore'], #cmfinRestoreBackupMenuItem");
+    if(restoreBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      abrirModal("importar");
+      return false;
+    }
+  }, true);
+
+  function tick(){
+    instalarItensMenuAcoes();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 900);
+      tick();
+    });
+  }else{
+    setInterval(tick, 900);
+    tick();
+  }
+
+  window.cmfinAbrirBackupAvancado = abrirModal;
+})();
+</script>
+
