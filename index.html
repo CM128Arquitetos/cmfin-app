@@ -32772,3 +32772,95 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-ajuste-card-alterar-senha-js">
+(function(){
+  "use strict";
+
+  function ajustarCardAlterarSenha(){
+    var btn = document.getElementById("cmfinAlterarSenhaMenuItem");
+    if(!btn) return;
+
+    // Aplica o mesmo visual dos cards/botões principais do menu Ações.
+    btn.classList.add("btn", "btn-secondary", "cmfin-simple-action-btn");
+
+    // Remove aparência de item simples/texto.
+    btn.classList.remove("cmfin-password-menu-item");
+
+    btn.style.width = "100%";
+    btn.style.justifyContent = "flex-start";
+    btn.style.border = "1px solid #d5dae0";
+    btn.style.borderRadius = "14px";
+    btn.style.padding = "11px 14px";
+    btn.style.background = "#fff";
+    btn.style.color = "#0f172a";
+    btn.style.fontSize = "12.5px";
+    btn.style.fontWeight = "900";
+    btn.style.textAlign = "left";
+    btn.style.minHeight = "46px";
+    btn.style.margin = "0";
+    btn.style.boxShadow = "none";
+
+    // Garante posição antes de Resetar Dados e sem separador visual acima.
+    var menu = document.getElementById("menuAcoesTopo") ||
+               btn.closest(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+
+    if(menu){
+      var botoes = Array.prototype.slice.call(menu.querySelectorAll("button"));
+      var resetar = botoes.find(function(b){
+        return (b.textContent || "").trim().toLowerCase() === "resetar dados";
+      });
+
+      if(resetar && btn.nextElementSibling !== resetar){
+        menu.insertBefore(btn, resetar);
+      }
+
+      // Remove separadores vazios imediatamente antes/depois desse botão, caso tenham sido criados pelo patch anterior.
+      var prev = btn.previousElementSibling;
+      if(prev && !prev.textContent.trim() && (prev.tagName || "").toLowerCase() === "div"){
+        var cs = window.getComputedStyle(prev);
+        if(cs.height === "1px" || prev.style.height === "1px"){
+          prev.remove();
+        }
+      }
+    }
+  }
+
+  if(!document.getElementById("cmfin-ajuste-card-alterar-senha-style")){
+    var css = document.createElement("style");
+    css.id = "cmfin-ajuste-card-alterar-senha-style";
+    css.textContent = `
+      #cmfinAlterarSenhaMenuItem{
+        width:100% !important;
+        justify-content:flex-start !important;
+        border:1px solid #d5dae0 !important;
+        border-radius:14px !important;
+        padding:11px 14px !important;
+        background:#fff !important;
+        color:#0f172a !important;
+        font-size:12.5px !important;
+        font-weight:900 !important;
+        text-align:left !important;
+        min-height:46px !important;
+        box-shadow:none !important;
+      }
+      #cmfinAlterarSenhaMenuItem:hover{
+        background:#f8fafc !important;
+        border-color:#cbd5e1 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(ajustarCardAlterarSenha, 500);
+      ajustarCardAlterarSenha();
+    });
+  }else{
+    setInterval(ajustarCardAlterarSenha, 500);
+    ajustarCardAlterarSenha();
+  }
+})();
+</script>
+
