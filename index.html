@@ -31342,3 +31342,472 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-menu-acoes-simplificado-js">
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "cmfin_gestao_financeira_inteligente_dados";
+  var STORAGE_KEY_OLD = "ello_gestao_inteligente_dados";
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:10080;display:flex;align-items:center;gap:8px;max-width:460px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+
+    if(tipo === "ok") b.style.background = "rgba(6,95,70,.94)";
+    else if(tipo === "erro") b.style.background = "rgba(153,27,27,.94)";
+    else b.style.background = "rgba(15,23,42,.92)";
+
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4400);
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-menu-acoes-simplificado-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-menu-acoes-simplificado-style";
+    css.textContent = `
+      .cmfin-actions-separator{
+        height:1px;
+        background:rgba(15,23,42,.08);
+        margin:8px 0;
+      }
+      .cmfin-simple-action-btn{
+        width:100%;
+        justify-content:flex-start !important;
+      }
+      .cmfin-choice-overlay{
+        position:fixed;
+        inset:0;
+        z-index:10070;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        padding:22px;
+        background:rgba(2,6,23,.52);
+        backdrop-filter:blur(8px);
+      }
+      .cmfin-choice-modal{
+        width:min(560px,100%);
+        overflow:hidden;
+        border-radius:26px;
+        background:#fff;
+        color:#0f172a;
+        border:1px solid rgba(15,23,42,.10);
+        box-shadow:0 34px 90px rgba(15,23,42,.34);
+      }
+      .cmfin-choice-head{
+        padding:24px 26px 20px;
+        background:linear-gradient(135deg,#0f3d32,#082f27);
+        color:#fff;
+        position:relative;
+      }
+      .cmfin-choice-head::after{
+        content:"";
+        position:absolute;
+        right:-60px;
+        top:-70px;
+        width:180px;
+        height:180px;
+        border-radius:999px;
+        background:radial-gradient(circle,rgba(239,68,68,.30),transparent 68%);
+      }
+      .cmfin-choice-head span{
+        display:inline-flex;
+        align-items:center;
+        padding:7px 11px;
+        border-radius:999px;
+        background:rgba(255,255,255,.10);
+        border:1px solid rgba(255,255,255,.12);
+        color:rgba(255,255,255,.76);
+        font-size:10px;
+        font-weight:950;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        margin-bottom:12px;
+      }
+      .cmfin-choice-head h2{
+        margin:0;
+        font-size:24px;
+        line-height:1.08;
+        letter-spacing:-.035em;
+        font-weight:950;
+      }
+      .cmfin-choice-head p{
+        margin:9px 0 0;
+        max-width:480px;
+        color:rgba(255,255,255,.70);
+        font-size:13px;
+        line-height:1.5;
+        font-weight:650;
+      }
+      .cmfin-choice-body{
+        padding:22px 26px 24px;
+      }
+      .cmfin-choice-options{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:14px;
+      }
+      .cmfin-choice-option{
+        border:1px solid #e2e8f0;
+        border-radius:20px;
+        padding:18px;
+        background:linear-gradient(180deg,#fff,#f8fafc);
+        cursor:pointer;
+        text-align:left;
+        transition:.18s ease;
+      }
+      .cmfin-choice-option:hover{
+        transform:translateY(-1px);
+        border-color:rgba(15,61,50,.28);
+        box-shadow:0 14px 32px rgba(15,23,42,.08);
+      }
+      .cmfin-choice-option strong{
+        display:block;
+        font-size:15px;
+        font-weight:950;
+        margin-bottom:7px;
+        color:#0f172a;
+      }
+      .cmfin-choice-option span{
+        display:block;
+        font-size:12.5px;
+        line-height:1.45;
+        color:#64748b;
+        font-weight:650;
+      }
+      .cmfin-choice-actions{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        margin-top:18px;
+        border-top:1px solid #e2e8f0;
+        padding-top:16px;
+      }
+      .cmfin-choice-cancel{
+        border:1px solid #d5dae0;
+        border-radius:14px;
+        padding:11px 14px;
+        background:#fff;
+        color:#0f172a;
+        font-size:12.5px;
+        font-weight:900;
+        cursor:pointer;
+      }
+      @media(max-width:560px){
+        .cmfin-choice-options{grid-template-columns:1fr}
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function baixarArquivo(obj, nome){
+    var blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 700);
+  }
+
+  function carregarBaseStorage(){
+    var salvo = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD);
+    if(!salvo){
+      return {
+        versaoEstrutura:2,
+        modoAtual:"pessoal",
+        modos:{pessoal:{}, empresarial:{}}
+      };
+    }
+
+    try{
+      var d = JSON.parse(salvo);
+      d.versaoEstrutura = d.versaoEstrutura || 2;
+      d.modoAtual = d.modoAtual || "pessoal";
+      d.modos = d.modos || {};
+      d.modos.pessoal = d.modos.pessoal || {};
+      d.modos.empresarial = d.modos.empresarial || {};
+      return d;
+    }catch(e){
+      return {
+        versaoEstrutura:2,
+        modoAtual:"pessoal",
+        modos:{pessoal:{}, empresarial:{}}
+      };
+    }
+  }
+
+  function salvarBaseStorage(base){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+  }
+
+  function modoNome(modo){
+    return modo === "empresarial" ? "Empresarial" : "Pessoal";
+  }
+
+  function exportarModoEscolhido(modo){
+    try{
+      if(typeof window.salvarDados === "function") window.salvarDados();
+
+      var base = carregarBaseStorage();
+      var dados = base.modos && base.modos[modo] ? base.modos[modo] : {};
+
+      var pacote = {
+        app:"CMFin — Gestão Financeira Inteligente",
+        tipo:"exportacao_modo",
+        modo:modo,
+        exportadoEm:new Date().toISOString(),
+        dados:dados
+      };
+
+      baixarArquivo(pacote, "cmfin-" + modo + "-backup-" + new Date().toISOString().slice(0,10) + ".cmfin");
+      toast("Backup do modo " + modoNome(modo) + " exportado.", "ok");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao exportar o modo selecionado.", "erro");
+    }
+  }
+
+  function importarModoEscolhido(modo){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".cmfin,.json,application/json";
+
+    input.addEventListener("change", function(){
+      var file = input.files && input.files[0];
+      if(!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(){
+        try{
+          var pacote = JSON.parse(String(reader.result || "{}"));
+          var dados = pacote.dados || pacote;
+
+          if(!dados || typeof dados !== "object"){
+            toast("Arquivo de backup inválido.", "erro");
+            return;
+          }
+
+          var texto = "Deseja importar este backup para o modo " + modoNome(modo) + "?";
+          if(pacote.modo && pacote.modo !== modo){
+            texto = "Este arquivo parece ser do modo " + modoNome(pacote.modo) + ". Deseja importar mesmo assim para o modo " + modoNome(modo) + "?";
+          }
+
+          if(!confirm(texto)) return;
+
+          try{
+            var baseSeguranca = carregarBaseStorage();
+            baixarArquivo({
+              app:"CMFin — Gestão Financeira Inteligente",
+              tipo:"backup_seguranca_antes_importar_modo",
+              exportadoEm:new Date().toISOString(),
+              dados:baseSeguranca
+            }, "backup-seguranca-antes-importar-" + new Date().toISOString().slice(0,10) + ".cmfin");
+          }catch(e){}
+
+          var base = carregarBaseStorage();
+          base.versaoEstrutura = 2;
+          base.modos = base.modos || {};
+          base.modos[modo] = dados;
+          base.modoAtual = modo;
+          salvarBaseStorage(base);
+
+          toast("Backup importado para o modo " + modoNome(modo) + ". Recarregando...", "ok");
+          setTimeout(function(){ location.reload(); }, 900);
+        }catch(err){
+          console.warn(err);
+          toast("Não foi possível importar. Verifique o arquivo selecionado.", "erro");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    });
+
+    input.click();
+  }
+
+  function pastaBackupModo(modo){
+    try{
+      if(typeof window.definirPastaPadraoBackupELLO === "function"){
+        window.definirPastaPadraoBackupELLO(modo);
+      }else{
+        toast("Função de pasta padrão não encontrada nesta versão.", "erro");
+      }
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao definir a pasta de backup.", "erro");
+    }
+  }
+
+  function abrirEscolhaModo(tipo){
+    ensureStyle();
+
+    var overlay = document.getElementById("cmfinChoiceModeOverlay");
+    if(!overlay){
+      overlay = document.createElement("div");
+      overlay.id = "cmfinChoiceModeOverlay";
+      overlay.className = "cmfin-choice-overlay";
+      document.body.appendChild(overlay);
+    }
+
+    var titulo = "Escolha o modo";
+    var desc = "Selecione se deseja usar os dados do modo Pessoal ou Empresarial.";
+
+    if(tipo === "exportar") titulo = "Exportar Modo Atual";
+    if(tipo === "importar") titulo = "Importar Modo Atual";
+    if(tipo === "pasta") titulo = "Pasta Backup";
+
+    overlay.innerHTML = ''
+      + '<div class="cmfin-choice-modal" role="dialog" aria-modal="true">'
+      + '  <div class="cmfin-choice-head">'
+      + '    <span>CMFin · Backup</span>'
+      + '    <h2>'+titulo+'</h2>'
+      + '    <p>'+desc+'</p>'
+      + '  </div>'
+      + '  <div class="cmfin-choice-body">'
+      + '    <div class="cmfin-choice-options">'
+      + '      <button type="button" class="cmfin-choice-option" data-modo="pessoal"><strong>Pessoal</strong><span>Usar os dados do modo pessoal.</span></button>'
+      + '      <button type="button" class="cmfin-choice-option" data-modo="empresarial"><strong>Empresarial</strong><span>Usar os dados do modo empresarial.</span></button>'
+      + '    </div>'
+      + '    <div class="cmfin-choice-actions"><button type="button" class="cmfin-choice-cancel" data-close>Cancelar</button></div>'
+      + '  </div>'
+      + '</div>';
+
+    overlay.style.display = "flex";
+
+    function close(){
+      overlay.style.display = "none";
+      overlay.innerHTML = "";
+    }
+
+    overlay.addEventListener("click", function handler(e){
+      if(e.target === overlay){
+        close();
+        overlay.removeEventListener("click", handler);
+        return;
+      }
+
+      if(e.target.closest("[data-close]")){
+        close();
+        overlay.removeEventListener("click", handler);
+        return;
+      }
+
+      var btn = e.target.closest("[data-modo]");
+      if(!btn) return;
+
+      var modo = btn.getAttribute("data-modo");
+      close();
+      overlay.removeEventListener("click", handler);
+
+      if(tipo === "exportar") exportarModoEscolhido(modo);
+      if(tipo === "importar") importarModoEscolhido(modo);
+      if(tipo === "pasta") pastaBackupModo(modo);
+    });
+  }
+
+  function criarBotao(texto, acao, classeExtra){
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-simple-action-btn " + (classeExtra || "");
+    btn.textContent = texto;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes();
+
+      setTimeout(function(){
+        if(acao === "exportarModo") abrirEscolhaModo("exportar");
+        if(acao === "importarModo") abrirEscolhaModo("importar");
+        if(acao === "pastaBackup") abrirEscolhaModo("pasta");
+      }, 80);
+    });
+    return btn;
+  }
+
+  function findButtonByText(menu, text){
+    var buttons = Array.prototype.slice.call(menu.querySelectorAll("button"));
+    return buttons.find(function(b){ return (b.textContent || "").trim().toLowerCase() === text.toLowerCase(); });
+  }
+
+  function simplificarMenu(){
+    ensureStyle();
+
+    var menu = document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown");
+    if(!menu || menu.dataset.cmfinSimplificado === "1") return;
+
+    var oldImportAtual = findButtonByText(menu, "Importar Modo Atual");
+    var oldExportAtual = findButtonByText(menu, "Exportar Modo Atual");
+    var oldPastaPessoal = findButtonByText(menu, "Pasta Backup - Pessoal");
+    var oldPastaEmpresarial = findButtonByText(menu, "Pasta Backup - Empresarial");
+    var exportAmbos = findButtonByText(menu, "Exportar Ambos");
+
+    // Esconde botões antigos duplicados.
+    [oldImportAtual, oldExportAtual, oldPastaPessoal, oldPastaEmpresarial].forEach(function(b){
+      if(b) b.style.display = "none";
+    });
+
+    var frag = document.createDocumentFragment();
+
+    frag.appendChild(criarBotao("Exportar Modo Atual", "exportarModo"));
+    frag.appendChild(criarBotao("Importar Modo Atual", "importarModo"));
+
+    if(exportAmbos){
+      menu.insertBefore(frag, exportAmbos);
+    }else{
+      menu.insertBefore(frag, menu.firstChild);
+    }
+
+    var importAmbos = findButtonByText(menu, "Importar Ambos");
+    var resetar = findButtonByText(menu, "Resetar Dados");
+
+    var pasta = criarBotao("Pasta Backup", "pastaBackup");
+    if(resetar){
+      menu.insertBefore(pasta, resetar);
+    }else if(importAmbos && importAmbos.nextSibling){
+      menu.insertBefore(pasta, importAmbos.nextSibling);
+    }else{
+      menu.appendChild(pasta);
+    }
+
+    // Renomeia itens avançados de backup, se existirem.
+    var baixar = menu.querySelector("[data-cmfin-cloud-menu='backup']");
+    if(baixar) baixar.textContent = "Baixar Cópia de Segurança";
+
+    var restaurar = document.getElementById("cmfinRestoreBackupMenuItem");
+    if(restaurar) restaurar.textContent = "Restaurar Cópia de Segurança";
+
+    menu.dataset.cmfinSimplificado = "1";
+  }
+
+  function tick(){
+    simplificarMenu();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 700);
+      tick();
+    });
+  }else{
+    setInterval(tick, 700);
+    tick();
+  }
+
+  window.cmfinAbrirEscolhaModoBackup = abrirEscolhaModo;
+})();
+</script>
+
