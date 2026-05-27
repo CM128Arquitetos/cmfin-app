@@ -33705,3 +33705,163 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-ajuste-exportar-importar-ambos-modal-js">
+(function(){
+  "use strict";
+
+  function normalizarTexto(txt){
+    return String(txt || "").trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function getMenuAcoes(){
+    return document.getElementById("menuAcoesTopo") ||
+           document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+  }
+
+  function findButtonByExactText(root, text){
+    if(!root) return null;
+    var alvo = normalizarTexto(text);
+    var buttons = Array.prototype.slice.call(root.querySelectorAll("button"));
+    return buttons.find(function(btn){
+      return normalizarTexto(btn.textContent) === alvo;
+    }) || null;
+  }
+
+  function hideMainAmbosButtons(){
+    var menu = getMenuAcoes();
+    if(!menu) return;
+
+    ["Exportar Ambos", "Importar Ambos"].forEach(function(label){
+      var btn = findButtonByExactText(menu, label);
+      if(btn){
+        btn.style.display = "none";
+        btn.setAttribute("data-cmfin-hidden-main-ambos", "1");
+      }
+    });
+  }
+
+  function clickHiddenMainButton(label){
+    var menu = getMenuAcoes();
+    var btn = findButtonByExactText(menu, label);
+
+    if(btn){
+      btn.style.display = "";
+      btn.click();
+      setTimeout(function(){
+        btn.style.display = "none";
+      }, 120);
+      return true;
+    }
+
+    return false;
+  }
+
+  function closeChoiceModal(){
+    var overlay = document.getElementById("cmfinChoiceModeOverlay");
+    if(!overlay) return;
+
+    overlay.style.display = "none";
+    overlay.innerHTML = "";
+  }
+
+  function addAmbosButtonToChoiceModal(){
+    var overlay = document.getElementById("cmfinChoiceModeOverlay");
+    if(!overlay || overlay.style.display === "none") return;
+
+    var modal = overlay.querySelector(".cmfin-choice-modal");
+    if(!modal) return;
+
+    var headTitle = modal.querySelector(".cmfin-choice-head h2");
+    var titulo = normalizarTexto(headTitle ? headTitle.textContent : "");
+
+    var isExportar = titulo === "exportar";
+    var isImportar = titulo === "importar";
+
+    if(!isExportar && !isImportar) return;
+
+    var actions = modal.querySelector(".cmfin-choice-actions");
+    if(!actions) return;
+
+    if(actions.querySelector("#cmfinChoiceAmbosBtn")) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinChoiceAmbosBtn";
+    btn.className = "cmfin-choice-cancel cmfin-choice-ambos-btn";
+    btn.textContent = isExportar ? "Exportar Ambos" : "Importar Ambos";
+
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      var label = isExportar ? "Exportar Ambos" : "Importar Ambos";
+      closeChoiceModal();
+
+      setTimeout(function(){
+        if(!clickHiddenMainButton(label)){
+          alert("Não encontrei a função: " + label + ". Verifique se esta versão ainda possui essa função original.");
+        }
+      }, 80);
+    });
+
+    // Coloca antes do Cancelar, visualmente ao lado dele.
+    var cancel = actions.querySelector("[data-close]");
+    if(cancel){
+      actions.insertBefore(btn, cancel);
+    }else{
+      actions.appendChild(btn);
+    }
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-ajuste-exportar-importar-ambos-modal-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-ajuste-exportar-importar-ambos-modal-style";
+    css.textContent = `
+      #cmfinChoiceAmbosBtn.cmfin-choice-ambos-btn{
+        background:linear-gradient(135deg,#0f3d32,#082f27) !important;
+        color:#fff !important;
+        border-color:transparent !important;
+        box-shadow:0 12px 26px rgba(15,61,50,.14) !important;
+      }
+      #cmfinChoiceAmbosBtn.cmfin-choice-ambos-btn:hover{
+        filter:brightness(1.04);
+        transform:translateY(-1px);
+      }
+      #menuAcoesTopo button[data-cmfin-hidden-main-ambos="1"],
+      .actions-dropdown button[data-cmfin-hidden-main-ambos="1"],
+      .actions-menu button[data-cmfin-hidden-main-ambos="1"],
+      .dropdown-menu button[data-cmfin-hidden-main-ambos="1"],
+      .menu-popover button[data-cmfin-hidden-main-ambos="1"]{
+        display:none !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    hideMainAmbosButtons();
+    addAmbosButtonToChoiceModal();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 400);
+      tick();
+    });
+  }else{
+    setInterval(tick, 400);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 250);
+  }, true);
+})();
+</script>
+
