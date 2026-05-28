@@ -34963,3 +34963,211 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-menu-icons-premium-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  var ICONS = {
+    "dashboard": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.8"></rect><rect x="14" y="3" width="7" height="7" rx="1.8"></rect><rect x="3" y="14" width="7" height="7" rx="1.8"></rect><rect x="14" y="14" width="7" height="7" rx="1.8"></rect></svg>',
+    "gastos fixos": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8a2 2 0 0 1 2 2v16l-3-1.6-3 1.6-3-1.6L6 21V5a2 2 0 0 1 2-2Z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>',
+    "gastos variaveis": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path><circle cx="18" cy="17" r="2"></circle></svg>',
+    "recebimentos": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13"></path><path d="m7 11 5 5 5-5"></path><path d="M5 21h14"></path></svg>',
+    "cofre": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"></rect><circle cx="12" cy="12" r="3"></circle><path d="M7 9h2"></path><path d="M15 12h3"></path></svg>',
+    "terceiros": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+    "bancos e cartoes": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 10h18"></path><path d="M7 15h4"></path><path d="M15 15h2"></path></svg>',
+    "objetivos": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path></svg>',
+    "analise financeira": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h17"></path><rect x="7" y="11" width="3" height="5" rx="1"></rect><rect x="12" y="7" width="3" height="9" rx="1"></rect><rect x="17" y="4" width="3" height="12" rx="1"></rect></svg>',
+    "perfil": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>',
+    "configuracoes": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6 1.8 1.8 0 0 0-.5 1.3V21a2 2 0 1 1-4 0v-.08A1.8 1.8 0 0 0 8 19.4a1.8 1.8 0 0 0-1.98.36l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1 1.8 1.8 0 0 0-1.3-.5H2.6a2 2 0 1 1 0-4h.08A1.8 1.8 0 0 0 4.6 8a1.8 1.8 0 0 0-.36-1.98l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-.6 1.8 1.8 0 0 0 .5-1.3V2.6a2 2 0 1 1 4 0v.08A1.8 1.8 0 0 0 16 4.6a1.8 1.8 0 0 0 1.98-.36l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.8 1.8 0 0 0 19.4 9c.35.18.67.39 1 .6.4.26.82.4 1.3.4h.08a2 2 0 1 1 0 4h-.08A1.8 1.8 0 0 0 19.4 15Z"></path></svg>'
+  };
+
+  var LABELS = {
+    "dashboard": "Dashboard",
+    "gastos fixos": "Gastos Fixos",
+    "gastos variaveis": "Gastos Variáveis",
+    "recebimentos": "Recebimentos",
+    "cofre": "Cofre",
+    "terceiros": "Terceiros",
+    "bancos e cartoes": "Bancos e Cartões",
+    "objetivos": "Objetivos",
+    "analise financeira": "Análise Financeira",
+    "perfil": "Perfil",
+    "configuracoes": "Configurações"
+  };
+
+  function labelKeyFromElement(el){
+    var raw = norm(el.textContent || "");
+
+    // Evita pegar os botões Pessoal / Empresarial do seletor de modo
+    if(raw === "pessoal" || raw === "empresarial") return null;
+
+    if(ICONS[raw]) return raw;
+
+    // Alguns botões podem conter símbolo antigo antes do texto.
+    var keys = Object.keys(ICONS);
+    for(var i = 0; i < keys.length; i++){
+      if(raw === keys[i] || raw.endsWith(" " + keys[i]) || raw.indexOf(keys[i]) >= 0){
+        return keys[i];
+      }
+    }
+
+    return null;
+  }
+
+  function isSidebarElement(el){
+    return !!(el.closest(".sidebar") || el.closest("aside") || el.closest("#sidebar"));
+  }
+
+  function applyPremiumIcon(el, key){
+    if(!key || !ICONS[key]) return;
+
+    if(el.getAttribute("data-cmfin-premium-icon") === key) return;
+
+    // Preserva onclick, classes e comportamento do botão; troca só o conteúdo visual.
+    el.innerHTML = ''
+      + '<span class="cmfin-premium-nav-icon" aria-hidden="true">' + ICONS[key] + '</span>'
+      + '<span class="cmfin-premium-nav-label">' + LABELS[key] + '</span>';
+
+    el.setAttribute("data-cmfin-premium-icon", key);
+    el.classList.add("cmfin-premium-nav-item");
+
+    if(key === "perfil"){
+      el.classList.add("cmfin-premium-profile-white");
+    }
+  }
+
+  function applyIcons(){
+    var nodes = Array.prototype.slice.call(document.querySelectorAll(".sidebar button, .sidebar a, aside button, aside a, #sidebar button, #sidebar a, nav button, nav a"));
+
+    nodes.forEach(function(el){
+      if(!isSidebarElement(el)) return;
+
+      var key = labelKeyFromElement(el);
+      if(!key) return;
+
+      applyPremiumIcon(el, key);
+    });
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-menu-icons-premium-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-menu-icons-premium-style";
+    css.textContent = `
+      .cmfin-premium-nav-item{
+        display:flex !important;
+        align-items:center !important;
+        gap:13px !important;
+      }
+
+      .cmfin-premium-nav-icon{
+        width:31px !important;
+        height:31px !important;
+        min-width:31px !important;
+        border-radius:12px !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        color:#fff !important;
+        background:rgba(255,255,255,.075) !important;
+        border:1px solid rgba(255,255,255,.075) !important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 8px 18px rgba(0,0,0,.10) !important;
+        opacity:1 !important;
+      }
+
+      .cmfin-premium-nav-icon svg{
+        width:17px !important;
+        height:17px !important;
+        display:block !important;
+        color:#fff !important;
+        stroke:currentColor !important;
+        fill:none !important;
+        stroke-width:2 !important;
+        stroke-linecap:round !important;
+        stroke-linejoin:round !important;
+      }
+
+      .cmfin-premium-nav-label{
+        color:inherit !important;
+        line-height:1 !important;
+      }
+
+      /* Perfil deve ficar branco igual aos demais, sem roxo */
+      .cmfin-premium-profile-white .cmfin-premium-nav-icon,
+      .cmfin-premium-profile-white .cmfin-premium-nav-icon svg{
+        color:#fff !important;
+        fill:none !important;
+        stroke:#fff !important;
+      }
+
+      /* Aba ativa com fundo claro: ícone escuro para contraste, seguindo o botão ativo */
+      .cmfin-premium-nav-item.active .cmfin-premium-nav-icon,
+      .cmfin-premium-nav-item[aria-current="page"] .cmfin-premium-nav-icon,
+      .cmfin-premium-nav-item:hover .cmfin-premium-nav-icon{
+        background:rgba(255,255,255,.12) !important;
+      }
+
+      .cmfin-premium-nav-item.active .cmfin-premium-nav-icon,
+      .sidebar .active.cmfin-premium-nav-item .cmfin-premium-nav-icon,
+      aside .active.cmfin-premium-nav-item .cmfin-premium-nav-icon{
+        background:rgba(7,47,39,.08) !important;
+        border-color:rgba(7,47,39,.12) !important;
+        box-shadow:none !important;
+      }
+
+      .cmfin-premium-nav-item.active .cmfin-premium-nav-icon svg,
+      .sidebar .active.cmfin-premium-nav-item .cmfin-premium-nav-icon svg,
+      aside .active.cmfin-premium-nav-item .cmfin-premium-nav-icon svg{
+        color:#0b3028 !important;
+        stroke:#0b3028 !important;
+      }
+
+      /* Se Perfil estiver ativo, continua com contraste correto no card branco */
+      .cmfin-premium-profile-white.active .cmfin-premium-nav-icon svg,
+      .sidebar .active.cmfin-premium-profile-white .cmfin-premium-nav-icon svg,
+      aside .active.cmfin-premium-profile-white .cmfin-premium-nav-icon svg{
+        color:#0b3028 !important;
+        stroke:#0b3028 !important;
+      }
+    `;
+
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    applyIcons();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      tick();
+      setTimeout(tick, 300);
+      setTimeout(tick, 1000);
+      setInterval(tick, 1500);
+    });
+  }else{
+    tick();
+    setTimeout(tick, 300);
+    setTimeout(tick, 1000);
+    setInterval(tick, 1500);
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 600);
+  }, true);
+})();
+</script>
+
