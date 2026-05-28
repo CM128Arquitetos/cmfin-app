@@ -8674,6 +8674,20 @@ button[data-clear-filters],
   @media(max-width:620px){#cmfinLoginOverlay{padding:16px}.cmfin-login-card{padding:28px 20px 23px;border-radius:24px}.cmfin-login-head h2{font-size:22px}.cmfin-login-logo{width:185px}.cmfin-top-license-badge{max-width:100%;white-space:normal;border-radius:18px}}
 </style>
 
+
+<style id="ello-ajuste-troca-modo-suave-v1">
+html.ello-modo-trocando, body.ello-modo-trocando{scroll-behavior:auto!important;}
+body.ello-modo-trocando *, body.ello-modo-trocando *::before, body.ello-modo-trocando *::after{transition:none!important;animation:none!important;}
+body.ello-modo-trocando .content{opacity:.72!important;pointer-events:none!important;}
+body.ello-modo-trocando .module.active{min-height:70vh;}
+</style>
+<style id="ello-dre-sem-rolagem-horizontal">
+#dreSimplificada .dre-table-wrap{overflow-x:hidden!important;}
+#dreSimplificada table.dre-table-premium{display:table!important;width:100%!important;max-width:100%!important;table-layout:fixed!important;overflow:visible!important;white-space:normal!important;}
+#dreSimplificada table.dre-table-premium tbody{display:table-row-group!important;}
+#dreSimplificada table.dre-table-premium tr{display:table-row!important;}
+#dreSimplificada table.dre-table-premium td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important;}
+</style>
 </head>
 <body class="cmfin-lock">
 
@@ -23988,441 +24002,7 @@ button[data-clear-filters],
 .section-space{margin-top:18px}.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cat{border:1px solid var(--line);background:linear-gradient(180deg,#fbfcfc,#f6f9f8);border-radius:20px;padding:16px}.cat-top{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start}.cat-top strong{display:block;font-size:16px}.cat-top span{display:block;color:var(--muted);font-size:12px;margin-top:4px}.cat em{font-style:normal;font-weight:900;font-size:20px;letter-spacing:-.02em}.bar{height:10px;border-radius:999px;background:#eaf0ee;overflow:hidden;margin:12px 0 10px}.bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#123b63,#16a085)}.cat-foot{display:flex;justify-content:space-between;gap:10px;color:#71837e;font-size:12px}
 @media (max-width:1180px){.hero-body,.layout,.cats{grid-template-columns:1fr}.metrics,.hero-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.page{padding:92px 14px 24px}.print{top:12px;left:12px;padding:11px 15px}.hero{padding:18px}.hero-top{flex-direction:column;align-items:flex-start}.hero-title{font-size:24px}.hero-value{font-size:38px}.hero-kpis,.metrics,.quick-grid,.cats{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.metric .val{font-size:28px}.sec-head{flex-direction:column;align-items:flex-start}.tag{white-space:normal}}
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
-<style id="ello-ajuste-troca-modo-suave-v1">
-/* ============================================================
-   AJUSTE ELLO — TROCA SUAVE ENTRE MODO PESSOAL / EMPRESARIAL
-   Objetivo: evitar o "tremor" visual durante a atualização da tela.
-   Não altera dados, cálculos, localStorage ou estrutura financeira.
-   ============================================================ */
-html.ello-modo-trocando,
-body.ello-modo-trocando {
-  scroll-behavior: auto !important;
-}
-
-body.ello-modo-trocando *,
-body.ello-modo-trocando *::before,
-body.ello-modo-trocando *::after {
-  transition: none !important;
-  animation: none !important;
-}
-
-body.ello-modo-trocando .content {
-  opacity: .72 !important;
-  pointer-events: none !important;
-}
-
-body.ello-modo-trocando .module.active {
-  min-height: 70vh;
-}
-</style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
-<style id="ello-dre-sem-rolagem-horizontal">
-  #dreSimplificada .dre-table-wrap{
-    overflow-x: hidden !important;
-  }
-  #dreSimplificada table.dre-table-premium{
-    display: table !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
-    overflow: visible !important;
-    white-space: normal !important;
-  }
-  #dreSimplificada table.dre-table-premium tbody{
-    display: table-row-group !important;
-  }
-  #dreSimplificada table.dre-table-premium tr{
-    display: table-row !important;
-  }
-  #dreSimplificada table.dre-table-premium td{
-    white-space: normal !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    vertical-align: middle;
-  }
-  #dreSimplificada table.dre-table-premium td:first-child{
-    width: 66% !important;
-    padding-right: 8px !important;
-  }
-  #dreSimplificada table.dre-table-premium td:last-child{
-    width: 34% !important;
-    text-align: right !important;
-    padding-left: 8px !important;
-    padding-right: 14px !important;
-  }
-</style>
-
-
-<style id="ello-dre-corrige-layout-final">
-  /* Corrige de vez a DRE Simplificada: sem barra horizontal, sem corte e com labels/valores visíveis */
-  #dreSimplificada .dre-line3-main{
-    overflow: visible !important;
-  }
-  #dreSimplificada .dre-table-wrap{
-    width: 100% !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
-    padding-bottom: 0 !important;
-  }
-  #dreSimplificada table.dre-table,
-  #dreSimplificada table.dre-table-premium{
-    display: table !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    table-layout: auto !important;
-    border-collapse: separate !important;
-    border-spacing: 0 6px !important;
-    overflow: visible !important;
-    white-space: normal !important;
-    margin: 0 !important;
-  }
-  #dreSimplificada table.dre-table-premium tbody,
-  #dreSimplificada table.dre-table tbody{
-    display: table-row-group !important;
-  }
-  #dreSimplificada table.dre-table-premium tr,
-  #dreSimplificada table.dre-table tr{
-    display: table-row !important;
-  }
-  #dreSimplificada table.dre-table-premium td,
-  #dreSimplificada table.dre-table td{
-    display: table-cell !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    vertical-align: middle !important;
-    padding: 10px 12px !important;
-    font-size: 12px !important;
-    line-height: 1.22 !important;
-  }
-  #dreSimplificada table.dre-table-premium td:first-child,
-  #dreSimplificada table.dre-table td:first-child{
-    width: auto !important;
-    padding-left: 14px !important;
-    padding-right: 12px !important;
-  }
-  #dreSimplificada table.dre-table-premium td:last-child,
-  #dreSimplificada table.dre-table td:last-child{
-    width: 1% !important;
-    white-space: nowrap !important;
-    text-align: right !important;
-    padding-left: 10px !important;
-    padding-right: 14px !important;
-  }
-  #dreSimplificada .dre-table .linha-resultado td,
-  #dreSimplificada .dre-table-premium .linha-resultado td,
-  #dreSimplificada .dre-table .linha-lucro td,
-  #dreSimplificada .dre-table-premium .linha-lucro td{
-    font-size: 12.5px !important;
-  }
-</style>
-
-
-
-
-
-<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
-<script id="cmfin-final-menu-acoes-perfil-ajustes-js">
-(function(){
-  "use strict";
-
-  function norm(txt){
-    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
-  }
-
-  function fecharMenu(){
-    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
-  }
-
-  function toast(texto, tipo){
-    var id = "cmfinCloudPanelToast";
-    var b = document.getElementById(id);
-    if(!b){
-      b = document.createElement("div");
-      b.id = id;
-      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;display:flex;align-items:center;gap:8px;max-width:520px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
-      document.body.appendChild(b);
-    }
-    b.style.background = tipo === "ok" ? "rgba(6,95,70,.94)" : tipo === "erro" ? "rgba(153,27,27,.94)" : "rgba(15,23,42,.92)";
-    b.textContent = texto;
-    b.style.display = "flex";
-    clearTimeout(b._hideTimer);
-    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
-  }
-
-  async function exportarComputador(){
-    fecharMenu();
-    setTimeout(function(){
-      if(typeof window.exportarDados === "function") window.exportarDados();
-      else toast("Função de exportação local não encontrada.", "erro");
-    }, 60);
-  }
-
-  async function importarComputador(){
-    fecharMenu();
-    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
-    setTimeout(function(){
-      if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
-      else {
-        var input = document.getElementById("inputImportarDados");
-        if(input) input.click();
-        else toast("Função de importação local não encontrada.", "erro");
-      }
-    }, 60);
-  }
-
-  async function exportarNuvem(){
-    fecharMenu();
-    toast("Exportando dados para a nuvem...", "info");
-    try{
-      var ok = false;
-      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
-      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
-      toast(ok ? "Dados exportados para a nuvem." : "Não foi possível exportar para a nuvem.", ok ? "ok" : "erro");
-    }catch(err){
-      console.warn(err);
-      toast("Erro ao exportar para a nuvem.", "erro");
-    }
-  }
-
-  async function importarNuvem(){
-    fecharMenu();
-    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
-    toast("Importando dados da nuvem...", "info");
-    try{
-      if(typeof window.cmfinCarregarDadosNuvem !== "function"){
-        toast("Função de importação da nuvem não encontrada.", "erro");
-        return;
-      }
-      var ok = await window.cmfinCarregarDadosNuvem();
-      try{
-        if(typeof preencherCategorias === "function") preencherCategorias();
-        if(typeof atualizarSelects === "function") atualizarSelects();
-        if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
-        if(typeof atualizarUIModo === "function") atualizarUIModo();
-        if(typeof renderizarTudo === "function") renderizarTudo();
-      }catch(_e){}
-      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
-    }catch(err){
-      console.warn(err);
-      toast("Erro ao importar da nuvem.", "erro");
-    }
-  }
-
-  function pastaBackup(){
-    fecharMenu();
-    setTimeout(function(){
-      if(typeof window.cmfinAbrirEscolhaModoBackup === "function") window.cmfinAbrirEscolhaModoBackup("pasta");
-      else if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO((window.modoAtual === "empresarial") ? "empresarial" : "pessoal");
-      else toast("Função de pasta de backup não encontrada.", "erro");
-    }, 60);
-  }
-
-  function baixarCopia(){
-    fecharMenu();
-    setTimeout(function(){
-      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("exportar");
-      else {
-        var btn = document.querySelector("[data-cmfin-cloud-menu='backup']");
-        if(btn) btn.click();
-        else toast("Função de baixar cópia de segurança não encontrada.", "erro");
-      }
-    }, 60);
-  }
-
-  function restaurarCopia(){
-    fecharMenu();
-    setTimeout(function(){
-      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("importar");
-      else {
-        var btn = document.getElementById("cmfinRestoreBackupMenuItem");
-        if(btn) btn.click();
-        else toast("Função de restaurar cópia de segurança não encontrada.", "erro");
-      }
-    }, 60);
-  }
-
-  function resetarFinal(){
-    fecharMenu();
-    setTimeout(function(){
-      if(typeof window.resetarDados === "function") window.resetarDados();
-      else toast("Função de resetar dados não encontrada.", "erro");
-    }, 60);
-  }
-
-  function makeBtn(texto, acao, danger){
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn btn-secondary cmfin-final-action-btn" + (danger ? " danger" : "");
-    btn.textContent = texto;
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      acao();
-    });
-    return btn;
-  }
-
-  function sep(){
-    var d = document.createElement("div");
-    d.className = "cmfin-final-action-separator";
-    return d;
-  }
-
-  function getMenu(){
-    return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
-  }
-
-  function montarMenuFinal(){
-    var menu = getMenu();
-    if(!menu) return;
-
-    // Remove item de senha do menu Ações: agora fica no Perfil.
-    var senha = document.getElementById("cmfinAlterarSenhaMenuItem");
-    if(senha) senha.style.display = "none";
-
-    var box = document.getElementById("cmfinMenuFinalActions");
-    if(!box){
-      box = document.createElement("div");
-      box.id = "cmfinMenuFinalActions";
-      box.className = "cmfin-final-actions-box";
-      menu.insertBefore(box, menu.firstChild);
-    }
-
-    if(box.dataset.ready !== "1"){
-      box.innerHTML = "";
-      box.appendChild(makeBtn("Exportar p/ Computador", exportarComputador));
-      box.appendChild(makeBtn("Importar do Computador", importarComputador));
-      box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
-      box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
-      box.appendChild(sep());
-      box.appendChild(makeBtn("Pasta Backup", pastaBackup));
-      box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
-      box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
-      box.appendChild(sep());
-      box.appendChild(makeBtn("Resetar Dados", resetarFinal, true));
-      box.dataset.ready = "1";
-    }
-  }
-
-  function adicionarSenhaNoPerfil(){
-    // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
-    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
-
-    var page = document.getElementById("cmfinPerfilUsuarioPage");
-    if(!page || page.style.display === "none") return;
-    if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
-
-    var actions = page.querySelector(".cmfin-profile-actions");
-    if(!actions) return;
-
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "cmfinPerfilAlterarSenhaBtn";
-    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
-    btn.textContent = "Alterar Senha de Acesso";
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
-      else toast("Função de alteração de senha não encontrada.", "erro");
-    });
-
-    actions.insertBefore(btn, actions.firstChild);
-  }
-
-  function ensureStyle(){
-    if(document.getElementById("cmfin-final-menu-acoes-perfil-ajustes-style")) return;
-    var css = document.createElement("style");
-    css.id = "cmfin-final-menu-acoes-perfil-ajustes-style";
-    css.textContent = `
-      #menuAcoesTopo > *:not(#cmfinMenuFinalActions):not(input),
-      .actions-dropdown > *:not(#cmfinMenuFinalActions):not(input){
-        display:none !important;
-      }
-      #cmfinMenuFinalActions.cmfin-final-actions-box{
-        width:100% !important;
-        display:flex !important;
-        flex-direction:column !important;
-        gap:10px !important;
-        padding:0 !important;
-        margin:0 !important;
-      }
-      #cmfinMenuFinalActions .cmfin-final-action-btn{
-        width:100% !important;
-        min-height:44px !important;
-        height:auto !important;
-        display:flex !important;
-        align-items:center !important;
-        justify-content:flex-start !important;
-        text-align:left !important;
-        padding:12px 14px !important;
-        border-radius:13px !important;
-        border:1px solid rgba(15,23,42,.12) !important;
-        background:#fff !important;
-        color:#0f172a !important;
-        font-size:13px !important;
-        font-weight:900 !important;
-        letter-spacing:.01em !important;
-        box-shadow:none !important;
-        cursor:pointer !important;
-      }
-      #cmfinMenuFinalActions .cmfin-final-action-btn:hover{
-        background:rgba(15,61,50,.06) !important;
-        border-color:rgba(15,61,50,.18) !important;
-        transform:translateY(-1px);
-      }
-      #cmfinMenuFinalActions .cmfin-final-action-btn.danger{
-        color:#b91c1c !important;
-        border-color:rgba(185,28,28,.22) !important;
-        background:rgba(254,242,242,.98) !important;
-      }
-      #cmfinMenuFinalActions .cmfin-final-action-btn.danger:hover{
-        background:#fee2e2 !important;
-        border-color:rgba(185,28,28,.34) !important;
-      }
-      #cmfinMenuFinalActions .cmfin-final-action-separator{
-        height:1px !important;
-        width:100% !important;
-        background:rgba(15,23,42,.10) !important;
-        margin:4px 0 !important;
-      }
-      #cmfinAlterarSenhaMenuItem{display:none !important;}
-      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
-        background:#0f3d32 !important;
-        color:#fff !important;
-        border-color:#0f3d32 !important;
-      }
-    `;
-    document.head.appendChild(css);
-  }
-
-  function tick(){
-    ensureStyle();
-    montarMenuFinal();
-    adicionarSenhaNoPerfil();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){ tick(); setInterval(tick, 550); });
-  }else{
-    tick();
-    setInterval(tick, 550);
-  }
-
-  window.addEventListener("load", function(){
-    tick();
-    setTimeout(tick, 200);
-    setTimeout(tick, 900);
-  });
-
-  document.addEventListener("click", function(){
-    setTimeout(tick, 80);
-    setTimeout(tick, 260);
-  }, true);
-})();
-<\/script>
-
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -35957,5 +35537,174 @@ body.ello-modo-trocando .module.active {
     setTimeout(tick, 90);
     setTimeout(tick, 360);
   }, true);
+})();
+</script>
+
+<!-- CMFin — auditoria de estabilidade: troca de modo, módulos e scripts quebrados -->
+<style id="cmfin-auditoria-estabilidade-style">
+  .module:not(.active){ display:none !important; }
+  .module.active{ display:block !important; }
+  body.cmfin-mode-switching .content{ opacity:.72; pointer-events:none; }
+  body.cmfin-mode-switching *{ transition:none !important; animation:none !important; }
+  .nav button.nav-hidden{ display:none !important; }
+</style>
+<script id="cmfin-auditoria-estabilidade-js">
+(function(){
+  "use strict";
+  if(window.__cmfinAuditoriaEstabilidadeInstalada) return;
+  window.__cmfinAuditoriaEstabilidadeInstalada = true;
+
+  var modoBusy = false;
+  var renderTimer = null;
+
+  function call(fn){
+    try{ if(typeof fn === "function") return fn(); }catch(err){ console.warn("CMFin ajuste:", err); }
+  }
+
+  function modo(){
+    try{ return (typeof modoAtual !== "undefined" && modoAtual === "empresarial") ? "empresarial" : "pessoal"; }
+    catch(e){ return window.modoAtual === "empresarial" ? "empresarial" : "pessoal"; }
+  }
+
+  function setModo(valor){
+    valor = valor === "empresarial" ? "empresarial" : "pessoal";
+    try{ modoAtual = valor; }catch(e){}
+    window.modoAtual = valor;
+    return valor;
+  }
+
+  function moduloAtivo(){
+    return document.querySelector(".module.active")?.id || "dashboard";
+  }
+
+  function moduloPermitido(id, m){
+    if(!id || !document.getElementById(id)) return "dashboard";
+    if(m === "empresarial" && id === "terceiros") return "dashboard";
+    if(m === "pessoal" && (id === "pagamentosTerceirizados" || id === "pagamentosArquitetos")) return "dashboard";
+    return id;
+  }
+
+  function syncNavModo(){
+    var m = modo();
+    var btnP = document.getElementById("btnModoPessoal");
+    var btnE = document.getElementById("btnModoEmpresarial");
+    if(btnP) btnP.classList.toggle("active", m === "pessoal");
+    if(btnE) btnE.classList.toggle("active", m === "empresarial");
+
+    var indicador = document.getElementById("indicadorModoAtual");
+    if(indicador) indicador.innerText = m === "empresarial" ? "Modo Empresarial" : "Modo Pessoal";
+
+    var navTerceiros = document.getElementById("navTerceiros");
+    if(navTerceiros) navTerceiros.classList.toggle("nav-hidden", m === "empresarial");
+
+    ["navPagamentosTerceirizados", "navPagamentosArquitetos"].forEach(function(id){
+      var btn = document.getElementById(id);
+      if(btn) btn.classList.toggle("nav-hidden", m === "pessoal");
+    });
+  }
+
+  function syncModulo(id){
+    var m = modo();
+    var alvo = moduloPermitido(id || moduloAtivo(), m);
+    document.querySelectorAll(".module").forEach(function(el){ el.classList.toggle("active", el.id === alvo); });
+    document.querySelectorAll(".nav button").forEach(function(btn){ btn.classList.toggle("active", btn.getAttribute("data-module") === alvo); });
+
+    var mapas = {
+      dashboard:["Dashboard","CMFin — Gestão Financeira Inteligente para organizar entradas, saídas, cartões, metas e saldos de forma clara."],
+      gastosFixos:["Gastos Fixos","Cadastre custos recorrentes e acompanhe vencimentos."],
+      gastosVariaveis:["Gastos Variáveis","Controle despesas avulsas do dia a dia."],
+      pagamentosTerceirizados:["Equipe Técnica Externa","Controle arquitetos, engenheiros, renderistas, desenhistas e prestadores externos."],
+      pagamentosArquitetos:["Sócios e Pró-Labore","Controle pró-labore, bônus, distribuição de lucros, adiantamentos e reembolsos dos sócios."],
+      recebimentos:["Recebimentos","Registre salários, rendas extras e outras entradas."],
+      terceiros:["Gastos por Terceiros","Controle compras feitas por outras pessoas no seu cartão e acompanhe o que precisa receber."],
+      cofre:["Cofre","Planeje reserva financeira, caixa livre e saldos disponíveis."],
+      bancos:["Bancos e Cartões","Gerencie bancos, cartões, crédito, débito, Pix, saldos e movimentações."],
+      objetivos:["Objetivos","Cadastre metas financeiras e acompanhe o progresso de cada objetivo."],
+      documentos:["Notas & Documentos","Controle notas fiscais, vencimentos, comprovantes e lançamentos integrados aos gastos."],
+      relatorioContador:["Relatório Contador","Resumo mensal objetivo para conferência contábil e envio ao contador."],
+      analiseFinanceira:["Análise Financeira","Entenda se os recebimentos do mês cobrem seus gastos e quanto falta buscar."],
+      configuracoes:["Configurações","Ajustes gerais e regras do sistema."],
+      perfil:["Perfil","Dados do usuário, licença e segurança de acesso."]
+    };
+    var info = mapas[alvo] || mapas.dashboard;
+    var titulo = document.getElementById("tituloModulo");
+    var sub = document.getElementById("subtituloModulo");
+    if(titulo) titulo.innerText = info[0];
+    if(sub) sub.innerText = info[1];
+    return alvo;
+  }
+
+  function renderSeguro(){
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(function(){
+      try{ if(typeof atualizarSelects === "function") atualizarSelects(); }catch(e){ console.warn(e); }
+      try{ if(typeof preencherCategorias === "function") preencherCategorias(); }catch(e){ console.warn(e); }
+      try{ if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); }catch(e){ console.warn(e); }
+      try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){ console.warn(e); }
+      syncNavModo();
+      syncModulo(moduloAtivo());
+      document.body.classList.remove("cmfin-mode-switching");
+      modoBusy = false;
+    }, 80);
+  }
+
+  var mudarOriginal = (typeof window.mudarModulo === "function") ? window.mudarModulo : (typeof mudarModulo === "function" ? mudarModulo : null);
+  window.mudarModulo = mudarModulo = function(id){
+    id = moduloPermitido(id, modo());
+    var retorno;
+    try{ if(mudarOriginal) retorno = mudarOriginal.call(this, id); }
+    catch(e){ console.warn("CMFin mudarModulo original:", e); }
+    syncNavModo();
+    syncModulo(id);
+    if(window.innerWidth <= 1040) document.getElementById("sidebar")?.classList.remove("open");
+    return retorno;
+  };
+
+  var trocarOriginal = (typeof window.trocarModo === "function") ? window.trocarModo : (typeof trocarModo === "function" ? trocarModo : null);
+  window.trocarModo = trocarModo = function(novoModo){
+    novoModo = novoModo === "empresarial" ? "empresarial" : "pessoal";
+    if(modoBusy || novoModo === modo()) return;
+    modoBusy = true;
+    document.body.classList.add("cmfin-mode-switching");
+
+    var sx = window.scrollX || window.pageXOffset || 0;
+    var sy = window.scrollY || window.pageYOffset || 0;
+
+    try{ if(typeof salvarDados === "function") salvarDados(); }catch(e){ console.warn(e); }
+    setModo(novoModo);
+
+    try{
+      if(typeof carregarBaseStorage === "function" && typeof salvarBaseStorage === "function" && typeof criarDadosVazios === "function"){
+        var base = carregarBaseStorage() || {};
+        base.modoAtual = novoModo;
+        base.modos = base.modos || {};
+        base.modos[novoModo] = base.modos[novoModo] || criarDadosVazios();
+        salvarBaseStorage(base);
+        if(typeof aplicarSnapshot === "function") aplicarSnapshot(base.modos[novoModo]);
+      }else if(trocarOriginal){
+        trocarOriginal.call(this, novoModo);
+      }
+    }catch(e){ console.warn("CMFin trocarModo base:", e); }
+
+    syncNavModo();
+    syncModulo(moduloAtivo());
+    if(window.innerWidth <= 1040) document.getElementById("sidebar")?.classList.remove("open");
+
+    requestAnimationFrame(function(){
+      window.scrollTo(sx, sy);
+      renderSeguro();
+      setTimeout(function(){ window.scrollTo(sx, sy); }, 180);
+    });
+  };
+
+  function tick(){
+    try{ window.modoAtual = modo(); }catch(e){}
+    syncNavModo();
+    syncModulo(moduloAtivo());
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(tick, 120); });
+  else setTimeout(tick, 120);
+  window.addEventListener("load", function(){ setTimeout(tick, 250); setTimeout(tick, 900); });
 })();
 </script>
