@@ -36065,3 +36065,167 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   window.addEventListener("load", function(){ setTimeout(tick, 250); setTimeout(tick, 900); });
 })();
 </script>
+
+
+<!-- CMFin Correção Final: + Novo Registro como menu de atalhos e Terceiros renomeado -->
+<style id="cmfin-fix-novo-registro-final-style">
+  .nav button[data-module="cofre"]{display:none!important;}
+  .cmfin-novo-registro-final-wrap{position:relative!important;display:inline-flex!important;align-items:center!important;flex-shrink:0!important;}
+  .cmfin-novo-registro-final-menu[hidden]{display:none!important;}
+  .cmfin-novo-registro-final-menu{
+    position:absolute!important;top:calc(100% + 10px)!important;right:0!important;z-index:999999!important;
+    width:min(330px,calc(100vw - 28px))!important;padding:10px!important;border:1px solid rgba(15,23,42,.12)!important;
+    border-radius:18px!important;background:#fff!important;box-shadow:0 24px 60px rgba(2,14,33,.20)!important;
+  }
+  .cmfin-novo-registro-final-menu:before{content:"";position:absolute;top:-7px;right:30px;width:14px;height:14px;background:#fff;border-left:1px solid rgba(15,23,42,.12);border-top:1px solid rgba(15,23,42,.12);transform:rotate(45deg);}
+  .cmfin-novo-registro-final-head{padding:8px 10px 10px;margin-bottom:8px;border-bottom:1px solid #edf2f7;}
+  .cmfin-novo-registro-final-title{display:block;color:#0f172a;font-size:14px;font-weight:900;letter-spacing:-.01em;}
+  .cmfin-novo-registro-final-sub{display:block;margin-top:3px;color:#64748b;font-size:11px;line-height:1.35;font-weight:700;}
+  .cmfin-novo-registro-final-grid{display:grid;gap:7px;}
+  .cmfin-novo-registro-final-opcao{
+    width:100%;min-height:44px;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(15,23,42,.10);border-radius:14px;
+    background:#fff;color:#0f172a;font-size:13px;font-weight:900;text-align:left;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease;
+  }
+  .cmfin-novo-registro-final-opcao:hover{background:#f8fafc;border-color:rgba(15,61,50,.28);transform:translateY(-1px);}
+  .cmfin-novo-registro-final-icone{width:28px;height:28px;min-width:28px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:#eef6f3;color:#0b3b31;font-size:11px;font-weight:900;}
+  @media(max-width:760px){.cmfin-novo-registro-final-menu{right:auto!important;left:50%!important;transform:translateX(-50%)!important;width:min(340px,calc(100vw - 24px))!important}.cmfin-novo-registro-final-menu:before{right:50%;margin-right:-7px;}}
+</style>
+<script id="cmfin-fix-novo-registro-final-js">
+(function(){
+  "use strict";
+
+  var atalhos = [
+    { id:"gastosFixos", label:"Gastos Fixos", icon:"GF" },
+    { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"GV" },
+    { id:"recebimentos", label:"Recebimentos", icon:"R" },
+    { id:"terceiros", label:"Gastos por Terceiros", icon:"GT" },
+    { id:"bancos", label:"Bancos e Cartões", icon:"BC" },
+    { id:"objetivos", label:"Objetivos", icon:"O" },
+    { id:"analiseFinanceira", label:"Análise Financeira", icon:"AF" }
+  ];
+  var ordemMenu = ["dashboard","gastosVariaveis","gastosFixos","terceiros","pagamentosTerceirizados","pagamentosArquitetos","recebimentos","bancos","objetivos","analiseFinanceira","perfil","configuracoes"];
+
+  function normalizar(txt){
+    return String(txt||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+  }
+  function modoAtualSeguro(){
+    try{return (window.modoAtual === "empresarial" || modoAtual === "empresarial") ? "empresarial" : "pessoal";}catch(e){return "pessoal";}
+  }
+  function localizarBtnNovo(){
+    return document.getElementById("cmfinNovoRegistroBtn") || Array.prototype.slice.call(document.querySelectorAll("button")).find(function(btn){
+      var t = normalizar(btn.textContent);
+      return t === "+ novo registro" || t === "novo registro" || String(btn.getAttribute("onclick")||"").indexOf("acaoRapida") >= 0;
+    }) || null;
+  }
+  function fecharMenu(){
+    var menu = document.getElementById("cmfinNovoRegistroAtalhosFinal");
+    if(menu) menu.hidden = true;
+  }
+  function renomearTerceiros(){
+    document.querySelectorAll('.nav button[data-module="terceiros"]').forEach(function(btn){
+      var icon = btn.querySelector(".icon") ? btn.querySelector(".icon").outerHTML : '<span class="icon">☷</span>';
+      if(!/Gastos por Terceiros/i.test(btn.textContent)) btn.innerHTML = icon + 'Gastos por Terceiros';
+    });
+    var titulo = document.getElementById("tituloModulo");
+    var subtitulo = document.getElementById("subtituloModulo");
+    var ativo = document.querySelector(".module.active");
+    if(ativo && ativo.id === "terceiros"){
+      if(titulo) titulo.innerText = "Gastos por Terceiros";
+      if(subtitulo) subtitulo.innerText = "Controle compras feitas por outras pessoas no seu cartão e acompanhe o que precisa receber.";
+    }
+  }
+  function removerCofreEOrdenar(){
+    document.querySelectorAll('.nav button[data-module="cofre"]').forEach(function(btn){ btn.remove(); });
+    var cofre = document.getElementById("cofre");
+    if(cofre){ cofre.classList.remove("active"); cofre.setAttribute("aria-hidden","true"); }
+    var nav = document.querySelector(".nav");
+    if(nav){
+      ordemMenu.forEach(function(id){ var b = nav.querySelector('button[data-module="'+id+'"]'); if(b) nav.appendChild(b); });
+    }
+    renomearTerceiros();
+    var terceiro = document.querySelector('.nav button[data-module="terceiros"]');
+    if(terceiro) terceiro.classList.toggle("nav-hidden", modoAtualSeguro() === "empresarial");
+  }
+  function abrirModulo(id){
+    fecharMenu();
+    if(id === "terceiros" && modoAtualSeguro() === "empresarial"){
+      alert("Gastos por Terceiros está disponível no Modo Pessoal.");
+      return;
+    }
+    if(!document.getElementById(id)) id = "dashboard";
+    try{
+      if(typeof window.mudarModulo === "function") window.mudarModulo(id);
+      else if(typeof mudarModulo === "function") mudarModulo(id);
+    }catch(e){ console.warn("CMFin atalho módulo:", e); }
+    setTimeout(function(){ removerCofreEOrdenar(); }, 80);
+  }
+  function instalarMenu(){
+    var btn = localizarBtnNovo();
+    if(!btn) return;
+    btn.id = "cmfinNovoRegistroBtn";
+    btn.removeAttribute("onclick");
+    btn.onclick = null;
+
+    var wrap = btn.closest(".cmfin-novo-registro-final-wrap");
+    if(!wrap){
+      wrap = document.createElement("div");
+      wrap.className = "cmfin-novo-registro-final-wrap";
+      btn.parentNode.insertBefore(wrap, btn);
+      wrap.appendChild(btn);
+    }
+    var menu = document.getElementById("cmfinNovoRegistroAtalhosFinal");
+    if(menu && menu.parentNode !== wrap){ menu.remove(); menu = null; }
+    if(!menu){
+      menu = document.createElement("div");
+      menu.id = "cmfinNovoRegistroAtalhosFinal";
+      menu.className = "cmfin-novo-registro-final-menu";
+      menu.hidden = true;
+      menu.innerHTML = '<div class="cmfin-novo-registro-final-head"><span class="cmfin-novo-registro-final-title">Novo Registro</span><span class="cmfin-novo-registro-final-sub">Escolha a aba para abrir e cadastrar o lançamento.</span></div><div class="cmfin-novo-registro-final-grid">' +
+        atalhos.map(function(a){return '<button type="button" class="cmfin-novo-registro-final-opcao" data-cmfin-atalho="'+a.id+'"><span class="cmfin-novo-registro-final-icone">'+a.icon+'</span><span>'+a.label+'</span></button>';}).join("") +
+        '</div>';
+      wrap.appendChild(menu);
+    }
+  }
+  function alternarMenu(e){
+    if(e){ e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation(); }
+    instalarMenu();
+    var menu = document.getElementById("cmfinNovoRegistroAtalhosFinal");
+    if(menu) menu.hidden = !menu.hidden;
+  }
+  document.addEventListener("click", function(e){
+    var opcao = e.target.closest && e.target.closest("[data-cmfin-atalho]");
+    if(opcao){
+      e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      abrirModulo(opcao.getAttribute("data-cmfin-atalho"));
+      return;
+    }
+    var btn = localizarBtnNovo();
+    if(btn && (e.target === btn || (btn.contains && btn.contains(e.target)))){
+      alternarMenu(e);
+      return;
+    }
+    if(!(e.target.closest && e.target.closest(".cmfin-novo-registro-final-wrap"))) fecharMenu();
+  }, true);
+
+  var mudarOriginal = (typeof window.mudarModulo === "function") ? window.mudarModulo : null;
+  if(mudarOriginal && !window.__cmfinNovoRegistroFinalMudar){
+    window.__cmfinNovoRegistroFinalMudar = true;
+    window.mudarModulo = mudarModulo = function(id){
+      if(id === "cofre") id = "dashboard";
+      var r = mudarOriginal.apply(this, arguments.length ? [id] : arguments);
+      setTimeout(function(){ removerCofreEOrdenar(); renomearTerceiros(); }, 60);
+      return r;
+    };
+  }
+  var acaoOriginal = (typeof window.acaoRapida === "function") ? window.acaoRapida : null;
+  if(acaoOriginal && !window.__cmfinNovoRegistroFinalAcao){
+    window.__cmfinNovoRegistroFinalAcao = true;
+    window.acaoRapida = acaoRapida = function(ev){ alternarMenu(ev || window.event); };
+  }
+
+  function tick(){ instalarMenu(); removerCofreEOrdenar(); renomearTerceiros(); }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(tick, 80); }); else setTimeout(tick, 80);
+  window.addEventListener("load", function(){ setTimeout(tick, 200); setTimeout(tick, 800); });
+  setInterval(tick, 1200);
+})();
+</script>
