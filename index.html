@@ -33741,221 +33741,6 @@ body.ello-modo-trocando .module.active {
 
 
 
-<script id="cmfin-top-actions-nowrap-js">
-(function(){
-  "use strict";
-
-  function normalizar(txt){
-    return String(txt || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ");
-  }
-
-  function isTopActionText(txt){
-    txt = normalizar(txt);
-
-    return txt === "salvar na nuvem" ||
-           txt.indexOf("licenca ativa") >= 0 ||
-           txt === "sair" ||
-           txt === "acoes" ||
-           txt === "+ novo registro" ||
-           txt === "novo registro";
-  }
-
-  function cleanSairAndCloudIcons(el){
-    var txt = (el.textContent || "").trim();
-
-    txt = txt
-      .replace(/^☁️\s*/g, "")
-      .replace(/^☁\s*/g, "")
-      .replace(/^⎋\s*/g, "")
-      .replace(/^↪\s*/g, "")
-      .replace(/^↩\s*/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if(normalizar(txt) === "sair"){
-      el.textContent = "Sair";
-    }
-
-    if(normalizar(txt) === "carregar dados da nuvem"){
-      el.textContent = "Carregar Dados da Nuvem";
-    }
-  }
-
-  function findLikelyTopbar(){
-    var candidates = Array.prototype.slice.call(document.querySelectorAll("header, .topbar, .page-header, .toolbar, .actions, .header-actions, main > div, .content > div"));
-
-    var scored = candidates.map(function(el){
-      var txt = normalizar(el.textContent || "");
-      var score = 0;
-      if(txt.indexOf("salvar na nuvem") >= 0) score += 4;
-      if(txt.indexOf("licenca ativa") >= 0) score += 4;
-      if(txt.indexOf("novo registro") >= 0) score += 3;
-      if(txt.indexOf("acoes") >= 0) score += 2;
-      if(txt.indexOf("sair") >= 0) score += 1;
-
-      var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-      if(rect && rect.top < 180) score += 2;
-      if(rect && rect.height < 120) score += 1;
-
-      return {el:el, score:score};
-    }).filter(function(x){ return x.score >= 4; });
-
-    scored.sort(function(a,b){ return b.score - a.score; });
-    return scored.length ? scored[0].el : null;
-  }
-
-  function aplicar(){
-    var all = Array.prototype.slice.call(document.querySelectorAll("button, a, span, div"));
-
-    all.forEach(function(el){
-      cleanSairAndCloudIcons(el);
-
-      var txt = el.textContent || "";
-      if(isTopActionText(txt)){
-        el.classList.add("cmfin-nowrap-action");
-      }
-    });
-
-    // Localiza os botões de ação do topo e agrupa visualmente sem quebra.
-    var buttons = Array.prototype.slice.call(document.querySelectorAll("button, a")).filter(function(el){
-      return isTopActionText(el.textContent || "");
-    });
-
-    buttons.forEach(function(btn){
-      btn.classList.add("cmfin-top-fixed-button");
-      btn.style.whiteSpace = "nowrap";
-      btn.style.flexShrink = "0";
-      btn.style.wordBreak = "normal";
-      btn.style.overflowWrap = "normal";
-    });
-
-    // Aplica no container mais provável da barra superior.
-    var topbar = findLikelyTopbar();
-    if(topbar){
-      topbar.classList.add("cmfin-top-actions-fixed-row");
-    }
-
-    // Se o container direto dos botões for outro, corrige também.
-    buttons.forEach(function(btn){
-      var p = btn.parentElement;
-      if(!p) return;
-
-      var siblingText = normalizar(p.textContent || "");
-      if(
-        siblingText.indexOf("salvar na nuvem") >= 0 ||
-        siblingText.indexOf("licenca ativa") >= 0 ||
-        siblingText.indexOf("novo registro") >= 0 ||
-        siblingText.indexOf("acoes") >= 0
-      ){
-        p.classList.add("cmfin-top-actions-fixed-row");
-      }
-    });
-
-    // Garante que subtítulos/descritivos possam quebrar linha normalmente.
-    Array.prototype.slice.call(document.querySelectorAll("p, small, .subtitle, .description, .desc, [class*='desc'], [class*='subtitle']")).forEach(function(el){
-      el.classList.add("cmfin-allow-text-wrap");
-    });
-  }
-
-  function ensureStyle(){
-    if(document.getElementById("cmfin-top-actions-nowrap-style")) return;
-
-    var css = document.createElement("style");
-    css.id = "cmfin-top-actions-nowrap-style";
-    css.textContent = `
-      .cmfin-nowrap-action,
-      .cmfin-top-fixed-button{
-        white-space:nowrap !important;
-        word-break:normal !important;
-        overflow-wrap:normal !important;
-        flex-shrink:0 !important;
-        min-width:max-content !important;
-      }
-
-      .cmfin-top-actions-fixed-row{
-        display:flex !important;
-        align-items:center !important;
-        justify-content:flex-end !important;
-        flex-wrap:nowrap !important;
-        gap:10px !important;
-        min-width:max-content !important;
-        white-space:nowrap !important;
-      }
-
-      .cmfin-top-actions-fixed-row > *{
-        flex-shrink:0 !important;
-      }
-
-      .cmfin-top-actions-fixed-row button,
-      .cmfin-top-actions-fixed-row a,
-      .cmfin-top-actions-fixed-row span{
-        white-space:nowrap !important;
-        word-break:normal !important;
-        overflow-wrap:normal !important;
-      }
-
-      .cmfin-allow-text-wrap,
-      p.cmfin-allow-text-wrap,
-      small.cmfin-allow-text-wrap{
-        white-space:normal !important;
-        word-break:normal !important;
-        overflow-wrap:break-word !important;
-        min-width:0 !important;
-      }
-
-      /* Mantém o título + ações com comportamento consistente */
-      header,
-      .topbar,
-      .page-header,
-      .toolbar{
-        overflow:visible !important;
-      }
-
-      /* Em telas menores, a área de conteúdo pode encolher, mas os botões não quebram */
-      @media(max-width:1180px){
-        .cmfin-top-actions-fixed-row{
-          gap:8px !important;
-        }
-
-        .cmfin-top-fixed-button{
-          padding-left:12px !important;
-          padding-right:12px !important;
-        }
-      }
-    `;
-    document.head.appendChild(css);
-  }
-
-  function tick(){
-    ensureStyle();
-    aplicar();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 700);
-      tick();
-    });
-  }else{
-    setInterval(tick, 700);
-    tick();
-  }
-
-  document.addEventListener("click", function(){
-    setTimeout(tick, 100);
-    setTimeout(tick, 500);
-  }, true);
-
-  window.addEventListener("resize", function(){
-    setTimeout(tick, 120);
-  });
-})();
-</script>
 
 
 <script id="cmfin-info-perfil-estavel-js">
@@ -34282,6 +34067,114 @@ body.ello-modo-trocando .module.active {
     LAST_SIGNATURE = "";
     renderInfo(true);
   };
+})();
+</script>
+
+
+<script id="cmfin-top-actions-safe-nowrap-js">
+(function(){
+  "use strict";
+
+  function normalizar(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function limparIconesSimples(el){
+    if(!el) return;
+
+    var txt = String(el.textContent || "").trim()
+      .replace(/^☁️\s*/g, "")
+      .replace(/^☁\s*/g, "")
+      .replace(/^⎋\s*/g, "")
+      .replace(/^↪\s*/g, "")
+      .replace(/^↩\s*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    var n = normalizar(txt);
+
+    if(n === "sair"){
+      el.textContent = "Sair";
+    }
+
+    if(n === "carregar dados da nuvem"){
+      el.textContent = "Carregar Dados da Nuvem";
+    }
+  }
+
+  function isBotaoTopo(el){
+    var t = normalizar(el.textContent || "");
+
+    return t === "salvar na nuvem" ||
+           t.indexOf("licenca ativa") >= 0 ||
+           t === "sair" ||
+           t === "acoes" ||
+           t === "+ novo registro" ||
+           t === "novo registro";
+  }
+
+  function aplicar(){
+    var items = Array.prototype.slice.call(document.querySelectorAll("button, a, span"));
+
+    items.forEach(function(el){
+      limparIconesSimples(el);
+
+      if(isBotaoTopo(el)){
+        el.classList.add("cmfin-top-action-nowrap-only");
+      }
+    });
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-top-actions-safe-nowrap-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-top-actions-safe-nowrap-style";
+    css.textContent = `
+      .cmfin-top-action-nowrap-only{
+        white-space:nowrap !important;
+        word-break:normal !important;
+        overflow-wrap:normal !important;
+        flex-shrink:0 !important;
+      }
+
+      .cmfin-top-action-nowrap-only svg,
+      .cmfin-top-action-nowrap-only i{
+        display:none !important;
+      }
+
+      p, small, .subtitle, .description, .desc, [class*="desc"], [class*="subtitle"]{
+        white-space:normal;
+        overflow-wrap:break-word;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    aplicar();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 900);
+      tick();
+    });
+  }else{
+    setInterval(tick, 900);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 500);
+  }, true);
 })();
 </script>
 
