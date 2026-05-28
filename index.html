@@ -34790,3 +34790,165 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-ajuste-titulos-cofre-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function estaNoCofre(){
+    var titulo = document.getElementById("tituloModulo") || document.querySelector(".topbar h1, h1");
+    var t = norm(titulo ? titulo.textContent : "");
+    return t === "cofre" || t === "cofre pessoal" || t === "cofre empresarial";
+  }
+
+  function modoAtualCofre(){
+    try{
+      var ind = document.getElementById("indicadorModoAtual");
+      var txt = norm(ind ? ind.textContent : "");
+      if(txt.indexOf("empres") >= 0) return "empresarial";
+    }catch(e){}
+
+    try{
+      var titulo = document.getElementById("tituloModulo") || document.querySelector(".topbar h1, h1");
+      var txt2 = norm(titulo ? titulo.textContent : "");
+      if(txt2.indexOf("empres") >= 0) return "empresarial";
+    }catch(e){}
+
+    return "pessoal";
+  }
+
+  function titleCaseCofre(el, texto){
+    if(!el) return;
+    if((el.textContent || "").trim() !== texto){
+      el.textContent = texto;
+    }
+    el.classList.add("cmfin-cofre-title-standard");
+  }
+
+  function ajustarTitulosCofre(){
+    if(!estaNoCofre()) return;
+
+    var modo = modoAtualCofre();
+    var sufixo = modo === "empresarial" ? "Empresarial" : "Pessoal";
+
+    var todos = Array.prototype.slice.call(document.querySelectorAll(
+      "#cofre h2, #cofre h3, #cofre h4, #cofre .panel-title, #cofre .cofre-ref-copy h3, #cofre .cofre-form-pane h2, #cofre .cofre-form-pane h3, #cofre .cofre-summary-pane h2, #cofre .cofre-summary-pane h3, #cofre .panel-header h2, #cofre .panel-header h3, #cofre strong, #cofre .title"
+    ));
+
+    todos.forEach(function(el){
+      var t = norm(el.textContent);
+
+      if(t === "mes de referencia"){
+        titleCaseCofre(el, "Mês de Referência");
+      }
+
+      if(t === "reserva financeira pessoal" || t === "reserva financeira empresarial" || t === "reserva financeira"){
+        titleCaseCofre(el, "Reserva Financeira " + sufixo);
+      }
+
+      if(t === "resumo do caixa pessoal" || t === "resumo do caixa empresarial" || t === "resumo do caixa"){
+        titleCaseCofre(el, "Resumo do Caixa " + sufixo);
+      }
+
+      if(
+        t === "fechamento mensal e ajuste manual de caixa" ||
+        t.indexOf("fechamento mensal") >= 0 && t.indexOf("ajuste manual") >= 0
+      ){
+        titleCaseCofre(el, "Fechamento Mensal e Ajuste Manual de Caixa");
+      }
+    });
+
+    // Fallback para textos que não estejam em headings.
+    Array.prototype.slice.call(document.querySelectorAll("#cofre *")).forEach(function(el){
+      if(el.children && el.children.length > 0) return;
+
+      var t = norm(el.textContent);
+      if(!t) return;
+
+      if(t === "mes de referencia"){
+        titleCaseCofre(el, "Mês de Referência");
+      }
+
+      if(t === "reserva financeira pessoal" || t === "reserva financeira empresarial" || t === "reserva financeira"){
+        titleCaseCofre(el, "Reserva Financeira " + sufixo);
+      }
+
+      if(t === "resumo do caixa pessoal" || t === "resumo do caixa empresarial" || t === "resumo do caixa"){
+        titleCaseCofre(el, "Resumo do Caixa " + sufixo);
+      }
+
+      if(t === "fechamento mensal e ajuste manual de caixa"){
+        titleCaseCofre(el, "Fechamento Mensal e Ajuste Manual de Caixa");
+      }
+    });
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-ajuste-titulos-cofre-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-ajuste-titulos-cofre-style";
+    css.textContent = `
+      #cofre .cmfin-cofre-title-standard{
+        font-family:inherit !important;
+        color:#0f172a !important;
+        font-size:22px !important;
+        line-height:1.15 !important;
+        letter-spacing:-.035em !important;
+        font-weight:950 !important;
+        margin-top:0 !important;
+      }
+
+      #cofre .cofre-ref-copy .cmfin-cofre-title-standard,
+      #cofre .cofre-form-pane .cmfin-cofre-title-standard,
+      #cofre .cofre-summary-pane .cmfin-cofre-title-standard,
+      #cofre .panel-header .cmfin-cofre-title-standard{
+        font-size:22px !important;
+        line-height:1.15 !important;
+        letter-spacing:-.035em !important;
+        font-weight:950 !important;
+      }
+
+      /* Mantém o título principal da página independente */
+      #tituloModulo.cmfin-cofre-title-standard{
+        font-size:34px !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    ajustarTitulosCofre();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      tick();
+      setTimeout(tick, 300);
+      setTimeout(tick, 1000);
+      setInterval(tick, 1200);
+    });
+  }else{
+    tick();
+    setTimeout(tick, 300);
+    setTimeout(tick, 1000);
+    setInterval(tick, 1200);
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 150);
+    setTimeout(tick, 700);
+  }, true);
+})();
+</script>
+
