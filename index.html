@@ -24005,6 +24005,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 @media (max-width:1180px){.hero-body,.layout,.cats{grid-template-columns:1fr}.metrics,.hero-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.page{padding:92px 14px 24px}.print{top:12px;left:12px;padding:11px 15px}.hero{padding:18px}.hero-top{flex-direction:column;align-items:flex-start}.hero-title{font-size:24px}.hero-value{font-size:38px}.hero-kpis,.metrics,.quick-grid,.cats{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.metric .val{font-size:28px}.sec-head{flex-direction:column;align-items:flex-start}.tag{white-space:normal}}
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
+
+<style id="cmfin-terceiros-icon-estavel-style">
+  .nav button[data-module="terceiros"].cmfin-premium-nav-item .icon{display:none !important;}
+  .nav button[data-module="terceiros"] .cmfin-premium-nav-label{white-space:nowrap !important;}
+</style>
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -29867,30 +29872,47 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   "use strict";
 
   var atalhosNovoRegistro = [
-    {id:"gastosFixos", label:"Gastos Fixos", icon:"↻"},
-    {id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰"},
-    {id:"recebimentos", label:"Recebimentos", icon:"↓"},
-    {id:"terceiros", label:"Gastos por Terceiros", icon:"☷"},
-    {id:"bancos", label:"Bancos e Cartões", icon:"⌂"},
-    {id:"objetivos", label:"Objetivos", icon:"◎"},
-    {id:"analiseFinanceira", label:"Análise Financeira", icon:"!"}
+    { id:"gastosFixos", label:"Gastos Fixos", icon:"▤" },
+    { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰" },
+    { id:"recebimentos", label:"Recebimentos", icon:"↓" },
+    { id:"terceiros", label:"Gastos por Terceiros", icon:"☷" },
+    { id:"bancos", label:"Bancos e Cartões", icon:"▣" },
+    { id:"objetivos", label:"Objetivos", icon:"◎" },
+    { id:"analiseFinanceira", label:"Análise Financeira", icon:"▥" }
   ];
 
   function byId(id){ return document.getElementById(id); }
 
-  function garantirEstruturaNovoRegistro(){
-    var btn = byId("cmfinNovoRegistroBtn");
-    if(!btn) return;
+  function navegarParaModulo(id){
+    try{
+      if(typeof window.mudarModulo === "function"){
+        window.mudarModulo(id);
+      }else{
+        document.querySelectorAll(".module").forEach(function(m){ m.classList.remove("active"); });
+        var mod = byId(id);
+        if(mod) mod.classList.add("active");
+      }
+    }catch(e){ console.warn("Falha ao navegar pelo atalho:", e); }
+  }
 
+  function garantirEstruturaNovoRegistro(){
+    var btn = byId("cmfinNovoRegistroBtn") || Array.prototype.slice.call(document.querySelectorAll(".topbar .actions button")).find(function(b){
+      return /novo registro/i.test(b.textContent || "") || String(b.getAttribute("onclick") || "").indexOf("acaoRapida") >= 0;
+    });
+    if(!btn) return null;
+
+    var host = document.querySelector(".topbar .actions") || btn.parentElement;
     var wrap = byId("cmfinNovoRegistroWrap");
     if(!wrap){
       wrap = document.createElement("div");
       wrap.id = "cmfinNovoRegistroWrap";
       wrap.className = "novo-registro-wrap";
-      btn.parentNode.insertBefore(wrap, btn);
-      wrap.appendChild(btn);
     }
 
+    if(wrap.parentElement !== host){ host.insertBefore(wrap, host.firstChild); }
+    if(btn.parentElement !== wrap){ wrap.insertBefore(btn, wrap.firstChild); }
+
+    btn.id = "cmfinNovoRegistroBtn";
     btn.type = "button";
     btn.setAttribute("onclick", "alternarMenuNovoRegistro(event)");
     btn.textContent = "+ Novo Registro";
@@ -29901,10 +29923,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       menu.id = "menuNovoRegistro";
       menu.className = "novo-registro-dropdown";
       menu.setAttribute("aria-label", "Atalhos de Novo Registro");
-      wrap.appendChild(menu);
-    }else if(menu.parentElement !== wrap){
-      wrap.appendChild(menu);
     }
+    if(menu.parentElement !== wrap) wrap.appendChild(menu);
 
     if(menu.dataset.ready !== "1"){
       menu.innerHTML = "";
@@ -29916,26 +29936,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         b.addEventListener("click", function(ev){
           ev.preventDefault();
           ev.stopPropagation();
-          fecharMenuNovoRegistro();
+          window.fecharMenuNovoRegistro();
           navegarParaModulo(item.id);
         });
         menu.appendChild(b);
       });
       menu.dataset.ready = "1";
     }
-  }
-
-  function navegarParaModulo(id){
-    if(id === "cofre") id = "dashboard";
-    try{
-      if(typeof window.mudarModulo === "function"){
-        window.mudarModulo(id);
-      }else{
-        document.querySelectorAll(".module").forEach(function(m){ m.classList.remove("active"); });
-        var mod = byId(id);
-        if(mod) mod.classList.add("active");
-      }
-    }catch(e){ console.warn("Falha ao navegar pelo atalho:", e); }
+    return wrap;
   }
 
   window.fecharMenuNovoRegistro = function(){
@@ -29954,56 +29962,27 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   function aplicarMenuENavegacao(){
     garantirEstruturaNovoRegistro();
 
-    document.querySelectorAll('.nav button[data-module="cofre"]').forEach(function(btn){
-      btn.remove();
-    });
+    document.querySelectorAll('.nav button[data-module="cofre"]').forEach(function(btn){ btn.remove(); });
 
     var navTerceiros = document.querySelector('.nav button[data-module="terceiros"]');
     if(navTerceiros){
-      var icon = navTerceiros.querySelector(".icon");
-      navTerceiros.innerHTML = "";
-      if(icon){
+      if(!navTerceiros.classList.contains("cmfin-premium-nav-item")){
+        var icon = navTerceiros.querySelector(".icon");
+        navTerceiros.innerHTML = "";
+        if(!icon){ icon = document.createElement("span"); icon.className = "icon"; }
         icon.textContent = "☷";
         navTerceiros.appendChild(icon);
+        navTerceiros.appendChild(document.createTextNode("Gastos por Terceiros"));
       }else{
-        var span = document.createElement("span");
-        span.className = "icon";
-        span.textContent = "☷";
-        navTerceiros.appendChild(span);
+        var label = navTerceiros.querySelector(".cmfin-premium-nav-label");
+        if(label) label.textContent = "Gastos por Terceiros";
       }
-      navTerceiros.appendChild(document.createTextNode("Gastos por Terceiros"));
     }
 
-    var cofreAtivo = byId("cofre");
-    if(cofreAtivo && cofreAtivo.classList.contains("active")){
-      navegarParaModulo("dashboard");
+    var modTerceirosTitulo = document.querySelector('#terceiros .module-header h2, #terceiros h2');
+    if(modTerceirosTitulo && /terceiros/i.test(modTerceirosTitulo.textContent || "")){
+      modTerceirosTitulo.textContent = "Gastos por Terceiros";
     }
-
-    var fab = document.querySelector(".mobile-fab");
-    if(fab){
-      fab.setAttribute("onclick", "alternarMenuNovoRegistro(event)");
-      fab.setAttribute("title", "Novo Registro");
-    }
-
-    posicionarTopoFinal();
-  }
-
-  function posicionarTopoFinal(){
-    var host = document.querySelector(".topbar .actions");
-    if(!host) return;
-    var novoWrap = byId("cmfinNovoRegistroWrap") || byId("cmfinNovoRegistroBtn");
-    var acoes = host.querySelector(".actions-menu-wrap");
-    var badge = byId("cmfinLicenseBadge");
-    var logout = byId("cmfinLogoutBtn");
-    var file = byId("inputImportarDados");
-
-    [novoWrap, acoes, badge, logout, file].forEach(function(el){
-      if(el && el.parentElement !== host) host.appendChild(el);
-    });
-
-    [novoWrap, acoes, badge, logout, file].forEach(function(el){
-      if(el) host.appendChild(el);
-    });
   }
 
   var mudarModuloOriginalPatch = null;
@@ -30023,20 +30002,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     if(menu && wrap && !wrap.contains(ev.target)) menu.classList.remove("open");
   }, true);
 
-  document.addEventListener("keydown", function(ev){
-    if(ev.key === "Escape") fecharMenuNovoRegistro();
-  });
+  document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") window.fecharMenuNovoRegistro(); });
 
-  function tick(){
-    protegerMudarModulo();
-    aplicarMenuENavegacao();
-  }
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", tick);
-  else tick();
-
+  function tick(){ protegerMudarModulo(); aplicarMenuENavegacao(); }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", tick); else tick();
   window.addEventListener("load", function(){ tick(); setTimeout(tick, 250); setTimeout(tick, 900); });
-  setInterval(tick, 1200);
 })();
 </script>
 
@@ -35421,7 +35391,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     "gastos variaveis": "Gastos Variáveis",
     "recebimentos": "Recebimentos",
     "cofre": "Cofre",
-    "terceiros": "Terceiros",
+    "terceiros": "Gastos por Terceiros",
     "bancos e cartoes": "Bancos e Cartões",
     "objetivos": "Objetivos",
     "analise financeira": "Análise Financeira",
@@ -35455,7 +35425,13 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   function applyPremiumIcon(el, key){
     if(!key || !ICONS[key]) return;
 
-    if(el.getAttribute("data-cmfin-premium-icon") === key) return;
+    if(el.getAttribute("data-cmfin-premium-icon") === key){
+      if(key === "terceiros"){
+        var labelAtual = el.querySelector(".cmfin-premium-nav-label");
+        if(labelAtual) labelAtual.textContent = LABELS[key];
+      }
+      return;
+    }
 
     // Preserva onclick, classes e comportamento do botão; troca só o conteúdo visual.
     el.innerHTML = ''
@@ -35579,13 +35555,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tick();
       setTimeout(tick, 300);
       setTimeout(tick, 1000);
-      setInterval(tick, 1500);
     });
   }else{
     tick();
     setTimeout(tick, 300);
     setTimeout(tick, 1000);
-    setInterval(tick, 1500);
   }
 
   document.addEventListener("click", function(){
@@ -35602,202 +35576,95 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   "use strict";
 
   function norm(txt){
-    return String(txt || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ");
+    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
   }
 
-  function findNovo(host){
-    return document.getElementById("cmfinNovoRegistroBtn") ||
-      Array.prototype.slice.call(host.querySelectorAll("button")).find(function(btn){
-        var t = norm(btn.textContent);
-        return t === "+ novo registro" || t === "novo registro" || String(btn.getAttribute("onclick") || "").indexOf("acaoRapida") >= 0;
-      }) || null;
+  function findNovoWrap(host){
+    var wrap = document.getElementById("cmfinNovoRegistroWrap");
+    if(wrap) return wrap;
+    var btn = document.getElementById("cmfinNovoRegistroBtn") || Array.prototype.slice.call(host.querySelectorAll("button")).find(function(btn){
+      var t = norm(btn.textContent);
+      return t === "+ novo registro" || t === "novo registro" || String(btn.getAttribute("onclick") || "").indexOf("acaoRapida") >= 0;
+    });
+    if(!btn) return null;
+    wrap = document.createElement("div");
+    wrap.id = "cmfinNovoRegistroWrap";
+    wrap.className = "novo-registro-wrap";
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    return wrap;
   }
 
-  function findMenuWrap(host){
-    return host.querySelector(".actions-menu-wrap") || null;
-  }
-
-  function fecharMenuAcoesSeguro(){
-    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
-  }
+  function findMenuWrap(host){ return host.querySelector(".actions-menu-wrap") || null; }
+  function fecharMenuAcoesSeguro(){ try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){} }
 
   function moverSalvarParaAcoes(){
     var topSave = document.getElementById("cmfinCloudSaveTopBtn");
     if(topSave) topSave.remove();
-
-    var menu = document.getElementById("menuAcoesTopo") ||
-      document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+    var menu = document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
     if(!menu) return;
-
-    var existentes = Array.prototype.slice.call(menu.querySelectorAll("button")).filter(function(btn){
-      return norm(btn.textContent) === "salvar na nuvem";
-    });
-
-    if(existentes.length){
-      existentes.slice(1).forEach(function(btn){ btn.remove(); });
-      return;
-    }
-
+    var existentes = Array.prototype.slice.call(menu.querySelectorAll("button")).filter(function(btn){ return norm(btn.textContent) === "salvar na nuvem"; });
+    if(existentes.length){ existentes.slice(1).forEach(function(btn){ btn.remove(); }); return; }
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn btn-secondary cmfin-cloud-save-action-btn";
     btn.textContent = "Salvar na Nuvem";
     btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      fecharMenuAcoesSeguro();
+      e.preventDefault(); e.stopPropagation(); fecharMenuAcoesSeguro();
       if(typeof window.cmfinSalvarDadosNuvem === "function") window.cmfinSalvarDadosNuvem();
       else if(typeof window.salvarAgora === "function") window.salvarAgora();
     });
-
     menu.insertBefore(btn, menu.firstChild);
   }
 
   function ordenarTopo(){
     var host = document.querySelector(".topbar .actions");
     if(!host) return;
-
     host.classList.add("cmfin-actions-ordered-v2");
-
-    var novo = findNovo(host);
+    var novoWrap = findNovoWrap(host);
     var menuWrap = findMenuWrap(host);
     var badge = document.getElementById("cmfinLicenseBadge");
     var logout = document.getElementById("cmfinLogoutBtn");
     var input = document.getElementById("inputImportarDados");
-
-    if(novo){
-      novo.id = "cmfinNovoRegistroBtn";
-      novo.classList.add("cmfin-topbar-action-btn-v2");
-      host.appendChild(novo);
-    }
-
-    if(menuWrap){
-      menuWrap.classList.add("cmfin-topbar-action-wrap-v2");
-      host.appendChild(menuWrap);
-    }
-
-    if(badge){
-      badge.classList.add("cmfin-topbar-action-badge-v2");
-      host.appendChild(badge);
-    }
-
-    if(logout){
-      logout.classList.add("cmfin-topbar-action-btn-v2");
-      host.appendChild(logout);
-    }
-
-    if(input){
-      host.appendChild(input);
-    }
-
+    if(novoWrap){ novoWrap.classList.add("cmfin-topbar-action-wrap-v2"); host.appendChild(novoWrap); }
+    if(menuWrap){ menuWrap.classList.add("cmfin-topbar-action-wrap-v2"); host.appendChild(menuWrap); }
+    if(badge){ badge.classList.add("cmfin-topbar-action-badge-v2"); host.appendChild(badge); }
+    if(logout){ logout.classList.add("cmfin-topbar-action-btn-v2"); host.appendChild(logout); }
+    if(input){ host.appendChild(input); }
     moverSalvarParaAcoes();
   }
 
   function ensureStyle(){
     if(document.getElementById("cmfin-topbar-order-actions-v2-style")) return;
-
     var css = document.createElement("style");
     css.id = "cmfin-topbar-order-actions-v2-style";
     css.textContent = `
-      .topbar .actions.cmfin-actions-ordered-v2{
-        display:flex !important;
-        align-items:center !important;
-        justify-content:flex-end !important;
-        gap:10px !important;
-        flex-wrap:wrap !important;
-      }
-
-      .cmfin-actions-ordered-v2 #cmfinNovoRegistroBtn{order:1 !important;}
+      .topbar .actions.cmfin-actions-ordered-v2{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:10px !important;flex-wrap:wrap !important;}
+      .cmfin-actions-ordered-v2 #cmfinNovoRegistroWrap{order:1 !important;}
       .cmfin-actions-ordered-v2 .actions-menu-wrap{order:2 !important;}
       .cmfin-actions-ordered-v2 #cmfinLicenseBadge{order:3 !important;}
       .cmfin-actions-ordered-v2 #cmfinLogoutBtn{order:4 !important;}
       .cmfin-actions-ordered-v2 #inputImportarDados{order:99 !important;}
-
       .cmfin-actions-ordered-v2 #cmfinNovoRegistroBtn,
       .cmfin-actions-ordered-v2 .actions-menu-wrap > .btn,
       .cmfin-actions-ordered-v2 #cmfinLogoutBtn,
-      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{
-        min-height:46px !important;
-        height:46px !important;
-        display:inline-flex !important;
-        align-items:center !important;
-        justify-content:center !important;
-        box-sizing:border-box !important;
-        margin:0 !important;
-      }
-
-      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{
-        padding-top:0 !important;
-        padding-bottom:0 !important;
-      }
-
-      .cmfin-actions-ordered-v2 .actions-menu-wrap{
-        display:inline-flex !important;
-        align-items:center !important;
-        height:46px !important;
-        margin:0 !important;
-      }
-
-      .cmfin-actions-ordered-v2 .btn-menu-toggle{
-        font-size:14px !important;
-      }
-
-      .cmfin-actions-ordered-v2 .btn-menu-toggle span{
-        display:inline !important;
-        font-size:13px !important;
-        font-weight:800 !important;
-      }
-
-      .cmfin-actions-ordered-v2 #cmfinCloudSaveTopBtn{
-        display:none !important;
-      }
-
-      .actions-dropdown .cmfin-cloud-save-action-btn{
-        width:100% !important;
-        justify-content:flex-start !important;
-        text-align:left !important;
-        white-space:nowrap !important;
-      }
-
-      @media(max-width:700px){
-        .cmfin-actions-ordered-v2 .btn-menu-toggle span{display:inline !important;}
-        .topbar .actions.cmfin-actions-ordered-v2{justify-content:flex-start !important;}
-      }
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{min-height:46px !important;height:46px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;box-sizing:border-box !important;margin:0 !important;}
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{padding-top:0 !important;padding-bottom:0 !important;}
+      .cmfin-actions-ordered-v2 #cmfinNovoRegistroWrap,
+      .cmfin-actions-ordered-v2 .actions-menu-wrap{display:inline-flex !important;align-items:center !important;height:46px !important;margin:0 !important;position:relative !important;}
+      .cmfin-actions-ordered-v2 .btn-menu-toggle{font-size:14px !important;}
+      .cmfin-actions-ordered-v2 .btn-menu-toggle span{display:inline !important;font-size:13px !important;font-weight:800 !important;}
+      .cmfin-actions-ordered-v2 #cmfinCloudSaveTopBtn{display:none !important;}
+      .actions-dropdown .cmfin-cloud-save-action-btn{width:100% !important;justify-content:flex-start !important;text-align:left !important;white-space:nowrap !important;}
+      @media(max-width:700px){.cmfin-actions-ordered-v2 .btn-menu-toggle span{display:inline !important;}.topbar .actions.cmfin-actions-ordered-v2{justify-content:flex-start !important;}}
     `;
     document.head.appendChild(css);
   }
 
-  function tick(){
-    ensureStyle();
-    ordenarTopo();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      tick();
-      setInterval(tick, 650);
-    });
-  }else{
-    tick();
-    setInterval(tick, 650);
-  }
-
-  window.addEventListener("load", function(){
-    tick();
-    setTimeout(tick, 250);
-    setTimeout(tick, 900);
-    setTimeout(tick, 1800);
-  });
-
-  document.addEventListener("click", function(){
-    setTimeout(tick, 90);
-    setTimeout(tick, 360);
-  }, true);
+  function tick(){ ensureStyle(); ordenarTopo(); }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", tick); else tick();
+  window.addEventListener("load", function(){ tick(); setTimeout(tick, 250); setTimeout(tick, 900); });
+  document.addEventListener("click", function(){ setTimeout(tick, 90); setTimeout(tick, 360); }, true);
 })();
 </script>
 
