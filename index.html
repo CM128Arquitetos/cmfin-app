@@ -24120,6 +24120,47 @@ body.ello-modo-trocando .module.active {
 
 
 
+
+
+<!-- PATCH DE SEGURANÇA — Análise Financeira só aparece na própria aba -->
+<style id="cmfin-analise-somente-aba-css">
+  .module:not(.active)#analiseFinanceira{display:none !important; visibility:hidden !important; opacity:0 !important;}
+  .module.active#analiseFinanceira{display:block !important; visibility:visible !important; opacity:1 !important;}
+</style>
+<script id="cmfin-analise-somente-aba-js">
+(function(){
+  "use strict";
+  function corrigirVisibilidadeAnalise(){
+    var sec=document.getElementById("analiseFinanceira");
+    if(!sec) return;
+    if(sec.classList.contains("active")){
+      sec.style.display="block";
+      sec.style.visibility="visible";
+      sec.style.opacity="1";
+    }else{
+      sec.style.display="none";
+      sec.style.visibility="hidden";
+      sec.style.opacity="0";
+    }
+  }
+  var old=window.mudarModulo;
+  if(typeof old==="function" && !old.__cmfinAnaliseSomenteAba){
+    window.mudarModulo=function(id){
+      var r=old.apply(this,arguments);
+      setTimeout(corrigirVisibilidadeAnalise,0);
+      setTimeout(corrigirVisibilidadeAnalise,80);
+      setTimeout(corrigirVisibilidadeAnalise,300);
+      return r;
+    };
+    window.mudarModulo.__cmfinAnaliseSomenteAba=true;
+    try{ mudarModulo=window.mudarModulo; }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",corrigirVisibilidadeAnalise);
+  else corrigirVisibilidadeAnalise();
+  window.addEventListener("load",function(){corrigirVisibilidadeAnalise(); setTimeout(corrigirVisibilidadeAnalise,500);});
+  setInterval(corrigirVisibilidadeAnalise,1000);
+})();
+</script>
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -29804,18 +29845,27 @@ body.ello-modo-trocando .module.active {
   }
   function repararAnaliseFinanceira(){
     var sec=document.getElementById("analiseFinanceira"); if(!sec) return;
+    var ativa = sec.classList.contains("active");
     sec.classList.add("cmfin-force-visible");
-    if(sec.classList.contains("active")){
-      sec.style.display="block";
-      sec.style.visibility="visible";
-      sec.style.opacity="1";
-      var shell=sec.querySelector(".analysis-shell");
-      if(shell && !shell.children.length){
-        shell.innerHTML='<div class="panel"><h2>Análise Financeira</h2><p>O conteúdo será recalculado ao renderizar o sistema.</p></div>';
-      }
-      try{ if(typeof window.renderizarTudo === "function") window.renderizarTudo(); }catch(e){}
-      try{ if(typeof window.renderizarAnaliseFinanceira === "function"){ var mes=document.getElementById("filtroMes")?.value || document.getElementById("mesDashboard")?.value || new Date().toISOString().slice(0,7); window.renderizarAnaliseFinanceira(mes,0,0,0); }}catch(e){}
+
+    // Correção importante: quando sair da aba Análise Financeira,
+    // remove o display:block inline criado pelo reparo anterior.
+    // Assim a seção volta a respeitar o controle normal das abas.
+    if(!ativa){
+      sec.style.display="none";
+      sec.style.visibility="";
+      sec.style.opacity="";
+      return;
     }
+
+    sec.style.display="block";
+    sec.style.visibility="visible";
+    sec.style.opacity="1";
+    var shell=sec.querySelector(".analysis-shell");
+    if(shell && !shell.children.length){
+      shell.innerHTML='<div class="panel"><h2>Análise Financeira</h2><p>O conteúdo será recalculado ao renderizar o sistema.</p></div>';
+    }
+    try{ if(typeof window.renderizarAnaliseFinanceira === "function"){ var mes=(document.getElementById("filtroMes")&&document.getElementById("filtroMes").value) || (document.getElementById("mesDashboard")&&document.getElementById("mesDashboard").value) || new Date().toISOString().slice(0,7); window.renderizarAnaliseFinanceira(mes,0,0,0); }}catch(e){}
   }
   function atualizarTitulo(){
     var t=document.getElementById("tituloModulo");
