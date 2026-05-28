@@ -29120,6 +29120,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       cliente: u.cliente || u.usuario,
       licenca: u.licenca,
       validade: u.validade || null,
+      tipo_usuario: u.tipo_usuario || "usuario",
+      acesso_vitalicio: !!u.acesso_vitalicio,
+      bloqueado: !!u.bloqueado,
+      limite_dispositivos: Number(u.limite_dispositivos || 1),
       dispositivo: getDeviceId(),
       lembradoEm: new Date().toISOString()
     }));
@@ -29137,9 +29141,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     storage.setItem(CMFIN_AUTH_KEY, JSON.stringify({
       autenticado: true,
       usuario: u.usuario,
+      senha: u.senha || "",
       cliente: u.cliente || u.usuario,
       licenca: u.licenca,
       validade: u.validade || null,
+      tipo_usuario: u.tipo_usuario || "usuario",
+      acesso_vitalicio: !!u.acesso_vitalicio,
+      bloqueado: !!u.bloqueado,
+      limite_dispositivos: Number(u.limite_dispositivos || 1),
       dispositivo: getDeviceId(),
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
@@ -29208,30 +29217,162 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     return window.cmfinSupabaseClient;
   }
 
-  async function validarSupabase(usuario, senha, licenca){
-    var client = getSupabaseClient();
-
-    var { data, error } = await client.rpc("cmfin_ativar_licenca", {
-      p_usuario: normalizar(usuario),
-      p_senha: normalizar(senha),
-      p_licenca: normalizarLicenca(licenca),
-      p_device_id: getDeviceId()
-    });
-
-    if(error){
-      console.error("Erro Supabase:", error);
-      return {
-        ok: false,
-        mensagem: "Erro ao consultar o servidor de licenças. Verifique se a função e as permissões foram criadas no Supabase."
-      };
-    }
-
+  function cmfinNormalizarRetornoLicenca(data, fallback){
+    fallback = fallback || {};
     if(Array.isArray(data)) data = data[0];
     if(typeof data === "string"){
       try { data = JSON.parse(data); } catch(e){}
     }
+    data = data || {};
+    return {
+      ok: !!data.ok,
+      mensagem: data.mensagem || data.message || "",
+      usuario: data.usuario || fallback.usuario || "",
+      cliente: data.cliente || data.nome || fallback.cliente || data.usuario || fallback.usuario || "Cliente",
+      licenca: data.licenca || fallback.licenca || "",
+      validade: data.validade || null,
+      tipo_usuario: data.tipo_usuario || "usuario",
+      acesso_vitalicio: data.acesso_vitalicio === true || data.acesso_vitalicio === "true",
+      bloqueado: data.bloqueado === true || data.bloqueado === "true",
+      limite_dispositivos: Number(data.limite_dispositivos || 1)
+    };
+  }
 
-    return data || { ok:false, mensagem:"Resposta vazia do servidor de licenças." };
+  function cmfinEhAdmin(row){
+    return String(row?.tipo_usuario || "").toLowerCase() === "admin" || row?.acesso_vitalicio === true;
+  }
+
+  function cmfinStatusBloqueado(row){
+    var status = String(row?.status || "").toLowerCase();
+    return row?.bloqueado === true || ["bloqueada", "bloqueado", "cancelada", "cancelado", "inativa", "inativo"].includes(status);
+  }
+
+  function cmfinListaDispositivos(row){
+    var lista = row?.dispositivos_autorizados || [];
+    if(typeof lista === "string"){
+      try { lista = JSON.parse(lista); } catch(e){ lista = []; }
+    }
+    if(!Array.isArray(lista)) lista = [];
+    return lista.map(function(item){
+      if(typeof item === "string") return { id: item, nome: "Dispositivo autorizado", criado_em: null, ultimo_login: null };
+      return item || {};
+    }).filter(function(item){ return !!item.id; });
+  }
+
+  async function validarLicencaDiretoTabela(usuario, senha, licenca, mensagemOriginal){
+    var client = getSupabaseClient();
+    var deviceId = getDeviceId();
+    var hoje = hojeISO();
+
+    var query = client
+      .from("licencas")
+      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,limite_dispositivos,dispositivos_autorizados")
+      .eq("usuario", normalizar(usuario))
+      .eq("senha", normalizar(senha))
+      .eq("licenca", normalizarLicenca(licenca))
+      .maybeSingle();
+
+    var { data: row, error } = await query;
+    if(error){
+      console.warn("Falha no fallback direto da tabela licencas:", error);
+      return { ok:false, mensagem: mensagemOriginal || "Não foi possível validar a licença no servidor." };
+    }
+    if(!row) return { ok:false, mensagem:"Usuário, senha ou licença inválidos." };
+
+    if(cmfinStatusBloqueado(row)){
+      return { ok:false, mensagem:"Acesso bloqueado pelo administrador." };
+    }
+
+    var ehAdmin = cmfinEhAdmin(row);
+    if(!ehAdmin && row.validade && String(row.validade).slice(0,10) < hoje){
+      return { ok:false, mensagem:"Licença vencida. Entre em contato para renovar o acesso." };
+    }
+    if(!ehAdmin && !row.validade){
+      return { ok:false, mensagem:"Licença sem validade definida. Entre em contato com o suporte." };
+    }
+
+    var limite = ehAdmin ? Number(row.limite_dispositivos || 999) : Number(row.limite_dispositivos || 1);
+    if(!Number.isFinite(limite) || limite < 1) limite = ehAdmin ? 999 : 1;
+
+    var dispositivos = cmfinListaDispositivos(row);
+    var jaExiste = dispositivos.some(function(d){ return d.id === deviceId; });
+
+    // Compatibilidade com o controle antigo de apenas um device_id.
+    if(!jaExiste && row.device_id && row.device_id === deviceId){
+      jaExiste = true;
+      dispositivos.push({ id: deviceId, nome: "Dispositivo principal", criado_em: row.ativada_em || new Date().toISOString(), ultimo_login: new Date().toISOString() });
+    }
+
+    if(!jaExiste){
+      if(dispositivos.length >= limite){
+        return { ok:false, mensagem:"Limite de dispositivos atingido para esta licença." };
+      }
+      dispositivos.push({
+        id: deviceId,
+        nome: ehAdmin ? "Dispositivo do administrador" : "Dispositivo autorizado",
+        criado_em: new Date().toISOString(),
+        ultimo_login: new Date().toISOString()
+      });
+    }else{
+      dispositivos = dispositivos.map(function(d){
+        if(d.id !== deviceId) return d;
+        d.ultimo_login = new Date().toISOString();
+        return d;
+      });
+    }
+
+    var updatePayload = {
+      status: "ativada",
+      ultimo_login: new Date().toISOString(),
+      device_id: row.device_id || deviceId,
+      dispositivos_autorizados: dispositivos
+    };
+    if(!row.ativada_em) updatePayload.ativada_em = new Date().toISOString();
+
+    var { error: upErr } = await client.from("licencas").update(updatePayload).eq("id", row.id);
+    if(upErr){
+      console.warn("Licença validada, mas não foi possível atualizar dispositivos:", upErr);
+    }
+
+    return {
+      ok: true,
+      usuario: row.usuario,
+      cliente: row.cliente || row.usuario,
+      licenca: row.licenca,
+      validade: ehAdmin ? null : (row.validade || null),
+      tipo_usuario: row.tipo_usuario || (ehAdmin ? "admin" : "usuario"),
+      acesso_vitalicio: !!row.acesso_vitalicio || ehAdmin,
+      bloqueado: !!row.bloqueado,
+      limite_dispositivos: limite
+    };
+  }
+
+  async function validarSupabase(usuario, senha, licenca){
+    var client = getSupabaseClient();
+    var fallback = { usuario: normalizar(usuario), licenca: normalizarLicenca(licenca) };
+
+    try{
+      var { data, error } = await client.rpc("cmfin_ativar_licenca", {
+        p_usuario: normalizar(usuario),
+        p_senha: normalizar(senha),
+        p_licenca: normalizarLicenca(licenca),
+        p_device_id: getDeviceId()
+      });
+
+      if(!error){
+        var r = cmfinNormalizarRetornoLicenca(data, fallback);
+        if(r.ok || !normalizar(senha)) return r;
+        // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
+        var direto = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
+        return direto || r;
+      }
+
+      console.error("Erro Supabase RPC:", error);
+      return await validarLicencaDiretoTabela(usuario, senha, licenca, "Erro ao consultar o servidor de licenças.");
+    }catch(err){
+      console.error("Erro geral na validação CMFin:", err);
+      return await validarLicencaDiretoTabela(usuario, senha, licenca, "Erro ao consultar o servidor de licenças.");
+    }
   }
 
   function posicionarControlesTopo(){
@@ -29281,7 +29422,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       document.body.appendChild(b);
     }
 
-    var val = s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "";
+    var ehAdmin = String(s.tipo_usuario || "").toLowerCase() === "admin" || s.acesso_vitalicio === true;
+    var val = ehAdmin ? " · Admin · Acesso vitalício" : (s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "");
     b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + val;
     posicionarControlesTopo();
   }
@@ -29309,7 +29451,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         senha: salvo.senha,
         cliente: resultado.cliente || salvo.cliente || salvo.usuario,
         licenca: resultado.licenca || salvo.licenca,
-        validade: resultado.validade || salvo.validade || null
+        validade: resultado.validade || salvo.validade || null,
+        tipo_usuario: resultado.tipo_usuario || salvo.tipo_usuario || "usuario",
+        acesso_vitalicio: !!(resultado.acesso_vitalicio || salvo.acesso_vitalicio),
+        bloqueado: !!resultado.bloqueado,
+        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1)
       };
 
       salvarSessao(u, localStorage);
@@ -29368,7 +29514,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         senha: sessao.senha,
         cliente: resultado.cliente || sessao.cliente,
         licenca: resultado.licenca || sessao.licenca,
-        validade: resultado.validade || sessao.validade
+        validade: resultado.validade || sessao.validade,
+        tipo_usuario: resultado.tipo_usuario || sessao.tipo_usuario || "usuario",
+        acesso_vitalicio: !!(resultado.acesso_vitalicio || sessao.acesso_vitalicio),
+        bloqueado: !!resultado.bloqueado,
+        limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1)
       }, storage);
 
       ocultarErro();
@@ -29436,7 +29586,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             senha: senhaDigitada,
             cliente: r.cliente || r.nome || r.usuario || "Cliente",
             licenca: r.licenca || (licencaEl ? licencaEl.value : ""),
-            validade: r.validade || null
+            validade: r.validade || null,
+            tipo_usuario: r.tipo_usuario || "usuario",
+            acesso_vitalicio: !!r.acesso_vitalicio,
+            bloqueado: !!r.bloqueado,
+            limite_dispositivos: Number(r.limite_dispositivos || 1)
           };
 
           if(lembrarEl && lembrarEl.checked) {
