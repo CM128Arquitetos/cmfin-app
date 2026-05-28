@@ -25315,14 +25315,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
   function documentosInjetarInterface(){
     const btnExistente=document.querySelector('.nav button[data-module="documentos"]');
-    if(btnExistente) btnExistente.innerHTML='<span class="icon">▣</span>Notas & Documentos';
+    if(btnExistente){ btnExistente.classList.add('cmfin-premium-nav-item'); btnExistente.setAttribute('data-cmfin-premium-icon','notas & documentos'); btnExistente.innerHTML='<span class="cmfin-premium-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h7l3 3V19a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"></path><path d="M16 3.5V7h3"></path><path d="M10 11h6"></path><path d="M10 14.5h6"></path><path d="M10 18h4"></path><rect x="4" y="5" width="10" height="14" rx="2"></rect></svg></span><span class="cmfin-premium-nav-label">Notas &amp; Documentos</span>'; }
     if(!btnExistente){
       const btnObjetivos=document.querySelector('.nav button[data-module="objetivos"]');
       const btnInvest=document.querySelector('.nav button[data-module="investimentos"]');
       const btn=document.createElement('button');
       btn.setAttribute('data-module','documentos');
       btn.setAttribute('onclick',"mudarModulo('documentos')");
-      btn.innerHTML='<span class="icon">▣</span>Notas & Documentos';
+      btn.classList.add('cmfin-premium-nav-item'); btn.setAttribute('data-cmfin-premium-icon','notas & documentos'); btn.innerHTML='<span class="cmfin-premium-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5h7l3 3V19a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"></path><path d="M16 3.5V7h3"></path><path d="M10 11h6"></path><path d="M10 14.5h6"></path><path d="M10 18h4"></path><rect x="4" y="5" width="10" height="14" rx="2"></rect></svg></span><span class="cmfin-premium-nav-label">Notas &amp; Documentos</span>';
       const btnAnalise=document.querySelector('.nav button[data-module="analiseFinanceira"]');
       const btnConfig=document.querySelector('.nav button[data-module="configuracoes"]');
       if(btnObjetivos&&btnObjetivos.parentNode)btnObjetivos.insertAdjacentElement('afterend',btn);
