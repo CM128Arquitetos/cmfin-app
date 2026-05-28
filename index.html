@@ -34597,12 +34597,10 @@ body.ello-modo-trocando .module.active {
     var titulo = getTituloAtual();
 
     if(titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial") return true;
-
     if(sidebarPerfilAtivo()) return true;
 
     var page = document.getElementById("cmfinPerfilUsuarioPage");
     if(page && page.classList.contains("active") && page.style.display !== "none"){
-      // Só considera perfil ativo se nenhum outro módulo padrão estiver ativo/visível.
       var moduloAtivo = Array.prototype.slice.call(document.querySelectorAll(".module.active")).find(function(m){
         return m.id && m.id !== "cmfinPerfilUsuarioPage";
       });
@@ -34615,7 +34613,6 @@ body.ello-modo-trocando .module.active {
 
   function ocultarPerfilForaDaAba(){
     var perfilAtivo = estaNaAbaPerfil();
-
     document.body.classList.toggle("cmfin-perfil-ativo", perfilAtivo);
 
     var profilePage = document.getElementById("cmfinPerfilUsuarioPage");
@@ -34624,7 +34621,6 @@ body.ello-modo-trocando .module.active {
       profilePage.classList.remove("active");
     }
 
-    // Oculta qualquer bloco/card de Perfil que tenha ficado solto em qualquer aba.
     if(!perfilAtivo){
       Array.prototype.slice.call(document.querySelectorAll(
         ".cmfin-profile-hero, .cmfin-profile-card, .cmfin-profile-shell, .cmfin-profile-page"
@@ -34654,18 +34650,30 @@ body.ello-modo-trocando .module.active {
     });
   }
 
-  function ajustarIconePerfil(){
-    var nodes = Array.prototype.slice.call(document.querySelectorAll("button, a, .nav-item, [role='button']"));
+  function ajustarSomenteIconePerfil(){
+    var perfilBtn = document.getElementById("cmfinPerfilNavBtn");
 
+    var nodes = Array.prototype.slice.call(document.querySelectorAll("button, a, .nav-item, [role='button']"));
     nodes.forEach(function(el){
       var texto = norm(el.textContent);
       if(texto === "perfil" || texto.indexOf(" perfil") >= 0){
-        el.classList.add("cmfin-sidebar-profile-white");
+        el.classList.add("cmfin-profile-icon-only-white");
+
+        // Marca apenas o primeiro elemento visual como ícone, sem mexer no texto.
+        var icon = el.querySelector(".icon, svg, i") || el.querySelector("span:first-child");
+        if(icon){
+          icon.classList.add("cmfin-profile-user-icon-white");
+        }
       }
     });
 
-    var perfilBtn = document.getElementById("cmfinPerfilNavBtn");
-    if(perfilBtn) perfilBtn.classList.add("cmfin-sidebar-profile-white");
+    if(perfilBtn){
+      perfilBtn.classList.add("cmfin-profile-icon-only-white");
+      var iconBtn = perfilBtn.querySelector(".icon, svg, i") || perfilBtn.querySelector("span:first-child");
+      if(iconBtn){
+        iconBtn.classList.add("cmfin-profile-user-icon-white");
+      }
+    }
   }
 
   function ensureStyle(){
@@ -34684,7 +34692,7 @@ body.ello-modo-trocando .module.active {
         font-weight:950 !important;
       }
 
-      /* Regra principal: Perfil só aparece dentro da aba Perfil */
+      /* Perfil só aparece dentro da aba Perfil */
       body:not(.cmfin-perfil-ativo) #cmfinPerfilUsuarioPage,
       body:not(.cmfin-perfil-ativo) .cmfin-profile-page,
       body:not(.cmfin-perfil-ativo) .cmfin-profile-hero,
@@ -34693,31 +34701,35 @@ body.ello-modo-trocando .module.active {
         display:none !important;
       }
 
-      /* Quando estiver na aba Perfil, libera a exibição normal */
       body.cmfin-perfil-ativo #cmfinPerfilUsuarioPage{
         display:block;
       }
 
-      /* Ícone da aba Perfil em branco */
-      .cmfin-sidebar-profile-white,
-      .cmfin-sidebar-profile-white *,
-      #cmfinPerfilNavBtn,
-      #cmfinPerfilNavBtn *{
+      /*
+        Correção solicitada:
+        somente o ícone do boneco fica branco.
+        O texto "Perfil" segue a cor/estado original do menu.
+      */
+      .cmfin-profile-icon-only-white .cmfin-profile-user-icon-white{
         color:#fff !important;
+        opacity:1 !important;
       }
 
-      .cmfin-sidebar-profile-white svg,
-      #cmfinPerfilNavBtn svg{
+      .cmfin-profile-icon-only-white .cmfin-profile-user-icon-white svg,
+      .cmfin-profile-icon-only-white .cmfin-profile-user-icon-white path{
         color:#fff !important;
         fill:currentColor !important;
         stroke:currentColor !important;
       }
 
-      .cmfin-sidebar-profile-white .icon,
-      #cmfinPerfilNavBtn .icon,
-      #cmfinPerfilNavBtn span:first-child{
+      .cmfin-profile-icon-only-white > span:first-child{
         color:#fff !important;
         opacity:1 !important;
+      }
+
+      .cmfin-profile-icon-only-white.active > span:not(:first-child),
+      .cmfin-profile-icon-only-white.active{
+        /* não força cor branca no texto/botão ativo */
       }
     `;
     document.head.appendChild(css);
@@ -34755,7 +34767,7 @@ body.ello-modo-trocando .module.active {
     ensureStyle();
     ocultarPerfilForaDaAba();
     ajustarTituloPainelExecutivo();
-    ajustarIconePerfil();
+    ajustarSomenteIconePerfil();
   }
 
   if(document.readyState === "loading"){
