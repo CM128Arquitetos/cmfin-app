@@ -8746,7 +8746,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <button id="navPagamentosTerceirizados" data-module="pagamentosTerceirizados" onclick="mudarModulo('pagamentosTerceirizados')"><span class="icon">▦</span>Equipe Técnica Externa</button>
         <button id="navPagamentosArquitetos" data-module="pagamentosArquitetos" onclick="mudarModulo('pagamentosArquitetos')"><span class="icon">▧</span>Sócios e Pró-Labore</button>
         <button data-module="recebimentos" onclick="mudarModulo('recebimentos')"><span class="icon">↓</span>Recebimentos</button>
-        <button data-module="cofre" onclick="mudarModulo('cofre')"><span class="icon">▣</span>Cofre</button>
         <button id="navTerceiros" data-module="terceiros" onclick="mudarModulo('terceiros')"><span class="icon">☷</span>Terceiros</button>
         <button data-module="bancos" onclick="mudarModulo('bancos')"><span class="icon">⌂</span>Bancos e Cartões</button>
         <button data-module="analiseFinanceira" onclick="mudarModulo('analiseFinanceira')"><span class="icon">!</span>Análise Financeira</button>
@@ -24003,6 +24002,364 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 @media (max-width:1180px){.hero-body,.layout,.cats{grid-template-columns:1fr}.metrics,.hero-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.page{padding:92px 14px 24px}.print{top:12px;left:12px;padding:11px 15px}.hero{padding:18px}.hero-top{flex-direction:column;align-items:flex-start}.hero-title{font-size:24px}.hero-value{font-size:38px}.hero-kpis,.metrics,.quick-grid,.cats{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.metric .val{font-size:28px}.sec-head{flex-direction:column;align-items:flex-start}.tag{white-space:normal}}
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
+
+
+<!-- CMFin Ajuste: remover Cofre do menu e transformar + Novo Registro em atalhos -->
+<style id="cmfin-ajuste-sem-cofre-novo-registro-style">
+  .nav button[data-module="cofre"],
+  #cmfinNovoRegistroAtalhos[hidden]{
+    display:none !important;
+  }
+
+  .cmfin-novo-registro-wrap{
+    position:relative !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    flex-shrink:0 !important;
+  }
+
+  .cmfin-novo-registro-menu{
+    position:absolute;
+    top:calc(100% + 10px);
+    right:0;
+    width:min(310px, calc(100vw - 32px));
+    padding:10px;
+    border:1px solid rgba(15,23,42,.10);
+    border-radius:18px;
+    background:#fff;
+    box-shadow:0 22px 55px rgba(2,14,33,.18);
+    z-index:99999;
+  }
+
+  .cmfin-novo-registro-menu::before{
+    content:"";
+    position:absolute;
+    top:-7px;
+    right:28px;
+    width:14px;
+    height:14px;
+    background:#fff;
+    border-left:1px solid rgba(15,23,42,.10);
+    border-top:1px solid rgba(15,23,42,.10);
+    transform:rotate(45deg);
+  }
+
+  .cmfin-novo-registro-head{
+    padding:8px 10px 10px;
+    border-bottom:1px solid rgba(15,23,42,.08);
+    margin-bottom:8px;
+  }
+
+  .cmfin-novo-registro-title{
+    display:block;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:#0b2f27;
+  }
+
+  .cmfin-novo-registro-sub{
+    display:block;
+    margin-top:2px;
+    font-size:11px;
+    line-height:1.35;
+    color:#64748b;
+    font-weight:700;
+  }
+
+  .cmfin-novo-registro-opcao{
+    width:100%;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    margin:0 0 7px;
+    border:1px solid rgba(15,23,42,.10);
+    border-radius:14px;
+    background:#fff;
+    color:#0f172a;
+    font-size:13px;
+    font-weight:900;
+    text-align:left;
+    cursor:pointer;
+    transition:background .18s ease, border-color .18s ease, transform .18s ease;
+  }
+
+  .cmfin-novo-registro-opcao:hover{
+    background:#f8fafc;
+    border-color:rgba(15,61,50,.25);
+    transform:translateY(-1px);
+  }
+
+  .cmfin-novo-registro-icone{
+    width:28px;
+    height:28px;
+    min-width:28px;
+    border-radius:10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#eef6f3;
+    color:#0b3b31;
+    font-size:13px;
+    font-weight:900;
+  }
+
+  .cmfin-novo-registro-opcao:last-child{
+    margin-bottom:0;
+  }
+
+  @media (max-width: 760px){
+    .cmfin-novo-registro-menu{
+      right:auto;
+      left:50%;
+      transform:translateX(-50%);
+      width:min(330px, calc(100vw - 24px));
+    }
+    .cmfin-novo-registro-menu::before{
+      right:50%;
+      margin-right:-7px;
+    }
+  }
+</style>
+
+<script id="cmfin-ajuste-sem-cofre-novo-registro-js">
+(function(){
+  "use strict";
+
+  var atalhosInstalados = false;
+  var observerInstalado = false;
+  var mudarModuloAnterior = null;
+  var acaoRapidaAnterior = null;
+
+  var ordemMenu = [
+    "dashboard",
+    "gastosVariaveis",
+    "gastosFixos",
+    "terceiros",
+    "pagamentosTerceirizados",
+    "pagamentosArquitetos",
+    "recebimentos",
+    "bancos",
+    "objetivos",
+    "analiseFinanceira",
+    "perfil",
+    "configuracoes"
+  ];
+
+  var atalhos = [
+    { id:"gastosFixos", label:"Gastos Fixos", icon:"GF" },
+    { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"GV" },
+    { id:"recebimentos", label:"Recebimentos", icon:"R" },
+    { id:"terceiros", label:"Gastos por Terceiros", icon:"T" },
+    { id:"bancos", label:"Bancos e Cartões", icon:"BC" },
+    { id:"objetivos", label:"Objetivos", icon:"O" },
+    { id:"analiseFinanceira", label:"Análise Financeira", icon:"AF" }
+  ];
+
+  function modoAtualSeguro(){
+    try{
+      return (window.modoAtual === "empresarial" || modoAtual === "empresarial") ? "empresarial" : "pessoal";
+    }catch(e){
+      return "pessoal";
+    }
+  }
+
+  function removerCofre(){
+    document.querySelectorAll('.nav button[data-module="cofre"]').forEach(function(btn){ btn.remove(); });
+    var cofre = document.getElementById("cofre");
+    if(cofre){
+      cofre.classList.remove("active");
+      cofre.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function renomearMenu(){
+    var t = document.querySelector('.nav button[data-module="terceiros"]');
+    if(t){
+      var icon = t.querySelector('.icon') ? t.querySelector('.icon').outerHTML : '<span class="icon">☷</span>';
+      t.innerHTML = icon + 'Gastos por Terceiros';
+    }
+  }
+
+  function ordenarMenu(){
+    var nav = document.querySelector(".nav");
+    if(!nav) return;
+    ordemMenu.forEach(function(id){
+      var btn = nav.querySelector('button[data-module="' + id + '"]');
+      if(btn) nav.appendChild(btn);
+    });
+  }
+
+  function aplicarVisibilidadeModo(){
+    var m = modoAtualSeguro();
+    var terceiro = document.querySelector('.nav button[data-module="terceiros"]');
+    if(terceiro) terceiro.classList.toggle("nav-hidden", m === "empresarial");
+
+    ["pagamentosTerceirizados", "pagamentosArquitetos"].forEach(function(id){
+      var btn = document.querySelector('.nav button[data-module="' + id + '"]');
+      if(btn) btn.classList.toggle("nav-hidden", m === "pessoal");
+    });
+  }
+
+  function corrigirMenuLateral(){
+    removerCofre();
+    renomearMenu();
+    ordenarMenu();
+    aplicarVisibilidadeModo();
+  }
+
+  function moduloPermitido(id){
+    if(id === "cofre") return "dashboard";
+    if(!document.getElementById(id)) return "dashboard";
+    return id;
+  }
+
+  function abrirModuloAtalho(id){
+    id = moduloPermitido(id);
+    fecharMenuNovoRegistro();
+
+    if(id === "terceiros" && modoAtualSeguro() === "empresarial"){
+      alert("Gastos por Terceiros está disponível no Modo Pessoal.");
+      return;
+    }
+
+    if(typeof window.mudarModulo === "function"){
+      window.mudarModulo(id);
+    }else if(typeof mudarModulo === "function"){
+      mudarModulo(id);
+    }
+
+    if(id === "objetivos"){
+      setTimeout(function(){
+        try{ if(typeof window.objetivosLimparFormulario === "function") window.objetivosLimparFormulario(); }catch(e){}
+        var campo = document.getElementById("objetivoNome");
+        if(campo) campo.focus();
+      }, 160);
+    }
+  }
+
+  function fecharMenuNovoRegistro(){
+    var menu = document.getElementById("cmfinNovoRegistroAtalhos");
+    if(menu) menu.hidden = true;
+  }
+
+  function alternarMenuNovoRegistro(evt){
+    if(evt){ evt.preventDefault(); evt.stopPropagation(); }
+    instalarAtalhosNovoRegistro();
+    var menu = document.getElementById("cmfinNovoRegistroAtalhos");
+    if(!menu) return;
+    menu.hidden = !menu.hidden;
+  }
+
+  function instalarAtalhosNovoRegistro(){
+    var btn = document.getElementById("cmfinNovoRegistroBtn");
+    if(!btn) return;
+
+    var wrap = btn.closest(".cmfin-novo-registro-wrap");
+    if(!wrap){
+      wrap = document.createElement("div");
+      wrap.className = "cmfin-novo-registro-wrap";
+      btn.parentNode.insertBefore(wrap, btn);
+      wrap.appendChild(btn);
+    }
+
+    var menu = document.getElementById("cmfinNovoRegistroAtalhos");
+    if(!menu){
+      menu = document.createElement("div");
+      menu.id = "cmfinNovoRegistroAtalhos";
+      menu.className = "cmfin-novo-registro-menu";
+      menu.hidden = true;
+      menu.innerHTML = '<div class="cmfin-novo-registro-head"><span class="cmfin-novo-registro-title">Novo Registro</span><span class="cmfin-novo-registro-sub">Escolha a aba onde deseja registrar ou consultar.</span></div>' +
+        atalhos.map(function(item){
+          return '<button type="button" class="cmfin-novo-registro-opcao" data-atalho-module="' + item.id + '"><span class="cmfin-novo-registro-icone">' + item.icon + '</span><span>' + item.label + '</span></button>';
+        }).join('');
+      wrap.appendChild(menu);
+
+      menu.addEventListener("click", function(e){
+        var opcao = e.target.closest("[data-atalho-module]");
+        if(!opcao) return;
+        e.preventDefault();
+        e.stopPropagation();
+        abrirModuloAtalho(opcao.getAttribute("data-atalho-module"));
+      });
+    }
+
+    btn.onclick = null;
+    if(!btn.dataset.cmfinAtalhoInstalled){
+      btn.addEventListener("click", alternarMenuNovoRegistro);
+      btn.dataset.cmfinAtalhoInstalled = "1";
+    }
+    atalhosInstalados = true;
+  }
+
+  function instalarOverrides(){
+    if(!mudarModuloAnterior && typeof window.mudarModulo === "function"){
+      mudarModuloAnterior = window.mudarModulo;
+      window.mudarModulo = function(id){
+        id = moduloPermitido(id);
+        var r = mudarModuloAnterior.apply(this, arguments.length ? [id] : arguments);
+        setTimeout(corrigirMenuLateral, 30);
+        return r;
+      };
+      try{ mudarModulo = window.mudarModulo; }catch(e){}
+    }
+
+    if(!acaoRapidaAnterior && typeof window.acaoRapida === "function"){
+      acaoRapidaAnterior = window.acaoRapida;
+      window.acaoRapida = function(){
+        instalarAtalhosNovoRegistro();
+        alternarMenuNovoRegistro();
+      };
+      try{ acaoRapida = window.acaoRapida; }catch(e){}
+    }
+  }
+
+  function garantirDashboardSeCofreAtivo(){
+    var cofre = document.getElementById("cofre");
+    if(cofre && cofre.classList.contains("active")){
+      cofre.classList.remove("active");
+      if(typeof window.mudarModulo === "function") window.mudarModulo("dashboard");
+    }
+  }
+
+  function tick(){
+    instalarOverrides();
+    instalarAtalhosNovoRegistro();
+    corrigirMenuLateral();
+    garantirDashboardSeCofreAtivo();
+  }
+
+  document.addEventListener("click", function(e){
+    var wrap = e.target.closest && e.target.closest(".cmfin-novo-registro-wrap");
+    if(!wrap) fecharMenuNovoRegistro();
+  }, true);
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", tick);
+  }else{
+    tick();
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 250);
+    setTimeout(tick, 900);
+  });
+
+  if(!observerInstalado && window.MutationObserver){
+    observerInstalado = true;
+    var obs = new MutationObserver(function(){
+      clearTimeout(window.__cmfinSemCofreTick);
+      window.__cmfinSemCofreTick = setTimeout(tick, 80);
+    });
+    obs.observe(document.documentElement, { childList:true, subtree:true });
+  }
+})();
+</script>
+
 </body></html>`;
 
     const w=window.open('','_blank');
