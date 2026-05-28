@@ -34071,11 +34071,11 @@ body.ello-modo-trocando .module.active {
 </script>
 
 
-<script id="cmfin-top-actions-safe-nowrap-js">
+<script id="cmfin-topo-preservado-ajuste-js">
 (function(){
   "use strict";
 
-  function normalizar(txt){
+  function norm(txt){
     return String(txt || "")
       .trim()
       .toLowerCase()
@@ -34084,7 +34084,7 @@ body.ello-modo-trocando .module.active {
       .replace(/\s+/g, " ");
   }
 
-  function limparIconesSimples(el){
+  function limparIconesTexto(el){
     if(!el) return;
 
     var txt = String(el.textContent || "").trim()
@@ -34096,7 +34096,7 @@ body.ello-modo-trocando .module.active {
       .replace(/\s+/g, " ")
       .trim();
 
-    var n = normalizar(txt);
+    var n = norm(txt);
 
     if(n === "sair"){
       el.textContent = "Sair";
@@ -34107,115 +34107,7 @@ body.ello-modo-trocando .module.active {
     }
   }
 
-  function isBotaoTopo(el){
-    var t = normalizar(el.textContent || "");
-
-    return t === "salvar na nuvem" ||
-           t.indexOf("licenca ativa") >= 0 ||
-           t === "sair" ||
-           t === "acoes" ||
-           t === "+ novo registro" ||
-           t === "novo registro";
-  }
-
-  function aplicar(){
-    var items = Array.prototype.slice.call(document.querySelectorAll("button, a, span"));
-
-    items.forEach(function(el){
-      limparIconesSimples(el);
-
-      if(isBotaoTopo(el)){
-        el.classList.add("cmfin-top-action-nowrap-only");
-      }
-    });
-  }
-
-  function ensureStyle(){
-    if(document.getElementById("cmfin-top-actions-safe-nowrap-style")) return;
-
-    var css = document.createElement("style");
-    css.id = "cmfin-top-actions-safe-nowrap-style";
-    css.textContent = `
-      .cmfin-top-action-nowrap-only{
-        white-space:nowrap !important;
-        word-break:normal !important;
-        overflow-wrap:normal !important;
-        flex-shrink:0 !important;
-      }
-
-      .cmfin-top-action-nowrap-only svg,
-      .cmfin-top-action-nowrap-only i{
-        display:none !important;
-      }
-
-      p, small, .subtitle, .description, .desc, [class*="desc"], [class*="subtitle"]{
-        white-space:normal;
-        overflow-wrap:break-word;
-      }
-    `;
-    document.head.appendChild(css);
-  }
-
-  function tick(){
-    ensureStyle();
-    aplicar();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 900);
-      tick();
-    });
-  }else{
-    setInterval(tick, 900);
-    tick();
-  }
-
-  document.addEventListener("click", function(){
-    setTimeout(tick, 120);
-    setTimeout(tick, 500);
-  }, true);
-})();
-</script>
-
-
-<script id="cmfin-module-header-actions-fix-js">
-(function(){
-  "use strict";
-
-  var TITULOS_MODULOS = [
-    "dashboard",
-    "cofre pessoal",
-    "cofre empresarial",
-    "cofre",
-    "gastos fixos",
-    "gastos variaveis",
-    "recebimentos",
-    "terceiros",
-    "bancos e cartoes",
-    "objetivos",
-    "analise financeira",
-    "perfil",
-    "configuracoes"
-  ];
-
-  function norm(txt){
-    return String(txt || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ");
-  }
-
-  function isVisible(el){
-    if(!el) return false;
-    var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-    if(!r) return false;
-    return r.width > 0 && r.height > 0;
-  }
-
-  function isTopButton(el){
+  function ehAcaoTopo(el){
     var t = norm(el.textContent || "");
 
     return t === "salvar na nuvem" ||
@@ -34226,217 +34118,105 @@ body.ello-modo-trocando .module.active {
            t === "novo registro";
   }
 
-  function cleanButtonText(el){
-    if(!el) return;
-
-    var t = String(el.textContent || "").trim()
-      .replace(/^☁️\s*/g, "")
-      .replace(/^☁\s*/g, "")
-      .replace(/^⎋\s*/g, "")
-      .replace(/^↪\s*/g, "")
-      .replace(/^↩\s*/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if(norm(t) === "sair") el.textContent = "Sair";
-    if(norm(t) === "carregar dados da nuvem") el.textContent = "Carregar Dados da Nuvem";
-  }
-
-  function isKnownModuleTitle(text){
-    text = norm(text);
-
-    return TITULOS_MODULOS.some(function(t){
-      return text === t;
-    });
-  }
-
-  function findVisibleModuleTitle(){
-    var heads = Array.prototype.slice.call(document.querySelectorAll("h1, h2, .page-title, [class*='page-title'], [class*='title']"));
-
-    var found = heads.find(function(el){
-      if(!isVisible(el)) return false;
-
-      var t = norm(el.textContent || "");
-      if(!t || t.length > 42) return false;
-
-      return isKnownModuleTitle(t);
-    });
-
-    if(found) return found;
-
-    // fallback: títulos grandes visíveis próximos ao topo do conteúdo
-    return heads.find(function(el){
-      if(!isVisible(el)) return false;
-
-      var r = el.getBoundingClientRect();
-      var t = norm(el.textContent || "");
-
-      return r.top < 260 &&
-             t.length > 0 &&
-             t.length <= 45 &&
-             !t.includes("salvar") &&
-             !t.includes("licenca") &&
-             !t.includes("novo registro");
-    }) || null;
-  }
-
-  function findHeaderContainer(title){
-    if(!title) return null;
-
-    var el = title.parentElement;
-    var best = null;
-
-    for(var i=0; el && i<8; i++, el = el.parentElement){
-      var txt = norm(el.textContent || "");
-      var hasActions =
-        txt.indexOf("salvar na nuvem") >= 0 ||
-        txt.indexOf("licenca ativa") >= 0 ||
-        txt.indexOf("novo registro") >= 0 ||
-        txt.indexOf("acoes") >= 0;
-
-      var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-
-      if(hasActions && r && r.height < 190 && r.top < 260){
-        best = el;
-      }
-    }
-
-    return best;
-  }
-
-  function findTitleBlock(container, title){
-    if(!container || !title) return null;
-
-    var block = title.parentElement;
-
-    while(block && block.parentElement && block.parentElement !== container){
-      block = block.parentElement;
-    }
-
-    return block || title;
-  }
-
-  function collectActionButtons(container){
-    if(!container) return [];
-
-    return Array.prototype.slice.call(container.querySelectorAll("button, a, span"))
-      .filter(function(el){
-        return isVisible(el) && isTopButton(el);
-      });
-  }
-
-  function ensureActionsWrap(container, buttons){
-    if(!container || !buttons.length) return null;
-
-    var wrap = container.querySelector(":scope > .cmfin-module-actions-wrap");
-
-    if(!wrap){
-      wrap = document.createElement("div");
-      wrap.className = "cmfin-module-actions-wrap";
-    }
-
-    buttons.forEach(function(btn){
-      cleanButtonText(btn);
-      btn.classList.add("cmfin-module-top-button");
-
-      if(btn.parentElement !== wrap){
-        wrap.appendChild(btn);
-      }
-    });
-
-    if(wrap.parentElement !== container){
-      container.appendChild(wrap);
-    }
-
-    return wrap;
+  function ehTituloModulo(el){
+    var t = norm(el.textContent || "");
+    return [
+      "dashboard",
+      "gastos fixos",
+      "gastos variaveis",
+      "recebimentos",
+      "cofre pessoal",
+      "cofre empresarial",
+      "cofre",
+      "terceiros",
+      "bancos e cartoes",
+      "objetivos",
+      "analise financeira",
+      "perfil",
+      "configuracoes"
+    ].indexOf(t) >= 0;
   }
 
   function aplicar(){
-    var title = findVisibleModuleTitle();
-    if(!title) return;
+    // 1) Apenas limpa símbolos e trava quebra de texto nos botões.
+    Array.prototype.slice.call(document.querySelectorAll("button, a, span")).forEach(function(el){
+      limparIconesTexto(el);
 
-    var container = findHeaderContainer(title);
-    if(!container) return;
+      if(ehAcaoTopo(el)){
+        el.classList.add("cmfin-top-action-keep");
+      }
+    });
 
-    var buttons = collectActionButtons(container);
-    if(!buttons.length) return;
+    // 2) Permite quebra nos subtítulos e descrições.
+    Array.prototype.slice.call(document.querySelectorAll("p, small, .subtitle, .description, .desc, [class*='subtitle'], [class*='description'], [class*='desc']")).forEach(function(el){
+      if(!ehAcaoTopo(el)){
+        el.classList.add("cmfin-text-can-wrap");
+      }
+    });
 
-    var titleBlock = findTitleBlock(container, title);
+    // 3) Tenta aplicar apenas no bloco textual do título, sem mexer nos botões.
+    Array.prototype.slice.call(document.querySelectorAll("h1, h2")).forEach(function(title){
+      if(!ehTituloModulo(title)) return;
 
-    container.classList.add("cmfin-module-header-fixed");
-    if(titleBlock) titleBlock.classList.add("cmfin-module-title-block");
+      title.classList.add("cmfin-title-can-wrap");
 
-    ensureActionsWrap(container, buttons);
+      var parent = title.parentElement;
+      if(parent){
+        parent.classList.add("cmfin-title-block-can-shrink");
+      }
+    });
   }
 
   function ensureStyle(){
-    if(document.getElementById("cmfin-module-header-actions-fix-style")) return;
+    if(document.getElementById("cmfin-topo-preservado-ajuste-style")) return;
 
     var css = document.createElement("style");
-    css.id = "cmfin-module-header-actions-fix-style";
+    css.id = "cmfin-topo-preservado-ajuste-style";
     css.textContent = `
-      .cmfin-module-header-fixed{
-        display:grid !important;
-        grid-template-columns:minmax(0, 1fr) max-content !important;
-        align-items:start !important;
-        column-gap:22px !important;
-        row-gap:8px !important;
-      }
-
-      .cmfin-module-title-block{
-        min-width:0 !important;
-        max-width:100% !important;
-        grid-column:1 !important;
-        grid-row:1 !important;
-      }
-
-      .cmfin-module-title-block h1,
-      .cmfin-module-title-block h2,
-      .cmfin-module-title-block p,
-      .cmfin-module-title-block small,
-      .cmfin-module-title-block .subtitle,
-      .cmfin-module-title-block [class*="subtitle"],
-      .cmfin-module-title-block [class*="desc"]{
-        white-space:normal !important;
-        overflow-wrap:break-word !important;
-        word-break:normal !important;
-        min-width:0 !important;
-      }
-
-      .cmfin-module-actions-wrap{
-        display:flex !important;
-        align-items:center !important;
-        justify-content:flex-end !important;
-        flex-wrap:nowrap !important;
-        gap:10px !important;
-        white-space:nowrap !important;
-        min-width:max-content !important;
-        width:max-content !important;
-        grid-column:2 !important;
-        grid-row:1 / span 2 !important;
-        justify-self:end !important;
-      }
-
-      .cmfin-module-top-button{
-        flex:0 0 auto !important;
+      /*
+        Correção segura:
+        - não move botões;
+        - não altera ordem;
+        - não remove opções;
+        - só impede quebra dos textos de ação.
+      */
+      .cmfin-top-action-keep{
         white-space:nowrap !important;
         word-break:normal !important;
         overflow-wrap:normal !important;
-        min-width:max-content !important;
+        flex-shrink:0 !important;
       }
 
-      .cmfin-module-top-button svg,
-      .cmfin-module-top-button i{
+      .cmfin-top-action-keep svg,
+      .cmfin-top-action-keep i{
         display:none !important;
       }
 
-      @media(max-width:1180px){
-        .cmfin-module-header-fixed{
-          column-gap:14px !important;
-        }
-        .cmfin-module-actions-wrap{
-          gap:8px !important;
-        }
+      .cmfin-text-can-wrap,
+      .cmfin-title-can-wrap{
+        white-space:normal !important;
+        word-break:normal !important;
+        overflow-wrap:break-word !important;
+        min-width:0 !important;
+      }
+
+      .cmfin-title-block-can-shrink{
+        min-width:0 !important;
+        max-width:100% !important;
+      }
+
+      /*
+        Quando o cabeçalho já for flex/grid no sistema original,
+        permite que só o bloco de texto encolha.
+        Isso evita empurrar os botões para baixo sem deslocar nada.
+      */
+      .cmfin-title-block-can-shrink p,
+      .cmfin-title-block-can-shrink small,
+      .cmfin-title-block-can-shrink [class*="desc"],
+      .cmfin-title-block-can-shrink [class*="subtitle"]{
+        white-space:normal !important;
+        overflow-wrap:break-word !important;
+        max-width:760px !important;
       }
     `;
     document.head.appendChild(css);
@@ -34449,22 +34229,18 @@ body.ello-modo-trocando .module.active {
 
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 800);
+      setInterval(tick, 1000);
       tick();
     });
   }else{
-    setInterval(tick, 800);
+    setInterval(tick, 1000);
     tick();
   }
 
   document.addEventListener("click", function(){
     setTimeout(tick, 120);
-    setTimeout(tick, 450);
+    setTimeout(tick, 500);
   }, true);
-
-  window.addEventListener("resize", function(){
-    setTimeout(tick, 120);
-  });
 })();
 </script>
 
