@@ -34558,7 +34558,7 @@ body.ello-modo-trocando .module.active {
 </script>
 
 
-<script id="cmfin-ajustes-dashboard-perfil-final-js">
+<script id="cmfin-remover-cards-perfil-fora-aba-js">
 (function(){
   "use strict";
 
@@ -34572,56 +34572,86 @@ body.ello-modo-trocando .module.active {
   }
 
   function getTituloAtual(){
-    var el = document.getElementById("tituloModulo") || document.querySelector(".topbar h1, h1");
-    return norm(el ? el.textContent : "");
+    var titulo = document.getElementById("tituloModulo") ||
+                 document.querySelector(".topbar h1") ||
+                 document.querySelector("h1");
+
+    return norm(titulo ? titulo.textContent : "");
+  }
+
+  function sidebarPerfilAtivo(){
+    var perfilBtn = document.getElementById("cmfinPerfilNavBtn");
+
+    if(perfilBtn && perfilBtn.classList.contains("active")) return true;
+
+    var ativos = Array.prototype.slice.call(document.querySelectorAll(
+      ".sidebar .active, aside .active, nav .active, .nav-item.active, button.active, a.active"
+    ));
+
+    return ativos.some(function(el){
+      return norm(el.textContent) === "perfil";
+    });
+  }
+
+  function estaNaAbaPerfil(){
+    var titulo = getTituloAtual();
+
+    if(titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial") return true;
+
+    if(sidebarPerfilAtivo()) return true;
+
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    if(page && page.classList.contains("active") && page.style.display !== "none"){
+      // Só considera perfil ativo se nenhum outro módulo padrão estiver ativo/visível.
+      var moduloAtivo = Array.prototype.slice.call(document.querySelectorAll(".module.active")).find(function(m){
+        return m.id && m.id !== "cmfinPerfilUsuarioPage";
+      });
+
+      if(!moduloAtivo) return true;
+    }
+
+    return false;
+  }
+
+  function ocultarPerfilForaDaAba(){
+    var perfilAtivo = estaNaAbaPerfil();
+
+    document.body.classList.toggle("cmfin-perfil-ativo", perfilAtivo);
+
+    var profilePage = document.getElementById("cmfinPerfilUsuarioPage");
+    if(profilePage && !perfilAtivo){
+      profilePage.style.display = "none";
+      profilePage.classList.remove("active");
+    }
+
+    // Oculta qualquer bloco/card de Perfil que tenha ficado solto em qualquer aba.
+    if(!perfilAtivo){
+      Array.prototype.slice.call(document.querySelectorAll(
+        ".cmfin-profile-hero, .cmfin-profile-card, .cmfin-profile-shell, .cmfin-profile-page"
+      )).forEach(function(el){
+        var page = el.id === "cmfinPerfilUsuarioPage" ? el : el.closest("#cmfinPerfilUsuarioPage, .cmfin-profile-page");
+
+        if(page){
+          page.style.display = "none";
+          page.classList.remove("active");
+        }else{
+          el.style.display = "none";
+        }
+      });
+    }
   }
 
   function ajustarTituloPainelExecutivo(){
     var dashboard = document.getElementById("dashboard");
     if(!dashboard) return;
 
-    var candidatos = Array.prototype.slice.call(
+    Array.prototype.slice.call(
       dashboard.querySelectorAll("h2, h3, h4, .panel-title, .panel-header strong, .panel-header h2, .panel-header h3")
-    );
-
-    candidatos.forEach(function(el){
+    ).forEach(function(el){
       if(norm(el.textContent) === "painel executivo do caixa"){
         el.classList.add("cmfin-dashboard-panel-title-standard");
       }
     });
-  }
-
-  function ocultarPerfilForaDaAba(){
-    var titulo = getTituloAtual();
-    var naAbaPerfil = titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial";
-
-    var pages = Array.prototype.slice.call(document.querySelectorAll(
-      "#cmfinPerfilUsuarioPage, .cmfin-profile-page, section[id*='Perfil'], section[class*='profile']"
-    ));
-
-    pages.forEach(function(page){
-      if(!page) return;
-
-      // Preserva a tela somente quando o usuário estiver na aba Perfil.
-      if(naAbaPerfil){
-        // Não força display aqui, porque a própria função da aba Perfil controla a exibição.
-        return;
-      }
-
-      page.style.display = "none";
-      page.classList.remove("active");
-    });
-
-    // Segurança extra: remove cards/hero do Perfil que tenham ficado soltos no Dashboard.
-    if(!naAbaPerfil){
-      Array.prototype.slice.call(document.querySelectorAll(".cmfin-profile-hero, .cmfin-profile-card, .cmfin-profile-shell")).forEach(function(el){
-        var parentPage = el.closest("#cmfinPerfilUsuarioPage, .cmfin-profile-page");
-        if(parentPage){
-          parentPage.style.display = "none";
-          parentPage.classList.remove("active");
-        }
-      });
-    }
   }
 
   function ajustarIconePerfil(){
@@ -34639,12 +34669,12 @@ body.ello-modo-trocando .module.active {
   }
 
   function ensureStyle(){
-    if(document.getElementById("cmfin-ajustes-dashboard-perfil-final-style")) return;
+    if(document.getElementById("cmfin-remover-cards-perfil-fora-aba-style")) return;
 
     var css = document.createElement("style");
-    css.id = "cmfin-ajustes-dashboard-perfil-final-style";
+    css.id = "cmfin-remover-cards-perfil-fora-aba-style";
     css.textContent = `
-      /* Padroniza o título "Painel Executivo do Caixa" com os títulos dos demais painéis */
+      /* Título Painel Executivo no mesmo padrão dos outros painéis */
       #dashboard .cmfin-dashboard-panel-title-standard{
         margin:0 0 8px !important;
         color:#0f172a !important;
@@ -34654,12 +34684,21 @@ body.ello-modo-trocando .module.active {
         font-weight:950 !important;
       }
 
-      /* Garante que blocos da aba Perfil não apareçam no final do Dashboard */
-      body:not(.cmfin-na-aba-perfil) #cmfinPerfilUsuarioPage:not(.active){
+      /* Regra principal: Perfil só aparece dentro da aba Perfil */
+      body:not(.cmfin-perfil-ativo) #cmfinPerfilUsuarioPage,
+      body:not(.cmfin-perfil-ativo) .cmfin-profile-page,
+      body:not(.cmfin-perfil-ativo) .cmfin-profile-hero,
+      body:not(.cmfin-perfil-ativo) .cmfin-profile-card,
+      body:not(.cmfin-perfil-ativo) .cmfin-profile-shell{
         display:none !important;
       }
 
-      /* Ícone/texto da aba Perfil em branco, igual aos demais itens da lateral */
+      /* Quando estiver na aba Perfil, libera a exibição normal */
+      body.cmfin-perfil-ativo #cmfinPerfilUsuarioPage{
+        display:block;
+      }
+
+      /* Ícone da aba Perfil em branco */
       .cmfin-sidebar-profile-white,
       .cmfin-sidebar-profile-white *,
       #cmfinPerfilNavBtn,
@@ -34684,38 +34723,58 @@ body.ello-modo-trocando .module.active {
     document.head.appendChild(css);
   }
 
-  function marcarEstadoAba(){
-    var titulo = getTituloAtual();
-    var naAbaPerfil = titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial";
-    document.body.classList.toggle("cmfin-na-aba-perfil", naAbaPerfil);
+  function marcarPerfilAoClicar(){
+    document.addEventListener("click", function(e){
+      var alvo = e.target.closest("button, a, .nav-item, [role='button']");
+      if(!alvo) return;
+
+      var texto = norm(alvo.textContent);
+
+      if(texto === "perfil"){
+        document.body.classList.add("cmfin-perfil-ativo");
+      }else if(
+        texto === "dashboard" ||
+        texto === "gastos fixos" ||
+        texto === "gastos variaveis" ||
+        texto === "recebimentos" ||
+        texto === "cofre" ||
+        texto === "terceiros" ||
+        texto === "bancos e cartoes" ||
+        texto === "objetivos" ||
+        texto === "analise financeira" ||
+        texto === "configuracoes"
+      ){
+        document.body.classList.remove("cmfin-perfil-ativo");
+        setTimeout(ocultarPerfilForaDaAba, 60);
+        setTimeout(ocultarPerfilForaDaAba, 300);
+      }
+    }, true);
   }
 
   function tick(){
     ensureStyle();
-    marcarEstadoAba();
-    ajustarTituloPainelExecutivo();
     ocultarPerfilForaDaAba();
+    ajustarTituloPainelExecutivo();
     ajustarIconePerfil();
   }
 
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded", function(){
+      marcarPerfilAoClicar();
       tick();
       setTimeout(tick, 300);
       setTimeout(tick, 1000);
       setInterval(tick, 1200);
     });
   }else{
+    marcarPerfilAoClicar();
     tick();
     setTimeout(tick, 300);
     setTimeout(tick, 1000);
     setInterval(tick, 1200);
   }
 
-  document.addEventListener("click", function(){
-    setTimeout(tick, 120);
-    setTimeout(tick, 600);
-  }, true);
+  window.cmfinOcultarPerfilForaDaAba = ocultarPerfilForaDaAba;
 })();
 </script>
 
