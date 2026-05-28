@@ -8749,6 +8749,7 @@ button[data-clear-filters],
           <div class="subtitle" id="subtituloModulo">CMFin — Gestão Financeira Inteligente para organizar entradas, saídas, cartões, metas e saldos de forma clara.</div><div class="mode-indicator" id="indicadorModoAtual">Modo Pessoal</div>
         </div>
         <div class="actions">
+          <button id="cmfinNovoRegistroBtn" class="btn btn-primary" onclick="acaoRapida()">+ Novo Registro</button>
           <div class="actions-menu-wrap">
             <button class="btn btn-secondary btn-menu-toggle" onclick="alternarMenuAcoes(event)" title="Mais ações">☰ <span>Ações</span></button>
             <div class="actions-dropdown" id="menuAcoesTopo">
@@ -8762,7 +8763,6 @@ button[data-clear-filters],
             </div>
           </div>
           <input type="file" id="inputImportarDados" accept=".json,application/json" style="display:none;" onchange="importarDados(event)" />
-          <button class="btn btn-primary" onclick="acaoRapida()">+ Novo Registro</button>
         </div>
       </div>
 
@@ -11635,7 +11635,7 @@ button[data-clear-filters],
 
     function resetarDados() {
       const nomeModo = modoAtual === "empresarial" ? "Empresarial" : "Pessoal";
-      if (!confirm(`Deseja apagar todos os dados do Modo ${nomeModo} e voltar ao padrão inicial?`)) return;
+      if (!confirm(`Deseja mesmo fazer isso?\n\nIsso apagará todos os dados do Modo ${nomeModo} e voltará ao padrão inicial.`)) return;
 
       dadosIniciais();
       salvarDados();
@@ -24120,6 +24120,309 @@ body.ello-modo-trocando .module.active {
 
 
 
+
+
+<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
+<script id="cmfin-final-menu-acoes-perfil-ajustes-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+  }
+
+  function fecharMenu(){
+    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;display:flex;align-items:center;gap:8px;max-width:520px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+    b.style.background = tipo === "ok" ? "rgba(6,95,70,.94)" : tipo === "erro" ? "rgba(153,27,27,.94)" : "rgba(15,23,42,.92)";
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
+  }
+
+  async function exportarComputador(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.exportarDados === "function") window.exportarDados();
+      else toast("Função de exportação local não encontrada.", "erro");
+    }, 60);
+  }
+
+  async function importarComputador(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    setTimeout(function(){
+      if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
+      else {
+        var input = document.getElementById("inputImportarDados");
+        if(input) input.click();
+        else toast("Função de importação local não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  async function exportarNuvem(){
+    fecharMenu();
+    toast("Exportando dados para a nuvem...", "info");
+    try{
+      var ok = false;
+      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
+      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
+      toast(ok ? "Dados exportados para a nuvem." : "Não foi possível exportar para a nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao exportar para a nuvem.", "erro");
+    }
+  }
+
+  async function importarNuvem(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    toast("Importando dados da nuvem...", "info");
+    try{
+      if(typeof window.cmfinCarregarDadosNuvem !== "function"){
+        toast("Função de importação da nuvem não encontrada.", "erro");
+        return;
+      }
+      var ok = await window.cmfinCarregarDadosNuvem();
+      try{
+        if(typeof preencherCategorias === "function") preencherCategorias();
+        if(typeof atualizarSelects === "function") atualizarSelects();
+        if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
+        if(typeof atualizarUIModo === "function") atualizarUIModo();
+        if(typeof renderizarTudo === "function") renderizarTudo();
+      }catch(_e){}
+      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao importar da nuvem.", "erro");
+    }
+  }
+
+  function pastaBackup(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirEscolhaModoBackup === "function") window.cmfinAbrirEscolhaModoBackup("pasta");
+      else if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO((window.modoAtual === "empresarial") ? "empresarial" : "pessoal");
+      else toast("Função de pasta de backup não encontrada.", "erro");
+    }, 60);
+  }
+
+  function baixarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("exportar");
+      else {
+        var btn = document.querySelector("[data-cmfin-cloud-menu='backup']");
+        if(btn) btn.click();
+        else toast("Função de baixar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function restaurarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("importar");
+      else {
+        var btn = document.getElementById("cmfinRestoreBackupMenuItem");
+        if(btn) btn.click();
+        else toast("Função de restaurar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function resetarFinal(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.resetarDados === "function") window.resetarDados();
+      else toast("Função de resetar dados não encontrada.", "erro");
+    }, 60);
+  }
+
+  function makeBtn(texto, acao, danger){
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-final-action-btn" + (danger ? " danger" : "");
+    btn.textContent = texto;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      acao();
+    });
+    return btn;
+  }
+
+  function sep(){
+    var d = document.createElement("div");
+    d.className = "cmfin-final-action-separator";
+    return d;
+  }
+
+  function getMenu(){
+    return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+  }
+
+  function montarMenuFinal(){
+    var menu = getMenu();
+    if(!menu) return;
+
+    // Remove item de senha do menu Ações: agora fica no Perfil.
+    var senha = document.getElementById("cmfinAlterarSenhaMenuItem");
+    if(senha) senha.style.display = "none";
+
+    var box = document.getElementById("cmfinMenuFinalActions");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "cmfinMenuFinalActions";
+      box.className = "cmfin-final-actions-box";
+      menu.insertBefore(box, menu.firstChild);
+    }
+
+    if(box.dataset.ready !== "1"){
+      box.innerHTML = "";
+      box.appendChild(makeBtn("Exportar p/ Computador", exportarComputador));
+      box.appendChild(makeBtn("Importar do Computador", importarComputador));
+      box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
+      box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Pasta Backup", pastaBackup));
+      box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
+      box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Resetar Dados", resetarFinal, true));
+      box.dataset.ready = "1";
+    }
+  }
+
+  function adicionarSenhaNoPerfil(){
+    // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
+    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
+
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    if(!page || page.style.display === "none") return;
+    if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
+
+    var actions = page.querySelector(".cmfin-profile-actions");
+    if(!actions) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinPerfilAlterarSenhaBtn";
+    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
+    btn.textContent = "Alterar Senha de Acesso";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
+      else toast("Função de alteração de senha não encontrada.", "erro");
+    });
+
+    actions.insertBefore(btn, actions.firstChild);
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-final-menu-acoes-perfil-ajustes-style")) return;
+    var css = document.createElement("style");
+    css.id = "cmfin-final-menu-acoes-perfil-ajustes-style";
+    css.textContent = `
+      #menuAcoesTopo > *:not(#cmfinMenuFinalActions):not(input),
+      .actions-dropdown > *:not(#cmfinMenuFinalActions):not(input){
+        display:none !important;
+      }
+      #cmfinMenuFinalActions.cmfin-final-actions-box{
+        width:100% !important;
+        display:flex !important;
+        flex-direction:column !important;
+        gap:10px !important;
+        padding:0 !important;
+        margin:0 !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn{
+        width:100% !important;
+        min-height:44px !important;
+        height:auto !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        padding:12px 14px !important;
+        border-radius:13px !important;
+        border:1px solid rgba(15,23,42,.12) !important;
+        background:#fff !important;
+        color:#0f172a !important;
+        font-size:13px !important;
+        font-weight:900 !important;
+        letter-spacing:.01em !important;
+        box-shadow:none !important;
+        cursor:pointer !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn:hover{
+        background:rgba(15,61,50,.06) !important;
+        border-color:rgba(15,61,50,.18) !important;
+        transform:translateY(-1px);
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger{
+        color:#b91c1c !important;
+        border-color:rgba(185,28,28,.22) !important;
+        background:rgba(254,242,242,.98) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger:hover{
+        background:#fee2e2 !important;
+        border-color:rgba(185,28,28,.34) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-separator{
+        height:1px !important;
+        width:100% !important;
+        background:rgba(15,23,42,.10) !important;
+        margin:4px 0 !important;
+      }
+      #cmfinAlterarSenhaMenuItem{display:none !important;}
+      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
+        background:#0f3d32 !important;
+        color:#fff !important;
+        border-color:#0f3d32 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    montarMenuFinal();
+    adicionarSenhaNoPerfil();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){ tick(); setInterval(tick, 550); });
+  }else{
+    tick();
+    setInterval(tick, 550);
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 200);
+    setTimeout(tick, 900);
+  });
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 260);
+  }, true);
+})();
+</script>
+
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -29593,6 +29896,309 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+
+<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
+<script id="cmfin-final-menu-acoes-perfil-ajustes-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+  }
+
+  function fecharMenu(){
+    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;display:flex;align-items:center;gap:8px;max-width:520px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+    b.style.background = tipo === "ok" ? "rgba(6,95,70,.94)" : tipo === "erro" ? "rgba(153,27,27,.94)" : "rgba(15,23,42,.92)";
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
+  }
+
+  async function exportarComputador(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.exportarDados === "function") window.exportarDados();
+      else toast("Função de exportação local não encontrada.", "erro");
+    }, 60);
+  }
+
+  async function importarComputador(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    setTimeout(function(){
+      if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
+      else {
+        var input = document.getElementById("inputImportarDados");
+        if(input) input.click();
+        else toast("Função de importação local não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  async function exportarNuvem(){
+    fecharMenu();
+    toast("Exportando dados para a nuvem...", "info");
+    try{
+      var ok = false;
+      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
+      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
+      toast(ok ? "Dados exportados para a nuvem." : "Não foi possível exportar para a nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao exportar para a nuvem.", "erro");
+    }
+  }
+
+  async function importarNuvem(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    toast("Importando dados da nuvem...", "info");
+    try{
+      if(typeof window.cmfinCarregarDadosNuvem !== "function"){
+        toast("Função de importação da nuvem não encontrada.", "erro");
+        return;
+      }
+      var ok = await window.cmfinCarregarDadosNuvem();
+      try{
+        if(typeof preencherCategorias === "function") preencherCategorias();
+        if(typeof atualizarSelects === "function") atualizarSelects();
+        if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
+        if(typeof atualizarUIModo === "function") atualizarUIModo();
+        if(typeof renderizarTudo === "function") renderizarTudo();
+      }catch(_e){}
+      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao importar da nuvem.", "erro");
+    }
+  }
+
+  function pastaBackup(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirEscolhaModoBackup === "function") window.cmfinAbrirEscolhaModoBackup("pasta");
+      else if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO((window.modoAtual === "empresarial") ? "empresarial" : "pessoal");
+      else toast("Função de pasta de backup não encontrada.", "erro");
+    }, 60);
+  }
+
+  function baixarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("exportar");
+      else {
+        var btn = document.querySelector("[data-cmfin-cloud-menu='backup']");
+        if(btn) btn.click();
+        else toast("Função de baixar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function restaurarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("importar");
+      else {
+        var btn = document.getElementById("cmfinRestoreBackupMenuItem");
+        if(btn) btn.click();
+        else toast("Função de restaurar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function resetarFinal(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.resetarDados === "function") window.resetarDados();
+      else toast("Função de resetar dados não encontrada.", "erro");
+    }, 60);
+  }
+
+  function makeBtn(texto, acao, danger){
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-final-action-btn" + (danger ? " danger" : "");
+    btn.textContent = texto;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      acao();
+    });
+    return btn;
+  }
+
+  function sep(){
+    var d = document.createElement("div");
+    d.className = "cmfin-final-action-separator";
+    return d;
+  }
+
+  function getMenu(){
+    return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+  }
+
+  function montarMenuFinal(){
+    var menu = getMenu();
+    if(!menu) return;
+
+    // Remove item de senha do menu Ações: agora fica no Perfil.
+    var senha = document.getElementById("cmfinAlterarSenhaMenuItem");
+    if(senha) senha.style.display = "none";
+
+    var box = document.getElementById("cmfinMenuFinalActions");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "cmfinMenuFinalActions";
+      box.className = "cmfin-final-actions-box";
+      menu.insertBefore(box, menu.firstChild);
+    }
+
+    if(box.dataset.ready !== "1"){
+      box.innerHTML = "";
+      box.appendChild(makeBtn("Exportar p/ Computador", exportarComputador));
+      box.appendChild(makeBtn("Importar do Computador", importarComputador));
+      box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
+      box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Pasta Backup", pastaBackup));
+      box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
+      box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Resetar Dados", resetarFinal, true));
+      box.dataset.ready = "1";
+    }
+  }
+
+  function adicionarSenhaNoPerfil(){
+    // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
+    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
+
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    if(!page || page.style.display === "none") return;
+    if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
+
+    var actions = page.querySelector(".cmfin-profile-actions");
+    if(!actions) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinPerfilAlterarSenhaBtn";
+    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
+    btn.textContent = "Alterar Senha de Acesso";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
+      else toast("Função de alteração de senha não encontrada.", "erro");
+    });
+
+    actions.insertBefore(btn, actions.firstChild);
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-final-menu-acoes-perfil-ajustes-style")) return;
+    var css = document.createElement("style");
+    css.id = "cmfin-final-menu-acoes-perfil-ajustes-style";
+    css.textContent = `
+      #menuAcoesTopo > *:not(#cmfinMenuFinalActions):not(input),
+      .actions-dropdown > *:not(#cmfinMenuFinalActions):not(input){
+        display:none !important;
+      }
+      #cmfinMenuFinalActions.cmfin-final-actions-box{
+        width:100% !important;
+        display:flex !important;
+        flex-direction:column !important;
+        gap:10px !important;
+        padding:0 !important;
+        margin:0 !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn{
+        width:100% !important;
+        min-height:44px !important;
+        height:auto !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        padding:12px 14px !important;
+        border-radius:13px !important;
+        border:1px solid rgba(15,23,42,.12) !important;
+        background:#fff !important;
+        color:#0f172a !important;
+        font-size:13px !important;
+        font-weight:900 !important;
+        letter-spacing:.01em !important;
+        box-shadow:none !important;
+        cursor:pointer !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn:hover{
+        background:rgba(15,61,50,.06) !important;
+        border-color:rgba(15,61,50,.18) !important;
+        transform:translateY(-1px);
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger{
+        color:#b91c1c !important;
+        border-color:rgba(185,28,28,.22) !important;
+        background:rgba(254,242,242,.98) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger:hover{
+        background:#fee2e2 !important;
+        border-color:rgba(185,28,28,.34) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-separator{
+        height:1px !important;
+        width:100% !important;
+        background:rgba(15,23,42,.10) !important;
+        margin:4px 0 !important;
+      }
+      #cmfinAlterarSenhaMenuItem{display:none !important;}
+      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
+        background:#0f3d32 !important;
+        color:#fff !important;
+        border-color:#0f3d32 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    montarMenuFinal();
+    adicionarSenhaNoPerfil();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){ tick(); setInterval(tick, 550); });
+  }else{
+    tick();
+    setInterval(tick, 550);
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 200);
+    setTimeout(tick, 900);
+  });
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 260);
+  }, true);
+})();
+</script>
+
 </body>
 </html>
 
@@ -29788,10 +30394,7 @@ body.ello-modo-trocando .module.active {
         aplicarDadosNaTela(data.dados);
         atualizarBadgeCloud("Dados carregados da nuvem.", "ok");
 
-        if(!sessionStorage.getItem("cmfin_cloud_loaded_once")){
-          sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
-          setTimeout(function(){ location.reload(); }, 450);
-        }
+        sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
       }else{
         atualizarBadgeCloud("Nenhum backup online ainda. Criando primeiro salvamento...", "info");
         agendarSalvarDadosNuvem(1200);
@@ -30246,31 +30849,10 @@ body.ello-modo-trocando .module.active {
   }
 
   function installTopSaveButton(){
-    ensureStyle();
-
-    if(document.getElementById("cmfinCloudSaveTopBtn")) return;
-
-    var host = findActionsHost();
-    if(!host) return;
-
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "cmfinCloudSaveTopBtn";
-    btn.className = "cmfin-cloud-top-btn";
-    btn.textContent = "Salvar na Nuvem";
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      salvarAgora();
-    });
-
-    // Coloca antes do botão Ações, quando possível.
-    var actionsMenu = host.querySelector(".actions-menu-wrap, [data-actions], button");
-    if(actionsMenu){
-      host.insertBefore(btn, actionsMenu);
-    }else{
-      host.appendChild(btn);
-    }
+    // Ajuste solicitado: o Salvar na Nuvem não fica mais como botão solto no topo.
+    // Ele permanece dentro do menu Ações para manter o cabeçalho alinhado.
+    var antigo = document.getElementById("cmfinCloudSaveTopBtn");
+    if(antigo) antigo.remove();
   }
 
   function installActionMenuItems(){
@@ -30289,6 +30871,7 @@ body.ello-modo-trocando .module.active {
     box.id = "cmfinCloudActionItems";
     box.style.cssText = "border-top:1px solid rgba(15,23,42,.08);margin-top:6px;padding-top:6px;";
     box.innerHTML = ''
+      + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="save">Salvar na Nuvem</button>'
       + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="load">Carregar Dados da Nuvem</button>'
       + '<button type="button" class="cmfin-cloud-action-item" data-cmfin-cloud-menu="backup">⬇️ Exportar Backup Local</button>';
 
@@ -30302,6 +30885,7 @@ body.ello-modo-trocando .module.active {
       e.stopPropagation();
 
       var action = btn.getAttribute("data-cmfin-cloud-menu");
+      if(action === "save") salvarAgora();
       if(action === "load") carregarAgora();
       if(action === "backup") exportarBackup();
     });
@@ -31201,10 +31785,9 @@ body.ello-modo-trocando .module.active {
 
         var count = aplicarDados(dadosParaAplicar);
 
-        toast("Cópia restaurada com sucesso. Recarregando...", "ok");
+        toast("Cópia restaurada com sucesso. Dados reconhecidos.", "ok");
         close();
-
-        setTimeout(function(){ location.reload(); }, 850);
+        try{ if(typeof preencherCategorias === "function") preencherCategorias(); if(typeof atualizarSelects === "function") atualizarSelects(); if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(_e){}
       }catch(err){
         console.warn(err);
         toast(err.message || "Erro ao importar backup.", "erro");
@@ -31626,8 +32209,8 @@ body.ello-modo-trocando .module.active {
           base.modoAtual = modo;
           salvarBaseStorage(base);
 
-          toast("Backup importado para o modo " + modoNome(modo) + ". Recarregando...", "ok");
-          setTimeout(function(){ location.reload(); }, 900);
+          toast("Backup importado para o modo " + modoNome(modo) + ". Dados reconhecidos com sucesso.", "ok");
+          try{ if(typeof preencherCategorias === "function") preencherCategorias(); if(typeof atualizarSelects === "function") atualizarSelects(); if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(_e){}
         }catch(err){
           console.warn(err);
           toast("Não foi possível importar. Verifique o arquivo selecionado.", "erro");
@@ -35171,3 +35754,208 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+
+<script id="cmfin-topbar-order-actions-v2-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function findNovo(host){
+    return document.getElementById("cmfinNovoRegistroBtn") ||
+      Array.prototype.slice.call(host.querySelectorAll("button")).find(function(btn){
+        var t = norm(btn.textContent);
+        return t === "+ novo registro" || t === "novo registro" || String(btn.getAttribute("onclick") || "").indexOf("acaoRapida") >= 0;
+      }) || null;
+  }
+
+  function findMenuWrap(host){
+    return host.querySelector(".actions-menu-wrap") || null;
+  }
+
+  function fecharMenuAcoesSeguro(){
+    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
+  }
+
+  function moverSalvarParaAcoes(){
+    var topSave = document.getElementById("cmfinCloudSaveTopBtn");
+    if(topSave) topSave.remove();
+
+    var menu = document.getElementById("menuAcoesTopo") ||
+      document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+    if(!menu) return;
+
+    var existentes = Array.prototype.slice.call(menu.querySelectorAll("button")).filter(function(btn){
+      return norm(btn.textContent) === "salvar na nuvem";
+    });
+
+    if(existentes.length){
+      existentes.slice(1).forEach(function(btn){ btn.remove(); });
+      return;
+    }
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-cloud-save-action-btn";
+    btn.textContent = "Salvar na Nuvem";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      fecharMenuAcoesSeguro();
+      if(typeof window.cmfinSalvarDadosNuvem === "function") window.cmfinSalvarDadosNuvem();
+      else if(typeof window.salvarAgora === "function") window.salvarAgora();
+    });
+
+    menu.insertBefore(btn, menu.firstChild);
+  }
+
+  function ordenarTopo(){
+    var host = document.querySelector(".topbar .actions");
+    if(!host) return;
+
+    host.classList.add("cmfin-actions-ordered-v2");
+
+    var novo = findNovo(host);
+    var menuWrap = findMenuWrap(host);
+    var badge = document.getElementById("cmfinLicenseBadge");
+    var logout = document.getElementById("cmfinLogoutBtn");
+    var input = document.getElementById("inputImportarDados");
+
+    if(novo){
+      novo.id = "cmfinNovoRegistroBtn";
+      novo.classList.add("cmfin-topbar-action-btn-v2");
+      host.appendChild(novo);
+    }
+
+    if(menuWrap){
+      menuWrap.classList.add("cmfin-topbar-action-wrap-v2");
+      host.appendChild(menuWrap);
+    }
+
+    if(badge){
+      badge.classList.add("cmfin-topbar-action-badge-v2");
+      host.appendChild(badge);
+    }
+
+    if(logout){
+      logout.classList.add("cmfin-topbar-action-btn-v2");
+      host.appendChild(logout);
+    }
+
+    if(input){
+      host.appendChild(input);
+    }
+
+    moverSalvarParaAcoes();
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-topbar-order-actions-v2-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-topbar-order-actions-v2-style";
+    css.textContent = `
+      .topbar .actions.cmfin-actions-ordered-v2{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        gap:10px !important;
+        flex-wrap:wrap !important;
+      }
+
+      .cmfin-actions-ordered-v2 #cmfinNovoRegistroBtn{order:1 !important;}
+      .cmfin-actions-ordered-v2 .actions-menu-wrap{order:2 !important;}
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{order:3 !important;}
+      .cmfin-actions-ordered-v2 #cmfinLogoutBtn{order:4 !important;}
+      .cmfin-actions-ordered-v2 #inputImportarDados{order:99 !important;}
+
+      .cmfin-actions-ordered-v2 #cmfinNovoRegistroBtn,
+      .cmfin-actions-ordered-v2 .actions-menu-wrap > .btn,
+      .cmfin-actions-ordered-v2 #cmfinLogoutBtn,
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{
+        min-height:46px !important;
+        height:46px !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        box-sizing:border-box !important;
+        margin:0 !important;
+      }
+
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{
+        padding-top:0 !important;
+        padding-bottom:0 !important;
+      }
+
+      .cmfin-actions-ordered-v2 .actions-menu-wrap{
+        display:inline-flex !important;
+        align-items:center !important;
+        height:46px !important;
+        margin:0 !important;
+      }
+
+      .cmfin-actions-ordered-v2 .btn-menu-toggle{
+        font-size:14px !important;
+      }
+
+      .cmfin-actions-ordered-v2 .btn-menu-toggle span{
+        display:inline !important;
+        font-size:13px !important;
+        font-weight:800 !important;
+      }
+
+      .cmfin-actions-ordered-v2 #cmfinCloudSaveTopBtn{
+        display:none !important;
+      }
+
+      .actions-dropdown .cmfin-cloud-save-action-btn{
+        width:100% !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        white-space:nowrap !important;
+      }
+
+      @media(max-width:700px){
+        .cmfin-actions-ordered-v2 .btn-menu-toggle span{display:inline !important;}
+        .topbar .actions.cmfin-actions-ordered-v2{justify-content:flex-start !important;}
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    ordenarTopo();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      tick();
+      setInterval(tick, 650);
+    });
+  }else{
+    tick();
+    setInterval(tick, 650);
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 250);
+    setTimeout(tick, 900);
+    setTimeout(tick, 1800);
+  });
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 90);
+    setTimeout(tick, 360);
+  }, true);
+})();
+</script>
