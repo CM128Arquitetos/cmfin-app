@@ -30107,3 +30107,278 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-top-actions-height-reference-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isTargetButton(el){
+    var t = norm(el.textContent || "");
+
+    return t === "+ novo registro" ||
+           t === "novo registro" ||
+           t === "acoes" ||
+           t.indexOf("licenca ativa") >= 0 ||
+           t === "sair";
+  }
+
+  function isNewButton(el){
+    var t = norm(el.textContent || "");
+    return t === "+ novo registro" || t === "novo registro";
+  }
+
+  function isActionsButton(el){
+    return norm(el.textContent || "") === "acoes";
+  }
+
+  function isLicense(el){
+    return norm(el.textContent || "").indexOf("licenca ativa") >= 0;
+  }
+
+  function isExit(el){
+    return norm(el.textContent || "") === "sair";
+  }
+
+  function limparIconesTexto(el){
+    if(!el) return;
+
+    var txt = String(el.textContent || "").trim()
+      .replace(/^☁️\s*/g, "")
+      .replace(/^☁\s*/g, "")
+      .replace(/^⎋\s*/g, "")
+      .replace(/^↪\s*/g, "")
+      .replace(/^↩\s*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if(norm(txt) === "sair"){
+      el.textContent = "Sair";
+    }
+  }
+
+  function getTopbar(){
+    return document.querySelector(".topbar") ||
+           document.querySelector("header") ||
+           document.querySelector(".page-header") ||
+           null;
+  }
+
+  function getActionsContainer(topbar){
+    if(!topbar) return null;
+
+    var direct = topbar.querySelector(".actions, .header-actions, .top-actions, [class*='actions']");
+    if(direct) return direct;
+
+    var buttons = Array.prototype.slice.call(topbar.querySelectorAll("button, a, span"))
+      .filter(isTargetButton);
+
+    if(buttons.length){
+      return buttons[0].parentElement;
+    }
+
+    return null;
+  }
+
+  function findTargets(container){
+    if(!container) return {};
+
+    var nodes = Array.prototype.slice.call(container.querySelectorAll("button, a, span, div"))
+      .filter(function(el){
+        if(!isTargetButton(el)) return false;
+
+        // Evita pegar containers grandes com todo o texto dos filhos.
+        var childButtons = el.querySelectorAll ? el.querySelectorAll("button, a").length : 0;
+        if(childButtons > 1) return false;
+
+        return true;
+      });
+
+    var novo = nodes.find(isNewButton) || null;
+    var acoes = nodes.find(isActionsButton) || null;
+    var licenca = nodes.find(isLicense) || null;
+    var sair = nodes.find(isExit) || null;
+
+    return { novo: novo, acoes: acoes, licenca: licenca, sair: sair };
+  }
+
+  function wrapDirect(el, container){
+    if(!el || !container) return null;
+
+    // Usa o wrapper direto caso o botão esteja dentro de um wrapper pequeno.
+    var p = el.parentElement;
+    if(p && p !== container && p.parentElement === container){
+      var txt = norm(p.textContent || "");
+      if(
+        txt === "+ novo registro" ||
+        txt === "novo registro" ||
+        txt === "acoes" ||
+        txt.indexOf("licenca ativa") >= 0 ||
+        txt === "sair"
+      ){
+        return p;
+      }
+    }
+
+    return el;
+  }
+
+  function ordenarMesmaAltura(){
+    var topbar = getTopbar();
+    var container = getActionsContainer(topbar);
+    if(!topbar || !container) return;
+
+    var targets = findTargets(container);
+    if(!targets.novo || !targets.acoes || !targets.licenca || !targets.sair) return;
+
+    container.classList.add("cmfin-top-actions-reference-row");
+
+    [targets.novo, targets.acoes, targets.licenca, targets.sair].forEach(function(el){
+      limparIconesTexto(el);
+      el.classList.add("cmfin-top-action-reference-btn");
+    });
+
+    targets.licenca.classList.add("cmfin-top-action-reference-license");
+
+    var novoWrap = wrapDirect(targets.novo, container);
+    var acoesWrap = wrapDirect(targets.acoes, container);
+    var licencaWrap = wrapDirect(targets.licenca, container);
+    var sairWrap = wrapDirect(targets.sair, container);
+
+    [novoWrap, acoesWrap, licencaWrap, sairWrap].forEach(function(el){
+      if(el){
+        el.classList.add("cmfin-top-action-reference-item");
+      }
+    });
+
+    // Ordem visual solicitada, sem apagar eventos dos botões.
+    // appendChild move o próprio elemento, preservando listeners/eventos.
+    [novoWrap, acoesWrap, licencaWrap, sairWrap].forEach(function(el){
+      if(el && el.parentElement === container){
+        container.appendChild(el);
+      }
+    });
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-top-actions-height-reference-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-top-actions-height-reference-style";
+    css.textContent = `
+      /*
+        Padronização do topo conforme arquivo de referência:
+        + Novo Registro → Ações → Licença Ativa → Sair
+        Todos na mesma altura, sem quebrar linha.
+      */
+      .cmfin-top-actions-reference-row{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        flex-wrap:nowrap !important;
+        gap:10px !important;
+        white-space:nowrap !important;
+      }
+
+      .cmfin-top-actions-reference-row > .cmfin-top-action-reference-item,
+      .cmfin-top-actions-reference-row > .cmfin-top-action-reference-btn{
+        flex:0 0 auto !important;
+        align-self:center !important;
+        margin-top:0 !important;
+        margin-bottom:0 !important;
+      }
+
+      .cmfin-top-action-reference-btn,
+      .cmfin-top-action-reference-item button,
+      .cmfin-top-action-reference-item a{
+        min-height:42px !important;
+        height:42px !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        vertical-align:middle !important;
+        white-space:nowrap !important;
+        line-height:1 !important;
+        flex-shrink:0 !important;
+        margin-top:0 !important;
+        margin-bottom:0 !important;
+      }
+
+      .cmfin-top-action-reference-license{
+        min-height:42px !important;
+        height:42px !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        line-height:1 !important;
+        white-space:nowrap !important;
+        padding-top:0 !important;
+        padding-bottom:0 !important;
+      }
+
+      .cmfin-top-actions-reference-row svg,
+      .cmfin-top-actions-reference-row i{
+        flex:0 0 auto !important;
+      }
+
+      .cmfin-top-actions-reference-row .cmfin-top-action-reference-btn *,
+      .cmfin-top-actions-reference-row .cmfin-top-action-reference-item *{
+        line-height:1 !important;
+      }
+
+      @media(max-width:1180px){
+        .cmfin-top-actions-reference-row{
+          gap:8px !important;
+        }
+
+        .cmfin-top-action-reference-btn,
+        .cmfin-top-action-reference-item button,
+        .cmfin-top-action-reference-item a,
+        .cmfin-top-action-reference-license{
+          min-height:40px !important;
+          height:40px !important;
+        }
+      }
+    `;
+
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    ordenarMesmaAltura();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      tick();
+      setTimeout(tick, 250);
+      setTimeout(tick, 900);
+    });
+  }else{
+    tick();
+    setTimeout(tick, 250);
+    setTimeout(tick, 900);
+  }
+
+  window.addEventListener("load", tick);
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 450);
+  }, true);
+
+  window.addEventListener("resize", function(){
+    setTimeout(tick, 120);
+  });
+})();
+</script>
+
