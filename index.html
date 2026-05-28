@@ -29869,7 +29869,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     position:absolute !important;
     top:calc(100% + 10px) !important;
     left:0 !important;
-    min-width:260px !important;
+    min-width:285px !important;
     padding:8px !important;
     border-radius:18px !important;
     border:1px solid rgba(15,61,50,.14) !important;
@@ -29929,7 +29929,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 (function(){
   "use strict";
 
-  var atalhosNovoRegistro = [
+  var atalhosNovoRegistroPessoal = [
     { id:"gastosFixos", label:"Gastos Fixos", icon:"▤" },
     { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰" },
     { id:"recebimentos", label:"Recebimentos", icon:"↓" },
@@ -29938,6 +29938,33 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     { id:"objetivos", label:"Objetivos", icon:"◎" },
     { id:"analiseFinanceira", label:"Análise Financeira", icon:"▥" }
   ];
+
+  var atalhosNovoRegistroEmpresarial = [
+    { id:"gastosFixos", label:"Gastos Fixos", icon:"▤" },
+    { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰" },
+    { id:"pagamentosTerceirizados", label:"Equipe Técnica Externa", icon:"👥" },
+    { id:"pagamentosArquitetos", label:"Sócios e Pró-Labore", icon:"♙" },
+    { id:"recebimentos", label:"Recebimentos", icon:"↓" },
+    { id:"documentos", label:"Notas & Documentos", icon:"▤" },
+    { id:"relatorioContador", label:"Relatório Contador", icon:"▥" },
+    { id:"bancos", label:"Bancos e Cartões", icon:"▣" },
+    { id:"objetivos", label:"Objetivos", icon:"◎" },
+    { id:"analiseFinanceira", label:"Análise Financeira", icon:"▥" }
+  ];
+
+  function obterModoAtualNovoRegistro(){
+    try{
+      if(typeof modoAtual !== "undefined") return modoAtual === "empresarial" ? "empresarial" : "pessoal";
+      if(window.modoAtual) return window.modoAtual === "empresarial" ? "empresarial" : "pessoal";
+      var btnEmp = document.getElementById("btnModoEmpresarial");
+      if(btnEmp && btnEmp.classList.contains("active")) return "empresarial";
+    }catch(e){}
+    return "pessoal";
+  }
+
+  function atalhosNovoRegistroDoModo(){
+    return obterModoAtualNovoRegistro() === "empresarial" ? atalhosNovoRegistroEmpresarial : atalhosNovoRegistroPessoal;
+  }
 
   function byId(id){ return document.getElementById(id); }
 
@@ -29984,9 +30011,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
     if(menu.parentElement !== wrap) wrap.appendChild(menu);
 
-    if(menu.dataset.ready !== "1"){
+    var modoMenu = obterModoAtualNovoRegistro();
+    if(menu.dataset.ready !== "1" || menu.dataset.modo !== modoMenu){
       menu.innerHTML = "";
-      atalhosNovoRegistro.forEach(function(item){
+      atalhosNovoRegistroDoModo().forEach(function(item){
         var b = document.createElement("button");
         b.type = "button";
         b.setAttribute("data-novo-registro-module", item.id);
@@ -30000,6 +30028,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         menu.appendChild(b);
       });
       menu.dataset.ready = "1";
+      menu.dataset.modo = modoMenu;
     }
     return wrap;
   }
