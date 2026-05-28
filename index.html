@@ -34422,3 +34422,138 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-topbar-duas-faces-js">
+(function(){
+  'use strict';
+
+  function applyTopbarLayout(){
+    var topbar = document.querySelector('.topbar');
+    if(!topbar) return;
+
+    var info = topbar.children[0];
+    var actions = topbar.querySelector('.actions');
+    if(!info || !actions) return;
+
+    topbar.classList.add('cmfin-topbar-split');
+    info.classList.add('cmfin-topbar-info');
+    actions.classList.add('cmfin-topbar-actions');
+
+    var subtitle = info.querySelector('#subtituloModulo, .subtitle');
+    if(subtitle) subtitle.classList.add('cmfin-topbar-subtitle');
+
+    var mode = info.querySelector('#indicadorModoAtual, .mode-indicator');
+    if(mode) mode.classList.add('cmfin-topbar-mode');
+  }
+
+  function ensureStyle(){
+    if(document.getElementById('cmfin-topbar-duas-faces-style')) return;
+    var style=document.createElement('style');
+    style.id='cmfin-topbar-duas-faces-style';
+    style.textContent=`
+      /* Estrutura fixa em duas faces no topo */
+      .topbar.cmfin-topbar-split{
+        display:grid !important;
+        grid-template-columns:minmax(520px, 660px) max-content !important;
+        justify-content:space-between !important;
+        align-items:start !important;
+        gap:20px 28px !important;
+        width:100% !important;
+      }
+
+      .topbar.cmfin-topbar-split > .cmfin-topbar-info{
+        min-width:0 !important;
+        max-width:660px !important;
+        width:100% !important;
+      }
+
+      .topbar.cmfin-topbar-split > .cmfin-topbar-actions{
+        min-width:max-content !important;
+        width:max-content !important;
+        justify-self:end !important;
+        align-self:start !important;
+        display:flex !important;
+        flex-wrap:nowrap !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        gap:10px !important;
+      }
+
+      .topbar.cmfin-topbar-split .cmfin-topbar-subtitle,
+      .topbar.cmfin-topbar-split #subtituloModulo,
+      .topbar.cmfin-topbar-split .subtitle{
+        display:block !important;
+        width:100% !important;
+        max-width:620px !important;
+        margin-top:8px !important;
+        white-space:normal !important;
+        overflow-wrap:break-word !important;
+        word-break:normal !important;
+        line-height:1.45 !important;
+      }
+
+      .topbar.cmfin-topbar-split .cmfin-topbar-mode,
+      .topbar.cmfin-topbar-split #indicadorModoAtual,
+      .topbar.cmfin-topbar-split .mode-indicator{
+        display:inline-flex !important;
+        margin-top:12px !important;
+      }
+
+      .topbar.cmfin-topbar-split .cmfin-topbar-actions .btn,
+      .topbar.cmfin-topbar-split .cmfin-topbar-actions .cmfin-cloud-top-btn,
+      .topbar.cmfin-topbar-split .cmfin-topbar-actions .cmfin-top-license-badge,
+      .topbar.cmfin-topbar-split .cmfin-topbar-actions .actions-menu-wrap,
+      .topbar.cmfin-topbar-split .cmfin-topbar-actions button{
+        flex:0 0 auto !important;
+        white-space:nowrap !important;
+      }
+
+      .topbar.cmfin-topbar-split .cmfin-top-license-badge{
+        margin:0 !important;
+      }
+
+      @media (max-width: 1400px){
+        .topbar.cmfin-topbar-split{
+          grid-template-columns:minmax(420px, 1fr) max-content !important;
+        }
+      }
+
+      @media (max-width: 1180px){
+        .topbar.cmfin-topbar-split{
+          grid-template-columns:1fr !important;
+        }
+        .topbar.cmfin-topbar-split > .cmfin-topbar-actions{
+          justify-self:start !important;
+          flex-wrap:wrap !important;
+          width:100% !important;
+          min-width:0 !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function tick(){
+    ensureStyle();
+    applyTopbarLayout();
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      tick();
+      setTimeout(tick,200);
+      setTimeout(tick,900);
+      setInterval(tick,1200);
+    });
+  } else {
+    tick();
+    setTimeout(tick,200);
+    setTimeout(tick,900);
+    setInterval(tick,1200);
+  }
+
+  window.addEventListener('load', tick);
+  document.addEventListener('click', function(){ setTimeout(tick,120); }, true);
+})();
+</script>
+
