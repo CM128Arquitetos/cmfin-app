@@ -11635,7 +11635,7 @@ button[data-clear-filters],
 
     function resetarDados() {
       const nomeModo = modoAtual === "empresarial" ? "Empresarial" : "Pessoal";
-      if (!confirm(`Deseja apagar todos os dados do Modo ${nomeModo} e voltar ao padrão inicial?`)) return;
+      if (!confirm(`Deseja mesmo fazer isso?\n\nIsso apagará todos os dados do Modo ${nomeModo} e voltará ao padrão inicial.`)) return;
 
       dadosIniciais();
       salvarDados();
@@ -24122,45 +24122,307 @@ body.ello-modo-trocando .module.active {
 
 
 
-<!-- PATCH DE SEGURANÇA — Análise Financeira só aparece na própria aba -->
-<style id="cmfin-analise-somente-aba-css">
-  .module:not(.active)#analiseFinanceira{display:none !important; visibility:hidden !important; opacity:0 !important;}
-  .module.active#analiseFinanceira{display:block !important; visibility:visible !important; opacity:1 !important;}
-</style>
-<script id="cmfin-analise-somente-aba-js">
+<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
+<script id="cmfin-final-menu-acoes-perfil-ajustes-js">
 (function(){
   "use strict";
-  function corrigirVisibilidadeAnalise(){
-    var sec=document.getElementById("analiseFinanceira");
-    if(!sec) return;
-    if(sec.classList.contains("active")){
-      sec.style.display="block";
-      sec.style.visibility="visible";
-      sec.style.opacity="1";
-    }else{
-      sec.style.display="none";
-      sec.style.visibility="hidden";
-      sec.style.opacity="0";
+
+  function norm(txt){
+    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+  }
+
+  function fecharMenu(){
+    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
+  }
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;display:flex;align-items:center;gap:8px;max-width:520px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+    b.style.background = tipo === "ok" ? "rgba(6,95,70,.94)" : tipo === "erro" ? "rgba(153,27,27,.94)" : "rgba(15,23,42,.92)";
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
+  }
+
+  async function exportarComputador(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.exportarDados === "function") window.exportarDados();
+      else toast("Função de exportação local não encontrada.", "erro");
+    }, 60);
+  }
+
+  async function importarComputador(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    setTimeout(function(){
+      if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
+      else {
+        var input = document.getElementById("inputImportarDados");
+        if(input) input.click();
+        else toast("Função de importação local não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  async function exportarNuvem(){
+    fecharMenu();
+    toast("Exportando dados para a nuvem...", "info");
+    try{
+      var ok = false;
+      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
+      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
+      toast(ok ? "Dados exportados para a nuvem." : "Não foi possível exportar para a nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao exportar para a nuvem.", "erro");
     }
   }
-  var old=window.mudarModulo;
-  if(typeof old==="function" && !old.__cmfinAnaliseSomenteAba){
-    window.mudarModulo=function(id){
-      var r=old.apply(this,arguments);
-      setTimeout(corrigirVisibilidadeAnalise,0);
-      setTimeout(corrigirVisibilidadeAnalise,80);
-      setTimeout(corrigirVisibilidadeAnalise,300);
-      return r;
-    };
-    window.mudarModulo.__cmfinAnaliseSomenteAba=true;
-    try{ mudarModulo=window.mudarModulo; }catch(e){}
+
+  async function importarNuvem(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    toast("Importando dados da nuvem...", "info");
+    try{
+      if(typeof window.cmfinCarregarDadosNuvem !== "function"){
+        toast("Função de importação da nuvem não encontrada.", "erro");
+        return;
+      }
+      var ok = await window.cmfinCarregarDadosNuvem();
+      try{
+        if(typeof preencherCategorias === "function") preencherCategorias();
+        if(typeof atualizarSelects === "function") atualizarSelects();
+        if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
+        if(typeof atualizarUIModo === "function") atualizarUIModo();
+        if(typeof renderizarTudo === "function") renderizarTudo();
+      }catch(_e){}
+      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao importar da nuvem.", "erro");
+    }
   }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",corrigirVisibilidadeAnalise);
-  else corrigirVisibilidadeAnalise();
-  window.addEventListener("load",function(){corrigirVisibilidadeAnalise(); setTimeout(corrigirVisibilidadeAnalise,500);});
-  setInterval(corrigirVisibilidadeAnalise,1000);
+
+  function pastaBackup(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirEscolhaModoBackup === "function") window.cmfinAbrirEscolhaModoBackup("pasta");
+      else if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO((window.modoAtual === "empresarial") ? "empresarial" : "pessoal");
+      else toast("Função de pasta de backup não encontrada.", "erro");
+    }, 60);
+  }
+
+  function baixarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("exportar");
+      else {
+        var btn = document.querySelector("[data-cmfin-cloud-menu='backup']");
+        if(btn) btn.click();
+        else toast("Função de baixar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function restaurarCopia(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("importar");
+      else {
+        var btn = document.getElementById("cmfinRestoreBackupMenuItem");
+        if(btn) btn.click();
+        else toast("Função de restaurar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
+  }
+
+  function resetarFinal(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.resetarDados === "function") window.resetarDados();
+      else toast("Função de resetar dados não encontrada.", "erro");
+    }, 60);
+  }
+
+  function makeBtn(texto, acao, danger){
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-final-action-btn" + (danger ? " danger" : "");
+    btn.textContent = texto;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      acao();
+    });
+    return btn;
+  }
+
+  function sep(){
+    var d = document.createElement("div");
+    d.className = "cmfin-final-action-separator";
+    return d;
+  }
+
+  function getMenu(){
+    return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
+  }
+
+  function montarMenuFinal(){
+    var menu = getMenu();
+    if(!menu) return;
+
+    // Remove item de senha do menu Ações: agora fica no Perfil.
+    var senha = document.getElementById("cmfinAlterarSenhaMenuItem");
+    if(senha) senha.style.display = "none";
+
+    var box = document.getElementById("cmfinMenuFinalActions");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "cmfinMenuFinalActions";
+      box.className = "cmfin-final-actions-box";
+      menu.insertBefore(box, menu.firstChild);
+    }
+
+    if(box.dataset.ready !== "1"){
+      box.innerHTML = "";
+      box.appendChild(makeBtn("Exportar p/ Computador", exportarComputador));
+      box.appendChild(makeBtn("Importar do Computador", importarComputador));
+      box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
+      box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Pasta Backup", pastaBackup));
+      box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
+      box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Resetar Dados", resetarFinal, true));
+      box.dataset.ready = "1";
+    }
+  }
+
+  function adicionarSenhaNoPerfil(){
+    // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
+    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
+
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    if(!page || page.style.display === "none") return;
+    if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
+
+    var actions = page.querySelector(".cmfin-profile-actions");
+    if(!actions) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinPerfilAlterarSenhaBtn";
+    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
+    btn.textContent = "Alterar Senha de Acesso";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
+      else toast("Função de alteração de senha não encontrada.", "erro");
+    });
+
+    actions.insertBefore(btn, actions.firstChild);
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-final-menu-acoes-perfil-ajustes-style")) return;
+    var css = document.createElement("style");
+    css.id = "cmfin-final-menu-acoes-perfil-ajustes-style";
+    css.textContent = `
+      #menuAcoesTopo > *:not(#cmfinMenuFinalActions):not(input),
+      .actions-dropdown > *:not(#cmfinMenuFinalActions):not(input){
+        display:none !important;
+      }
+      #cmfinMenuFinalActions.cmfin-final-actions-box{
+        width:100% !important;
+        display:flex !important;
+        flex-direction:column !important;
+        gap:10px !important;
+        padding:0 !important;
+        margin:0 !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn{
+        width:100% !important;
+        min-height:44px !important;
+        height:auto !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        padding:12px 14px !important;
+        border-radius:13px !important;
+        border:1px solid rgba(15,23,42,.12) !important;
+        background:#fff !important;
+        color:#0f172a !important;
+        font-size:13px !important;
+        font-weight:900 !important;
+        letter-spacing:.01em !important;
+        box-shadow:none !important;
+        cursor:pointer !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn:hover{
+        background:rgba(15,61,50,.06) !important;
+        border-color:rgba(15,61,50,.18) !important;
+        transform:translateY(-1px);
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger{
+        color:#b91c1c !important;
+        border-color:rgba(185,28,28,.22) !important;
+        background:rgba(254,242,242,.98) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger:hover{
+        background:#fee2e2 !important;
+        border-color:rgba(185,28,28,.34) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-separator{
+        height:1px !important;
+        width:100% !important;
+        background:rgba(15,23,42,.10) !important;
+        margin:4px 0 !important;
+      }
+      #cmfinAlterarSenhaMenuItem{display:none !important;}
+      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
+        background:#0f3d32 !important;
+        color:#fff !important;
+        border-color:#0f3d32 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    montarMenuFinal();
+    adicionarSenhaNoPerfil();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){ tick(); setInterval(tick, 550); });
+  }else{
+    tick();
+    setInterval(tick, 550);
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 200);
+    setTimeout(tick, 900);
+  });
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 260);
+  }, true);
 })();
-</script>
+<\/script>
+
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -29636,268 +29898,307 @@ body.ello-modo-trocando .module.active {
 
 
 
-<!-- PATCH FINAL — Menu Ações, ordem lateral e reparo Análise Financeira -->
-<style id="cmfin-final-ajustes-menu-analise-css">
-  #menuAcoesTopo.cmfin-menu-acoes-final{
-    display:none;
-    flex-direction:column !important;
-    gap:10px !important;
-    padding:10px !important;
-  }
-  #menuAcoesTopo.cmfin-menu-acoes-final.open{ display:flex !important; }
-  #menuAcoesTopo.cmfin-menu-acoes-final > *:not(#cmfinMenuAcoesFinalBox):not(input){ display:none !important; }
-  #cmfinMenuAcoesFinalBox{
-    width:100%;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-  #cmfinMenuAcoesFinalBox .cmfin-final-action-btn{
-    width:100%;
-    min-height:44px;
-    height:auto;
-    display:flex;
-    align-items:center;
-    justify-content:flex-start;
-    text-align:left;
-    padding:12px 14px;
-    border-radius:12px;
-    border:1px solid rgba(15,23,42,.14);
-    background:#fff;
-    color:#071f19;
-    font-weight:900;
-    font-size:13px;
-    line-height:1.15;
-    cursor:pointer;
-    box-shadow:none;
-  }
-  #cmfinMenuAcoesFinalBox .cmfin-final-action-btn:hover{
-    transform:translateY(-1px);
-    box-shadow:0 10px 22px rgba(15,23,42,.08);
-  }
-  #cmfinMenuAcoesFinalBox .cmfin-final-sep{
-    height:1px;
-    background:rgba(15,23,42,.10);
-    margin:2px 0;
-  }
-  #cmfinMenuAcoesFinalBox .cmfin-final-action-danger{
-    color:#b42318 !important;
-    border-color:rgba(180,35,24,.28) !important;
-    background:#fff7f6 !important;
-  }
-  #cmfinMenuAcoesFinalBox .cmfin-final-action-danger:hover{
-    background:#ffeceb !important;
-  }
-  .topbar .actions.cmfin-actions-ordered-final{
-    display:flex !important;
-    align-items:center !important;
-    justify-content:flex-end !important;
-    gap:10px !important;
-    flex-wrap:wrap !important;
-  }
-  .cmfin-actions-ordered-final #cmfinNovoRegistroBtn{order:1 !important;}
-  .cmfin-actions-ordered-final .actions-menu-wrap{order:2 !important;}
-  .cmfin-actions-ordered-final #cmfinLicenseBadge{order:3 !important;}
-  .cmfin-actions-ordered-final #cmfinLogoutBtn{order:4 !important;}
-  .cmfin-actions-ordered-final #cmfinNovoRegistroBtn,
-  .cmfin-actions-ordered-final .actions-menu-wrap > .btn,
-  .cmfin-actions-ordered-final #cmfinLicenseBadge,
-  .cmfin-actions-ordered-final #cmfinLogoutBtn{
-    min-height:46px !important;
-    height:46px !important;
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    margin:0 !important;
-    box-sizing:border-box !important;
-  }
-  .cmfin-actions-ordered-final .actions-menu-wrap{height:46px !important; align-items:center !important;}
-  .cmfin-actions-ordered-final .btn-menu-toggle{font-size:14px !important; gap:8px !important;}
-  .cmfin-actions-ordered-final .btn-menu-toggle span{display:inline !important; font-size:13px !important; font-weight:800 !important;}
-  #analiseFinanceira.cmfin-force-visible.active{display:block !important; visibility:visible !important; opacity:1 !important;}
-  #analiseFinanceira.cmfin-force-visible .analysis-shell{display:flex !important; flex-direction:column !important; gap:16px !important;}
-</style>
-<script id="cmfin-final-ajustes-menu-analise-js">
+<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
+<script id="cmfin-final-menu-acoes-perfil-ajustes-js">
 (function(){
   "use strict";
 
-  function n(txt){return String(txt||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");}
-  function menu(){return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown");}
-  function hostTopo(){return document.querySelector(".topbar .actions");}
-  function fecharMenu(){try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){} var m=menu(); if(m) m.classList.remove("open");}
-  function toastMsg(msg,tipo){try{ if(typeof window.toast === "function") return window.toast(msg,tipo||"ok"); }catch(e){} if(msg) alert(msg);}
-  function rerender(){
-    try{ if(typeof window.preencherCategorias === "function") window.preencherCategorias(); }catch(e){}
-    try{ if(typeof window.atualizarSelects === "function") window.atualizarSelects(); }catch(e){}
-    try{ if(typeof window.carregarConfiguracaoDistribuicaoNaTela === "function") window.carregarConfiguracaoDistribuicaoNaTela(); }catch(e){}
-    try{ if(typeof window.atualizarUIModo === "function") window.atualizarUIModo(); }catch(e){}
-    try{ if(typeof window.renderizarTudo === "function") window.renderizarTudo(); }catch(e){}
+  function norm(txt){
+    return String(txt || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
   }
-  function btn(txt, fn, danger){
-    var b=document.createElement("button");
-    b.type="button";
-    b.className="cmfin-final-action-btn"+(danger?" cmfin-final-action-danger":"");
-    b.textContent=txt;
-    b.addEventListener("click", function(e){e.preventDefault(); e.stopPropagation(); fecharMenu(); fn();});
-    return b;
-  }
-  function sep(){var d=document.createElement("div"); d.className="cmfin-final-sep"; return d;}
 
-  function exportarComputador(){
-    if(typeof window.exportarDados === "function") window.exportarDados();
-    else toastMsg("Função de exportação não encontrada.","erro");
+  function fecharMenu(){
+    try{ if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes(); }catch(e){}
   }
-  function importarComputador(){
-    if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
-    else { var input=document.getElementById("inputImportarDados"); if(input) input.click(); else toastMsg("Função de importação não encontrada.","erro"); }
-    setTimeout(rerender,350);
-    setTimeout(rerender,1200);
+
+  function toast(texto, tipo){
+    var id = "cmfinCloudPanelToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;display:flex;align-items:center;gap:8px;max-width:520px;padding:12px 15px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;backdrop-filter:blur(12px);";
+      document.body.appendChild(b);
+    }
+    b.style.background = tipo === "ok" ? "rgba(6,95,70,.94)" : tipo === "erro" ? "rgba(153,27,27,.94)" : "rgba(15,23,42,.92)";
+    b.textContent = texto;
+    b.style.display = "flex";
+    clearTimeout(b._hideTimer);
+    b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
   }
-  function exportarNuvem(){
-    if(typeof window.cmfinSalvarDadosNuvem === "function") window.cmfinSalvarDadosNuvem().then(function(ok){ if(ok!==false) toastMsg("Dados enviados para a nuvem.","ok"); });
-    else toastMsg("Função de nuvem ainda não carregou.","erro");
+
+  async function exportarComputador(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.exportarDados === "function") window.exportarDados();
+      else toast("Função de exportação local não encontrada.", "erro");
+    }, 60);
   }
-  function importarNuvem(){
-    if(!confirm("Deseja importar os dados da nuvem para este sistema?")) return;
-    if(typeof window.cmfinCarregarDadosNuvem === "function"){
-      window.cmfinCarregarDadosNuvem().then(function(ok){
-        rerender();
-        toastMsg(ok===false ? "Não foi possível importar da nuvem." : "Dados da nuvem reconhecidos com sucesso.", ok===false?"erro":"ok");
-      });
-    }else toastMsg("Função de nuvem ainda não carregou.","erro");
+
+  async function importarComputador(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    setTimeout(function(){
+      if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
+      else {
+        var input = document.getElementById("inputImportarDados");
+        if(input) input.click();
+        else toast("Função de importação local não encontrada.", "erro");
+      }
+    }, 60);
   }
+
+  async function exportarNuvem(){
+    fecharMenu();
+    toast("Exportando dados para a nuvem...", "info");
+    try{
+      var ok = false;
+      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
+      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
+      toast(ok ? "Dados exportados para a nuvem." : "Não foi possível exportar para a nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao exportar para a nuvem.", "erro");
+    }
+  }
+
+  async function importarNuvem(){
+    fecharMenu();
+    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    toast("Importando dados da nuvem...", "info");
+    try{
+      if(typeof window.cmfinCarregarDadosNuvem !== "function"){
+        toast("Função de importação da nuvem não encontrada.", "erro");
+        return;
+      }
+      var ok = await window.cmfinCarregarDadosNuvem();
+      try{
+        if(typeof preencherCategorias === "function") preencherCategorias();
+        if(typeof atualizarSelects === "function") atualizarSelects();
+        if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
+        if(typeof atualizarUIModo === "function") atualizarUIModo();
+        if(typeof renderizarTudo === "function") renderizarTudo();
+      }catch(_e){}
+      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao importar da nuvem.", "erro");
+    }
+  }
+
   function pastaBackup(){
-    var modo=(window.modoAtual === "empresarial") ? "empresarial" : "pessoal";
-    if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO(modo);
-    else toastMsg("Função de pasta backup não encontrada.","erro");
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirEscolhaModoBackup === "function") window.cmfinAbrirEscolhaModoBackup("pasta");
+      else if(typeof window.definirPastaPadraoBackupELLO === "function") window.definirPastaPadraoBackupELLO((window.modoAtual === "empresarial") ? "empresarial" : "pessoal");
+      else toast("Função de pasta de backup não encontrada.", "erro");
+    }, 60);
   }
+
   function baixarCopia(){
-    var b=document.querySelector("[data-cmfin-cloud-menu='backup']");
-    if(b) b.click();
-    else if(typeof window.exportarBackup === "function") window.exportarBackup();
-    else exportarComputador();
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("exportar");
+      else {
+        var btn = document.querySelector("[data-cmfin-cloud-menu='backup']");
+        if(btn) btn.click();
+        else toast("Função de baixar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
   }
+
   function restaurarCopia(){
-    var b=document.getElementById("cmfinRestoreBackupMenuItem") || document.querySelector("[data-cmfin-backup-menu='restore']");
-    if(b) b.click();
-    else importarComputador();
-    setTimeout(rerender,500);
-    setTimeout(rerender,1300);
-  }
-  function resetar(){
-    if(!confirm("Deseja mesmo fazer isso?")) return;
-    if(typeof window.resetarDados === "function") window.resetarDados();
-    else toastMsg("Função de reset não encontrada.","erro");
-    setTimeout(rerender,150);
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirBackupAvancado === "function") window.cmfinAbrirBackupAvancado("importar");
+      else {
+        var btn = document.getElementById("cmfinRestoreBackupMenuItem");
+        if(btn) btn.click();
+        else toast("Função de restaurar cópia de segurança não encontrada.", "erro");
+      }
+    }, 60);
   }
 
-  function montarMenuAcoes(){
-    var m=menu(); if(!m) return;
-    m.classList.add("cmfin-menu-acoes-final");
-    var box=document.getElementById("cmfinMenuAcoesFinalBox");
-    if(!box){ box=document.createElement("div"); box.id="cmfinMenuAcoesFinalBox"; m.insertBefore(box, m.firstChild); }
-    box.innerHTML="";
-    box.appendChild(btn("Exportar p/ Computador", exportarComputador));
-    box.appendChild(btn("Importar do Computador", importarComputador));
-    box.appendChild(btn("Exportar p/ Nuvem", exportarNuvem));
-    box.appendChild(btn("Importar da Nuvem", importarNuvem));
-    box.appendChild(sep());
-    box.appendChild(btn("Pasta Backup", pastaBackup));
-    box.appendChild(btn("Baixar Cópia de Segurança", baixarCopia));
-    box.appendChild(btn("Restaurar Cópia de Segurança", restaurarCopia));
-    box.appendChild(sep());
-    box.appendChild(btn("Resetar Dados", resetar, true));
+  function resetarFinal(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.resetarDados === "function") window.resetarDados();
+      else toast("Função de resetar dados não encontrada.", "erro");
+    }, 60);
   }
 
-  function ordenarTopo(){
-    var h=hostTopo(); if(!h) return;
-    h.classList.add("cmfin-actions-ordered-final");
-    var novo=document.getElementById("cmfinNovoRegistroBtn") || Array.prototype.slice.call(h.querySelectorAll("button")).find(function(b){return n(b.textContent).indexOf("novo registro")>=0;});
-    var wrap=h.querySelector(".actions-menu-wrap");
-    var badge=document.getElementById("cmfinLicenseBadge");
-    var sair=document.getElementById("cmfinLogoutBtn") || Array.prototype.slice.call(h.querySelectorAll("button")).find(function(b){return n(b.textContent)==="sair";});
-    var input=document.getElementById("inputImportarDados");
-    [novo,wrap,badge,sair,input].forEach(function(el){ if(el && el.parentNode===h) h.appendChild(el); });
+  function makeBtn(texto, acao, danger){
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-secondary cmfin-final-action-btn" + (danger ? " danger" : "");
+    btn.textContent = texto;
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      acao();
+    });
+    return btn;
   }
 
-  function botaoPerfil(menuNav){
-    return document.getElementById("cmfinPerfilNavBtn") || Array.prototype.slice.call(menuNav.querySelectorAll("button,a,.nav-item")).find(function(el){return n(el.textContent)==="perfil";});
+  function sep(){
+    var d = document.createElement("div");
+    d.className = "cmfin-final-action-separator";
+    return d;
   }
-  function ordenarMenuLateral(){
-    var nav=document.querySelector(".sidebar nav.nav") || document.querySelector("aside nav.nav") || document.querySelector(".sidebar nav") || document.querySelector("aside nav");
-    if(!nav) return;
-    var terceiros=nav.querySelector('[data-module="terceiros"]');
-    if(terceiros){ var ic=terceiros.querySelector(".icon"); terceiros.innerHTML=(ic?ic.outerHTML:'<span class="icon">☷</span>')+"Gastos por Terceiros"; }
-    ["dashboard","gastosVariaveis","gastosFixos","terceiros","recebimentos","cofre","bancos","objetivos","analiseFinanceira"].forEach(function(id){var el=nav.querySelector('[data-module="'+id+'"]'); if(el && el.parentNode===nav) nav.appendChild(el);});
-    var perfil=botaoPerfil(nav); if(perfil && perfil.parentNode===nav) nav.appendChild(perfil);
-    var config=nav.querySelector('[data-module="configuracoes"]'); if(config && config.parentNode===nav) nav.appendChild(config);
+
+  function getMenu(){
+    return document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
   }
-  function moverSenhaParaPerfil(){
-    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(el){el.style.display="none";});
-    var page=document.getElementById("cmfinPerfilUsuarioPage");
-    if(!page || page.style.display==="none" || !page.classList.contains("active")) return;
+
+  function montarMenuFinal(){
+    var menu = getMenu();
+    if(!menu) return;
+
+    // Remove item de senha do menu Ações: agora fica no Perfil.
+    var senha = document.getElementById("cmfinAlterarSenhaMenuItem");
+    if(senha) senha.style.display = "none";
+
+    var box = document.getElementById("cmfinMenuFinalActions");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "cmfinMenuFinalActions";
+      box.className = "cmfin-final-actions-box";
+      menu.insertBefore(box, menu.firstChild);
+    }
+
+    if(box.dataset.ready !== "1"){
+      box.innerHTML = "";
+      box.appendChild(makeBtn("Exportar p/ Computador", exportarComputador));
+      box.appendChild(makeBtn("Importar do Computador", importarComputador));
+      box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
+      box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Pasta Backup", pastaBackup));
+      box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
+      box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
+      box.appendChild(sep());
+      box.appendChild(makeBtn("Resetar Dados", resetarFinal, true));
+      box.dataset.ready = "1";
+    }
+  }
+
+  function adicionarSenhaNoPerfil(){
+    // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
+    document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
+
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    if(!page || page.style.display === "none") return;
     if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
-    var actions=page.querySelector(".cmfin-profile-actions") || page.querySelector("form") || page;
-    var b=document.createElement("button");
-    b.type="button"; b.id="cmfinPerfilAlterarSenhaBtn"; b.className="cmfin-profile-btn cmfin-profile-password-btn"; b.textContent="Alterar Senha de Acesso";
-    b.addEventListener("click", function(e){e.preventDefault(); if(typeof window.cmfinAbrirAlterarSenha==="function") window.cmfinAbrirAlterarSenha(); else toastMsg("Função de alteração de senha não encontrada.","erro");});
-    actions.insertBefore(b, actions.firstChild || null);
-  }
-  function repararAnaliseFinanceira(){
-    var sec=document.getElementById("analiseFinanceira"); if(!sec) return;
-    var ativa = sec.classList.contains("active");
-    sec.classList.add("cmfin-force-visible");
 
-    // Correção importante: quando sair da aba Análise Financeira,
-    // remove o display:block inline criado pelo reparo anterior.
-    // Assim a seção volta a respeitar o controle normal das abas.
-    if(!ativa){
-      sec.style.display="none";
-      sec.style.visibility="";
-      sec.style.opacity="";
-      return;
-    }
+    var actions = page.querySelector(".cmfin-profile-actions");
+    if(!actions) return;
 
-    sec.style.display="block";
-    sec.style.visibility="visible";
-    sec.style.opacity="1";
-    var shell=sec.querySelector(".analysis-shell");
-    if(shell && !shell.children.length){
-      shell.innerHTML='<div class="panel"><h2>Análise Financeira</h2><p>O conteúdo será recalculado ao renderizar o sistema.</p></div>';
-    }
-    try{ if(typeof window.renderizarAnaliseFinanceira === "function"){ var mes=(document.getElementById("filtroMes")&&document.getElementById("filtroMes").value) || (document.getElementById("mesDashboard")&&document.getElementById("mesDashboard").value) || new Date().toISOString().slice(0,7); window.renderizarAnaliseFinanceira(mes,0,0,0); }}catch(e){}
-  }
-  function atualizarTitulo(){
-    var t=document.getElementById("tituloModulo");
-    if(t && n(t.textContent)==="terceiros") t.textContent="Gastos por Terceiros";
-  }
-  function tick(){ montarMenuAcoes(); ordenarTopo(); ordenarMenuLateral(); moverSenhaParaPerfil(); atualizarTitulo(); repararAnaliseFinanceira(); }
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "cmfinPerfilAlterarSenhaBtn";
+    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
+    btn.textContent = "Alterar Senha de Acesso";
+    btn.addEventListener("click", function(e){
+      e.preventDefault();
+      if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
+      else toast("Função de alteração de senha não encontrada.", "erro");
+    });
 
-  var oldMudar=window.mudarModulo;
-  if(typeof oldMudar==="function" && !oldMudar.__cmfinFinalAnalise){
-    window.mudarModulo=function(id){
-      var ret=oldMudar.apply(this,arguments);
-      setTimeout(tick,50); setTimeout(tick,250); setTimeout(tick,800);
-      return ret;
-    };
-    window.mudarModulo.__cmfinFinalAnalise=true;
-    try{ mudarModulo=window.mudarModulo; }catch(e){}
-  }
-  var oldTrocar=window.trocarModo;
-  if(typeof oldTrocar==="function" && !oldTrocar.__cmfinFinalMenu){
-    window.trocarModo=function(){ var ret=oldTrocar.apply(this,arguments); setTimeout(tick,80); setTimeout(tick,420); setTimeout(tick,1000); return ret; };
-    window.trocarModo.__cmfinFinalMenu=true;
-    try{ trocarModo=window.trocarModo; }catch(e){}
+    actions.insertBefore(btn, actions.firstChild);
   }
 
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", function(){tick(); setTimeout(tick,300); setTimeout(tick,1000);});
-  else {tick(); setTimeout(tick,300); setTimeout(tick,1000);}
-  window.addEventListener("load", function(){tick(); setTimeout(tick,700); setTimeout(tick,1800);});
-  document.addEventListener("click", function(){setTimeout(tick,100);}, true);
-  document.addEventListener("change", function(){setTimeout(tick,180);}, true);
-  setInterval(tick,1200);
+  function ensureStyle(){
+    if(document.getElementById("cmfin-final-menu-acoes-perfil-ajustes-style")) return;
+    var css = document.createElement("style");
+    css.id = "cmfin-final-menu-acoes-perfil-ajustes-style";
+    css.textContent = `
+      #menuAcoesTopo > *:not(#cmfinMenuFinalActions):not(input),
+      .actions-dropdown > *:not(#cmfinMenuFinalActions):not(input){
+        display:none !important;
+      }
+      #cmfinMenuFinalActions.cmfin-final-actions-box{
+        width:100% !important;
+        display:flex !important;
+        flex-direction:column !important;
+        gap:10px !important;
+        padding:0 !important;
+        margin:0 !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn{
+        width:100% !important;
+        min-height:44px !important;
+        height:auto !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        padding:12px 14px !important;
+        border-radius:13px !important;
+        border:1px solid rgba(15,23,42,.12) !important;
+        background:#fff !important;
+        color:#0f172a !important;
+        font-size:13px !important;
+        font-weight:900 !important;
+        letter-spacing:.01em !important;
+        box-shadow:none !important;
+        cursor:pointer !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn:hover{
+        background:rgba(15,61,50,.06) !important;
+        border-color:rgba(15,61,50,.18) !important;
+        transform:translateY(-1px);
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger{
+        color:#b91c1c !important;
+        border-color:rgba(185,28,28,.22) !important;
+        background:rgba(254,242,242,.98) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-btn.danger:hover{
+        background:#fee2e2 !important;
+        border-color:rgba(185,28,28,.34) !important;
+      }
+      #cmfinMenuFinalActions .cmfin-final-action-separator{
+        height:1px !important;
+        width:100% !important;
+        background:rgba(15,23,42,.10) !important;
+        margin:4px 0 !important;
+      }
+      #cmfinAlterarSenhaMenuItem{display:none !important;}
+      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
+        background:#0f3d32 !important;
+        color:#fff !important;
+        border-color:#0f3d32 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    montarMenuFinal();
+    adicionarSenhaNoPerfil();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){ tick(); setInterval(tick, 550); });
+  }else{
+    tick();
+    setInterval(tick, 550);
+  }
+
+  window.addEventListener("load", function(){
+    tick();
+    setTimeout(tick, 200);
+    setTimeout(tick, 900);
+  });
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 80);
+    setTimeout(tick, 260);
+  }, true);
 })();
 </script>
+
 </body>
 </html>
 
@@ -30093,10 +30394,7 @@ body.ello-modo-trocando .module.active {
         aplicarDadosNaTela(data.dados);
         atualizarBadgeCloud("Dados carregados da nuvem.", "ok");
 
-        if(!sessionStorage.getItem("cmfin_cloud_loaded_once")){
-          sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
-          setTimeout(function(){ try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){} }, 120);
-        }
+        sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
       }else{
         atualizarBadgeCloud("Nenhum backup online ainda. Criando primeiro salvamento...", "info");
         agendarSalvarDadosNuvem(1200);
@@ -31487,9 +31785,9 @@ body.ello-modo-trocando .module.active {
 
         var count = aplicarDados(dadosParaAplicar);
 
-        toast("Cópia restaurada com sucesso.", "ok");
+        toast("Cópia restaurada com sucesso. Dados reconhecidos.", "ok");
         close();
-        setTimeout(function(){ try{ if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){} }, 120);
+        try{ if(typeof preencherCategorias === "function") preencherCategorias(); if(typeof atualizarSelects === "function") atualizarSelects(); if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(_e){}
       }catch(err){
         console.warn(err);
         toast(err.message || "Erro ao importar backup.", "erro");
@@ -31911,8 +32209,8 @@ body.ello-modo-trocando .module.active {
           base.modoAtual = modo;
           salvarBaseStorage(base);
 
-          toast("Backup importado para o modo " + modoNome(modo) + ".", "ok");
-          setTimeout(function(){ try{ if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){} }, 120);
+          toast("Backup importado para o modo " + modoNome(modo) + ". Dados reconhecidos com sucesso.", "ok");
+          try{ if(typeof preencherCategorias === "function") preencherCategorias(); if(typeof atualizarSelects === "function") atualizarSelects(); if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(_e){}
         }catch(err){
           console.warn(err);
           toast("Não foi possível importar. Verifique o arquivo selecionado.", "erro");
