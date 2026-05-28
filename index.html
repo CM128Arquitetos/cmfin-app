@@ -29485,7 +29485,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
 
 
-<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro do Perfil -->
+<!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro de Configurações -->
 <script id="cmfin-final-menu-acoes-perfil-ajustes-js">
 (function(){
   "use strict";
@@ -29673,25 +29673,37 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     // Esconde no menu Ações sempre que scripts antigos tentarem recolocar.
     document.querySelectorAll("#cmfinAlterarSenhaMenuItem").forEach(function(btn){ btn.style.display = "none"; });
 
-    var page = document.getElementById("cmfinPerfilUsuarioPage");
-    if(!page || page.style.display === "none") return;
-    if(page.querySelector("#cmfinPerfilAlterarSenhaBtn")) return;
+    // Remove a versão antiga do Perfil, caso exista por cache/script anterior.
+    document.querySelectorAll("#cmfinPerfilAlterarSenhaBtn").forEach(function(btn){ btn.remove(); });
 
-    var actions = page.querySelector(".cmfin-profile-actions");
-    if(!actions) return;
+    var page = document.getElementById("configuracoes");
+    if(!page) return;
+    if(page.querySelector("#cmfinConfiguracoesAlterarSenhaCard")) return;
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "cmfinPerfilAlterarSenhaBtn";
-    btn.className = "cmfin-profile-btn cmfin-profile-password-btn";
-    btn.textContent = "Alterar Senha de Acesso";
+    var host = page.querySelector(":scope > .panel") || page.querySelector(".panel") || page;
+    var card = document.createElement("div");
+    card.id = "cmfinConfiguracoesAlterarSenhaCard";
+    card.className = "cmfin-config-password-card";
+    card.innerHTML = ''
+      + '<div class="cmfin-config-password-info">'
+      + '  <div class="cmfin-config-password-icon">🔐</div>'
+      + '  <div>'
+      + '    <h3>Senha de Acesso</h3>'
+      + '    <p>Altere a senha de entrada do sistema sem mudar licença, validade ou plano.</p>'
+      + '  </div>'
+      + '</div>'
+      + '<button type="button" class="btn btn-primary btn-small" id="cmfinConfigAlterarSenhaBtn">Alterar Senha de Acesso</button>';
+
+    var btn = card.querySelector("#cmfinConfigAlterarSenhaBtn");
     btn.addEventListener("click", function(e){
       e.preventDefault();
       if(typeof window.cmfinAbrirAlterarSenha === "function") window.cmfinAbrirAlterarSenha();
       else toast("Função de alteração de senha não encontrada.", "erro");
     });
 
-    actions.insertBefore(btn, actions.firstChild);
+    var header = host.querySelector(":scope > .panel-header") || host.querySelector(".panel-header");
+    if(header && header.parentNode === host) host.insertBefore(card, header.nextSibling);
+    else host.insertBefore(card, host.firstChild);
   }
 
   function ensureStyle(){
@@ -29751,10 +29763,56 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         margin:4px 0 !important;
       }
       #cmfinAlterarSenhaMenuItem{display:none !important;}
-      #cmfinPerfilAlterarSenhaBtn.cmfin-profile-password-btn{
-        background:#0f3d32 !important;
-        color:#fff !important;
-        border-color:#0f3d32 !important;
+      #cmfinPerfilAlterarSenhaBtn{display:none !important;}
+      #cmfinConfiguracoesAlterarSenhaCard.cmfin-config-password-card{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:space-between !important;
+        gap:16px !important;
+        margin:14px 0 16px !important;
+        padding:16px !important;
+        border-radius:20px !important;
+        border:1px solid rgba(15,23,42,.10) !important;
+        background:linear-gradient(180deg,#ffffff,#f8fafc) !important;
+        box-shadow:0 12px 30px rgba(15,23,42,.06) !important;
+      }
+      #cmfinConfiguracoesAlterarSenhaCard .cmfin-config-password-info{
+        display:flex !important;
+        align-items:center !important;
+        gap:13px !important;
+        min-width:0 !important;
+      }
+      #cmfinConfiguracoesAlterarSenhaCard .cmfin-config-password-icon{
+        width:42px !important;
+        height:42px !important;
+        border-radius:16px !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        background:rgba(15,61,50,.08) !important;
+        border:1px solid rgba(15,61,50,.12) !important;
+        flex:0 0 auto !important;
+      }
+      #cmfinConfiguracoesAlterarSenhaCard h3{
+        margin:0 0 4px !important;
+        font-size:15px !important;
+        font-weight:950 !important;
+        color:#0f172a !important;
+        letter-spacing:-.01em !important;
+      }
+      #cmfinConfiguracoesAlterarSenhaCard p{
+        margin:0 !important;
+        font-size:12.5px !important;
+        line-height:1.45 !important;
+        color:#64748b !important;
+        font-weight:700 !important;
+      }
+      @media(max-width:720px){
+        #cmfinConfiguracoesAlterarSenhaCard.cmfin-config-password-card{
+          align-items:stretch !important;
+          flex-direction:column !important;
+        }
+        #cmfinConfigAlterarSenhaBtn{width:100% !important;}
       }
     `;
     document.head.appendChild(css);
