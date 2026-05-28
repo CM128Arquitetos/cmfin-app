@@ -34557,3 +34557,165 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-ajustes-dashboard-perfil-final-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function getTituloAtual(){
+    var el = document.getElementById("tituloModulo") || document.querySelector(".topbar h1, h1");
+    return norm(el ? el.textContent : "");
+  }
+
+  function ajustarTituloPainelExecutivo(){
+    var dashboard = document.getElementById("dashboard");
+    if(!dashboard) return;
+
+    var candidatos = Array.prototype.slice.call(
+      dashboard.querySelectorAll("h2, h3, h4, .panel-title, .panel-header strong, .panel-header h2, .panel-header h3")
+    );
+
+    candidatos.forEach(function(el){
+      if(norm(el.textContent) === "painel executivo do caixa"){
+        el.classList.add("cmfin-dashboard-panel-title-standard");
+      }
+    });
+  }
+
+  function ocultarPerfilForaDaAba(){
+    var titulo = getTituloAtual();
+    var naAbaPerfil = titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial";
+
+    var pages = Array.prototype.slice.call(document.querySelectorAll(
+      "#cmfinPerfilUsuarioPage, .cmfin-profile-page, section[id*='Perfil'], section[class*='profile']"
+    ));
+
+    pages.forEach(function(page){
+      if(!page) return;
+
+      // Preserva a tela somente quando o usuário estiver na aba Perfil.
+      if(naAbaPerfil){
+        // Não força display aqui, porque a própria função da aba Perfil controla a exibição.
+        return;
+      }
+
+      page.style.display = "none";
+      page.classList.remove("active");
+    });
+
+    // Segurança extra: remove cards/hero do Perfil que tenham ficado soltos no Dashboard.
+    if(!naAbaPerfil){
+      Array.prototype.slice.call(document.querySelectorAll(".cmfin-profile-hero, .cmfin-profile-card, .cmfin-profile-shell")).forEach(function(el){
+        var parentPage = el.closest("#cmfinPerfilUsuarioPage, .cmfin-profile-page");
+        if(parentPage){
+          parentPage.style.display = "none";
+          parentPage.classList.remove("active");
+        }
+      });
+    }
+  }
+
+  function ajustarIconePerfil(){
+    var nodes = Array.prototype.slice.call(document.querySelectorAll("button, a, .nav-item, [role='button']"));
+
+    nodes.forEach(function(el){
+      var texto = norm(el.textContent);
+      if(texto === "perfil" || texto.indexOf(" perfil") >= 0){
+        el.classList.add("cmfin-sidebar-profile-white");
+      }
+    });
+
+    var perfilBtn = document.getElementById("cmfinPerfilNavBtn");
+    if(perfilBtn) perfilBtn.classList.add("cmfin-sidebar-profile-white");
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-ajustes-dashboard-perfil-final-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-ajustes-dashboard-perfil-final-style";
+    css.textContent = `
+      /* Padroniza o título "Painel Executivo do Caixa" com os títulos dos demais painéis */
+      #dashboard .cmfin-dashboard-panel-title-standard{
+        margin:0 0 8px !important;
+        color:#0f172a !important;
+        font-size:20px !important;
+        line-height:1.15 !important;
+        letter-spacing:-.03em !important;
+        font-weight:950 !important;
+      }
+
+      /* Garante que blocos da aba Perfil não apareçam no final do Dashboard */
+      body:not(.cmfin-na-aba-perfil) #cmfinPerfilUsuarioPage:not(.active){
+        display:none !important;
+      }
+
+      /* Ícone/texto da aba Perfil em branco, igual aos demais itens da lateral */
+      .cmfin-sidebar-profile-white,
+      .cmfin-sidebar-profile-white *,
+      #cmfinPerfilNavBtn,
+      #cmfinPerfilNavBtn *{
+        color:#fff !important;
+      }
+
+      .cmfin-sidebar-profile-white svg,
+      #cmfinPerfilNavBtn svg{
+        color:#fff !important;
+        fill:currentColor !important;
+        stroke:currentColor !important;
+      }
+
+      .cmfin-sidebar-profile-white .icon,
+      #cmfinPerfilNavBtn .icon,
+      #cmfinPerfilNavBtn span:first-child{
+        color:#fff !important;
+        opacity:1 !important;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function marcarEstadoAba(){
+    var titulo = getTituloAtual();
+    var naAbaPerfil = titulo === "perfil" || titulo === "perfil pessoal" || titulo === "perfil empresarial";
+    document.body.classList.toggle("cmfin-na-aba-perfil", naAbaPerfil);
+  }
+
+  function tick(){
+    ensureStyle();
+    marcarEstadoAba();
+    ajustarTituloPainelExecutivo();
+    ocultarPerfilForaDaAba();
+    ajustarIconePerfil();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      tick();
+      setTimeout(tick, 300);
+      setTimeout(tick, 1000);
+      setInterval(tick, 1200);
+    });
+  }else{
+    tick();
+    setTimeout(tick, 300);
+    setTimeout(tick, 1000);
+    setInterval(tick, 1200);
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 600);
+  }, true);
+})();
+</script>
+
