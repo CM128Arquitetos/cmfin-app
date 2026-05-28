@@ -34179,9 +34179,25 @@ body.ello-modo-trocando .module.active {
 </script>
 
 
-<script id="cmfin-dashboard-header-fix-js">
+<script id="cmfin-module-header-actions-fix-js">
 (function(){
   "use strict";
+
+  var TITULOS_MODULOS = [
+    "dashboard",
+    "cofre pessoal",
+    "cofre empresarial",
+    "cofre",
+    "gastos fixos",
+    "gastos variaveis",
+    "recebimentos",
+    "terceiros",
+    "bancos e cartoes",
+    "objetivos",
+    "analise financeira",
+    "perfil",
+    "configuracoes"
+  ];
 
   function norm(txt){
     return String(txt || "")
@@ -34201,6 +34217,7 @@ body.ello-modo-trocando .module.active {
 
   function isTopButton(el){
     var t = norm(el.textContent || "");
+
     return t === "salvar na nuvem" ||
            t.indexOf("licenca ativa") >= 0 ||
            t === "sair" ||
@@ -34211,6 +34228,7 @@ body.ello-modo-trocando .module.active {
 
   function cleanButtonText(el){
     if(!el) return;
+
     var t = String(el.textContent || "").trim()
       .replace(/^☁️\s*/g, "")
       .replace(/^☁\s*/g, "")
@@ -34224,10 +34242,41 @@ body.ello-modo-trocando .module.active {
     if(norm(t) === "carregar dados da nuvem") el.textContent = "Carregar Dados da Nuvem";
   }
 
-  function findDashboardTitle(){
-    var heads = Array.prototype.slice.call(document.querySelectorAll("h1, h2, .page-title, [class*='title']"));
+  function isKnownModuleTitle(text){
+    text = norm(text);
+
+    return TITULOS_MODULOS.some(function(t){
+      return text === t;
+    });
+  }
+
+  function findVisibleModuleTitle(){
+    var heads = Array.prototype.slice.call(document.querySelectorAll("h1, h2, .page-title, [class*='page-title'], [class*='title']"));
+
+    var found = heads.find(function(el){
+      if(!isVisible(el)) return false;
+
+      var t = norm(el.textContent || "");
+      if(!t || t.length > 42) return false;
+
+      return isKnownModuleTitle(t);
+    });
+
+    if(found) return found;
+
+    // fallback: títulos grandes visíveis próximos ao topo do conteúdo
     return heads.find(function(el){
-      return isVisible(el) && norm(el.textContent) === "dashboard";
+      if(!isVisible(el)) return false;
+
+      var r = el.getBoundingClientRect();
+      var t = norm(el.textContent || "");
+
+      return r.top < 260 &&
+             t.length > 0 &&
+             t.length <= 45 &&
+             !t.includes("salvar") &&
+             !t.includes("licenca") &&
+             !t.includes("novo registro");
     }) || null;
   }
 
@@ -34237,14 +34286,17 @@ body.ello-modo-trocando .module.active {
     var el = title.parentElement;
     var best = null;
 
-    for(var i=0; el && i<6; i++, el = el.parentElement){
+    for(var i=0; el && i<8; i++, el = el.parentElement){
       var txt = norm(el.textContent || "");
-      var hasDashboard = txt.indexOf("dashboard") >= 0;
-      var hasSave = txt.indexOf("salvar na nuvem") >= 0;
-      var hasRegistro = txt.indexOf("novo registro") >= 0;
+      var hasActions =
+        txt.indexOf("salvar na nuvem") >= 0 ||
+        txt.indexOf("licenca ativa") >= 0 ||
+        txt.indexOf("novo registro") >= 0 ||
+        txt.indexOf("acoes") >= 0;
+
       var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
 
-      if(hasDashboard && (hasSave || hasRegistro) && r && r.height < 180){
+      if(hasActions && r && r.height < 190 && r.top < 260){
         best = el;
       }
     }
@@ -34276,17 +34328,17 @@ body.ello-modo-trocando .module.active {
   function ensureActionsWrap(container, buttons){
     if(!container || !buttons.length) return null;
 
-    var wrap = container.querySelector("#cmfinDashboardActionsWrap");
+    var wrap = container.querySelector(":scope > .cmfin-module-actions-wrap");
 
     if(!wrap){
       wrap = document.createElement("div");
-      wrap.id = "cmfinDashboardActionsWrap";
-      wrap.className = "cmfin-dashboard-actions-wrap";
+      wrap.className = "cmfin-module-actions-wrap";
     }
 
     buttons.forEach(function(btn){
       cleanButtonText(btn);
-      btn.classList.add("cmfin-dashboard-top-button");
+      btn.classList.add("cmfin-module-top-button");
+
       if(btn.parentElement !== wrap){
         wrap.appendChild(btn);
       }
@@ -34300,31 +34352,30 @@ body.ello-modo-trocando .module.active {
   }
 
   function aplicar(){
-    var title = findDashboardTitle();
+    var title = findVisibleModuleTitle();
     if(!title) return;
 
     var container = findHeaderContainer(title);
     if(!container) return;
 
-    var titleBlock = findTitleBlock(container, title);
     var buttons = collectActionButtons(container);
-
     if(!buttons.length) return;
 
-    container.classList.add("cmfin-dashboard-header-fixed");
-    if(titleBlock) titleBlock.classList.add("cmfin-dashboard-title-block");
+    var titleBlock = findTitleBlock(container, title);
 
-    var wrap = ensureActionsWrap(container, buttons);
-    if(wrap) wrap.classList.add("cmfin-dashboard-actions-wrap");
+    container.classList.add("cmfin-module-header-fixed");
+    if(titleBlock) titleBlock.classList.add("cmfin-module-title-block");
+
+    ensureActionsWrap(container, buttons);
   }
 
   function ensureStyle(){
-    if(document.getElementById("cmfin-dashboard-header-fix-style")) return;
+    if(document.getElementById("cmfin-module-header-actions-fix-style")) return;
 
     var css = document.createElement("style");
-    css.id = "cmfin-dashboard-header-fix-style";
+    css.id = "cmfin-module-header-actions-fix-style";
     css.textContent = `
-      .cmfin-dashboard-header-fixed{
+      .cmfin-module-header-fixed{
         display:grid !important;
         grid-template-columns:minmax(0, 1fr) max-content !important;
         align-items:start !important;
@@ -34332,25 +34383,27 @@ body.ello-modo-trocando .module.active {
         row-gap:8px !important;
       }
 
-      .cmfin-dashboard-title-block{
+      .cmfin-module-title-block{
         min-width:0 !important;
         max-width:100% !important;
+        grid-column:1 !important;
+        grid-row:1 !important;
       }
 
-      .cmfin-dashboard-title-block h1,
-      .cmfin-dashboard-title-block h2,
-      .cmfin-dashboard-title-block p,
-      .cmfin-dashboard-title-block small,
-      .cmfin-dashboard-title-block .subtitle,
-      .cmfin-dashboard-title-block [class*="subtitle"],
-      .cmfin-dashboard-title-block [class*="desc"]{
+      .cmfin-module-title-block h1,
+      .cmfin-module-title-block h2,
+      .cmfin-module-title-block p,
+      .cmfin-module-title-block small,
+      .cmfin-module-title-block .subtitle,
+      .cmfin-module-title-block [class*="subtitle"],
+      .cmfin-module-title-block [class*="desc"]{
         white-space:normal !important;
         overflow-wrap:break-word !important;
         word-break:normal !important;
         min-width:0 !important;
       }
 
-      .cmfin-dashboard-actions-wrap{
+      .cmfin-module-actions-wrap{
         display:flex !important;
         align-items:center !important;
         justify-content:flex-end !important;
@@ -34361,9 +34414,10 @@ body.ello-modo-trocando .module.active {
         width:max-content !important;
         grid-column:2 !important;
         grid-row:1 / span 2 !important;
+        justify-self:end !important;
       }
 
-      .cmfin-dashboard-top-button{
+      .cmfin-module-top-button{
         flex:0 0 auto !important;
         white-space:nowrap !important;
         word-break:normal !important;
@@ -34371,16 +34425,16 @@ body.ello-modo-trocando .module.active {
         min-width:max-content !important;
       }
 
-      .cmfin-dashboard-top-button svg,
-      .cmfin-dashboard-top-button i{
+      .cmfin-module-top-button svg,
+      .cmfin-module-top-button i{
         display:none !important;
       }
 
       @media(max-width:1180px){
-        .cmfin-dashboard-header-fixed{
+        .cmfin-module-header-fixed{
           column-gap:14px !important;
         }
-        .cmfin-dashboard-actions-wrap{
+        .cmfin-module-actions-wrap{
           gap:8px !important;
         }
       }
