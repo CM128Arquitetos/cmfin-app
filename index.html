@@ -34178,3 +34178,239 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-dashboard-header-fix-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isVisible(el){
+    if(!el) return false;
+    var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    if(!r) return false;
+    return r.width > 0 && r.height > 0;
+  }
+
+  function isTopButton(el){
+    var t = norm(el.textContent || "");
+    return t === "salvar na nuvem" ||
+           t.indexOf("licenca ativa") >= 0 ||
+           t === "sair" ||
+           t === "acoes" ||
+           t === "+ novo registro" ||
+           t === "novo registro";
+  }
+
+  function cleanButtonText(el){
+    if(!el) return;
+    var t = String(el.textContent || "").trim()
+      .replace(/^☁️\s*/g, "")
+      .replace(/^☁\s*/g, "")
+      .replace(/^⎋\s*/g, "")
+      .replace(/^↪\s*/g, "")
+      .replace(/^↩\s*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if(norm(t) === "sair") el.textContent = "Sair";
+    if(norm(t) === "carregar dados da nuvem") el.textContent = "Carregar Dados da Nuvem";
+  }
+
+  function findDashboardTitle(){
+    var heads = Array.prototype.slice.call(document.querySelectorAll("h1, h2, .page-title, [class*='title']"));
+    return heads.find(function(el){
+      return isVisible(el) && norm(el.textContent) === "dashboard";
+    }) || null;
+  }
+
+  function findHeaderContainer(title){
+    if(!title) return null;
+
+    var el = title.parentElement;
+    var best = null;
+
+    for(var i=0; el && i<6; i++, el = el.parentElement){
+      var txt = norm(el.textContent || "");
+      var hasDashboard = txt.indexOf("dashboard") >= 0;
+      var hasSave = txt.indexOf("salvar na nuvem") >= 0;
+      var hasRegistro = txt.indexOf("novo registro") >= 0;
+      var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+
+      if(hasDashboard && (hasSave || hasRegistro) && r && r.height < 180){
+        best = el;
+      }
+    }
+
+    return best;
+  }
+
+  function findTitleBlock(container, title){
+    if(!container || !title) return null;
+
+    var block = title.parentElement;
+
+    while(block && block.parentElement && block.parentElement !== container){
+      block = block.parentElement;
+    }
+
+    return block || title;
+  }
+
+  function collectActionButtons(container){
+    if(!container) return [];
+
+    return Array.prototype.slice.call(container.querySelectorAll("button, a, span"))
+      .filter(function(el){
+        return isVisible(el) && isTopButton(el);
+      });
+  }
+
+  function ensureActionsWrap(container, buttons){
+    if(!container || !buttons.length) return null;
+
+    var wrap = container.querySelector("#cmfinDashboardActionsWrap");
+
+    if(!wrap){
+      wrap = document.createElement("div");
+      wrap.id = "cmfinDashboardActionsWrap";
+      wrap.className = "cmfin-dashboard-actions-wrap";
+    }
+
+    buttons.forEach(function(btn){
+      cleanButtonText(btn);
+      btn.classList.add("cmfin-dashboard-top-button");
+      if(btn.parentElement !== wrap){
+        wrap.appendChild(btn);
+      }
+    });
+
+    if(wrap.parentElement !== container){
+      container.appendChild(wrap);
+    }
+
+    return wrap;
+  }
+
+  function aplicar(){
+    var title = findDashboardTitle();
+    if(!title) return;
+
+    var container = findHeaderContainer(title);
+    if(!container) return;
+
+    var titleBlock = findTitleBlock(container, title);
+    var buttons = collectActionButtons(container);
+
+    if(!buttons.length) return;
+
+    container.classList.add("cmfin-dashboard-header-fixed");
+    if(titleBlock) titleBlock.classList.add("cmfin-dashboard-title-block");
+
+    var wrap = ensureActionsWrap(container, buttons);
+    if(wrap) wrap.classList.add("cmfin-dashboard-actions-wrap");
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-dashboard-header-fix-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-dashboard-header-fix-style";
+    css.textContent = `
+      .cmfin-dashboard-header-fixed{
+        display:grid !important;
+        grid-template-columns:minmax(0, 1fr) max-content !important;
+        align-items:start !important;
+        column-gap:22px !important;
+        row-gap:8px !important;
+      }
+
+      .cmfin-dashboard-title-block{
+        min-width:0 !important;
+        max-width:100% !important;
+      }
+
+      .cmfin-dashboard-title-block h1,
+      .cmfin-dashboard-title-block h2,
+      .cmfin-dashboard-title-block p,
+      .cmfin-dashboard-title-block small,
+      .cmfin-dashboard-title-block .subtitle,
+      .cmfin-dashboard-title-block [class*="subtitle"],
+      .cmfin-dashboard-title-block [class*="desc"]{
+        white-space:normal !important;
+        overflow-wrap:break-word !important;
+        word-break:normal !important;
+        min-width:0 !important;
+      }
+
+      .cmfin-dashboard-actions-wrap{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        flex-wrap:nowrap !important;
+        gap:10px !important;
+        white-space:nowrap !important;
+        min-width:max-content !important;
+        width:max-content !important;
+        grid-column:2 !important;
+        grid-row:1 / span 2 !important;
+      }
+
+      .cmfin-dashboard-top-button{
+        flex:0 0 auto !important;
+        white-space:nowrap !important;
+        word-break:normal !important;
+        overflow-wrap:normal !important;
+        min-width:max-content !important;
+      }
+
+      .cmfin-dashboard-top-button svg,
+      .cmfin-dashboard-top-button i{
+        display:none !important;
+      }
+
+      @media(max-width:1180px){
+        .cmfin-dashboard-header-fixed{
+          column-gap:14px !important;
+        }
+        .cmfin-dashboard-actions-wrap{
+          gap:8px !important;
+        }
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    aplicar();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 800);
+      tick();
+    });
+  }else{
+    setInterval(tick, 800);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 120);
+    setTimeout(tick, 450);
+  }, true);
+
+  window.addEventListener("resize", function(){
+    setTimeout(tick, 120);
+  });
+})();
+</script>
+
