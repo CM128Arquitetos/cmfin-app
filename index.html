@@ -29778,11 +29778,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }, true);
 })();
 </script>
-
-</body>
-</html>
-
-
 <script id="cmfin-cloud-sync-js">
 (function(){
   "use strict";
@@ -35708,3 +35703,219 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   window.addEventListener("load", function(){ setTimeout(tick, 250); setTimeout(tick, 900); });
 })();
 </script>
+
+<!-- CMFin Patch Final Seguro: menu lateral original + Novo Registro em atalhos -->
+<style id="cmfin-patch-final-atalhos-v4-style">
+  .nav button[data-module="cofre"]{display:none!important;}
+  .cmfin-novo-registro-wrap{position:relative!important;display:inline-flex!important;align-items:center!important;flex-shrink:0!important;}
+  .cmfin-novo-registro-menu{position:absolute;top:calc(100% + 10px);right:0;width:min(330px,calc(100vw - 32px));padding:10px;border:1px solid rgba(15,23,42,.12);border-radius:18px;background:#fff;box-shadow:0 22px 55px rgba(2,14,33,.18);z-index:99999;}
+  .cmfin-novo-registro-menu[hidden]{display:none!important;}
+  .cmfin-novo-registro-menu::before{content:"";position:absolute;top:-7px;right:28px;width:14px;height:14px;background:#fff;border-left:1px solid rgba(15,23,42,.12);border-top:1px solid rgba(15,23,42,.12);transform:rotate(45deg);}
+  .cmfin-novo-registro-menu-title{padding:8px 10px 10px;margin-bottom:4px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
+  .cmfin-novo-registro-menu button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 7px;padding:13px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;color:#0f172a;font-weight:900;text-align:left;cursor:pointer;transition:background .15s ease,transform .15s ease,border-color .15s ease;}
+  .cmfin-novo-registro-menu button:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-1px);}
+  .cmfin-novo-registro-menu button:last-child{margin-bottom:0;}
+  .cmfin-novo-registro-menu button span{color:#94a3b8;font-weight:900;}
+</style>
+<script id="cmfin-patch-final-atalhos-v4-script">
+(function(){
+  "use strict";
+  if(window.__CMFIN_PATCH_FINAL_ATALHOS_V4__) return;
+  window.__CMFIN_PATCH_FINAL_ATALHOS_V4__ = true;
+
+  var atalhos = [
+    ["gastosFixos", "Gastos Fixos"],
+    ["gastosVariaveis", "Gastos Variáveis"],
+    ["recebimentos", "Recebimentos"],
+    ["terceiros", "Gastos por Terceiros"],
+    ["bancos", "Bancos e Cartões"],
+    ["objetivos", "Objetivos"],
+    ["analiseFinanceira", "Análise Financeira"]
+  ];
+
+  var ordem = [
+    "dashboard",
+    "gastosVariaveis",
+    "gastosFixos",
+    "terceiros",
+    "recebimentos",
+    "bancos",
+    "objetivos",
+    "analiseFinanceira",
+    "perfil",
+    "configuracoes"
+  ];
+
+  function norm(txt){
+    return String(txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  function getNav(){
+    return document.querySelector("aside .nav") || document.querySelector(".sidebar .nav") || document.querySelector("aside nav") || document.querySelector(".sidebar nav");
+  }
+
+  function botaoModulo(id){
+    if(id === "perfil") return document.getElementById("cmfinPerfilNavBtn") || null;
+    var nav = getNav();
+    if(!nav) return null;
+    return nav.querySelector('button[data-module="' + id + '"]');
+  }
+
+  function garantirIconeTerceiros(){
+    var btn = botaoModulo("terceiros");
+    if(!btn) return;
+    btn.id = btn.id || "navTerceiros";
+    btn.setAttribute("data-module", "terceiros");
+    btn.setAttribute("onclick", "mudarModulo('terceiros')");
+    btn.innerHTML = '<span class="icon">☷</span>Gastos por Terceiros';
+  }
+
+  function corrigirMenuLateral(){
+    var nav = getNav();
+    if(!nav) return;
+
+    Array.prototype.slice.call(nav.querySelectorAll('button[data-module="cofre"]')).forEach(function(btn){
+      btn.remove();
+    });
+
+    garantirIconeTerceiros();
+
+    var referencia = null;
+    ordem.forEach(function(id){
+      var btn = botaoModulo(id);
+      if(btn && btn.parentElement === nav){
+        nav.insertBefore(btn, referencia);
+        referencia = btn.nextSibling;
+      }
+    });
+
+    // Garante Perfil imediatamente antes de Configurações, sem jogar para cima.
+    var perfil = botaoModulo("perfil");
+    var config = botaoModulo("configuracoes");
+    if(perfil && config && perfil.parentElement === nav && config.parentElement === nav){
+      nav.insertBefore(perfil, config);
+    }
+  }
+
+  function fecharMenuNovoRegistro(){
+    var menu = document.getElementById("cmfinNovoRegistroAtalhosMenu");
+    if(menu) menu.hidden = true;
+  }
+
+  function abrirModulo(id){
+    fecharMenuNovoRegistro();
+    if(id === "cofre") id = "dashboard";
+    try{
+      if(typeof window.mudarModulo === "function") window.mudarModulo(id);
+      else {
+        var btn = botaoModulo(id);
+        if(btn) btn.click();
+      }
+    }catch(e){
+      var fallback = botaoModulo(id);
+      if(fallback) fallback.click();
+    }
+    setTimeout(corrigirMenuLateral, 80);
+  }
+
+  function criarMenu(btn){
+    var wrap = btn.closest(".cmfin-novo-registro-wrap");
+    if(!wrap){
+      wrap = document.createElement("div");
+      wrap.className = "cmfin-novo-registro-wrap";
+      btn.parentNode.insertBefore(wrap, btn);
+      wrap.appendChild(btn);
+    }
+
+    var menu = document.getElementById("cmfinNovoRegistroAtalhosMenu");
+    if(!menu){
+      menu = document.createElement("div");
+      menu.id = "cmfinNovoRegistroAtalhosMenu";
+      menu.className = "cmfin-novo-registro-menu";
+      menu.hidden = true;
+      menu.innerHTML = '<div class="cmfin-novo-registro-menu-title">Escolha a aba para lançar</div>' + atalhos.map(function(item){
+        return '<button type="button" data-cmfin-atalho="' + item[0] + '">' + item[1] + '<span>›</span></button>';
+      }).join("");
+      wrap.appendChild(menu);
+      menu.addEventListener("click", function(e){
+        var item = e.target.closest && e.target.closest("[data-cmfin-atalho]");
+        if(!item) return;
+        e.preventDefault();
+        e.stopPropagation();
+        abrirModulo(item.getAttribute("data-cmfin-atalho"));
+      }, true);
+    }
+    return menu;
+  }
+
+  function instalarNovoRegistro(){
+    var btn = document.getElementById("cmfinNovoRegistroBtn") || Array.prototype.slice.call(document.querySelectorAll("button")).find(function(b){
+      return norm(b.textContent).indexOf("novo registro") >= 0;
+    });
+    if(!btn) return;
+
+    btn.removeAttribute("onclick");
+    btn.onclick = null;
+    var menu = criarMenu(btn);
+
+    if(btn.dataset.cmfinAtalhosFinal !== "1"){
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        menu.hidden = !menu.hidden;
+      }, true);
+      btn.dataset.cmfinAtalhosFinal = "1";
+    }
+  }
+
+  function protegerAcaoRapida(){
+    if(window.__CMFIN_ACAO_RAPIDA_FINAL_ATALHOS__) return;
+    window.__CMFIN_ACAO_RAPIDA_FINAL_ATALHOS__ = true;
+    var original = window.acaoRapida;
+    window.acaoRapida = function(){
+      instalarNovoRegistro();
+      var menu = document.getElementById("cmfinNovoRegistroAtalhosMenu");
+      if(menu){ menu.hidden = !menu.hidden; return; }
+      if(typeof original === "function") return original.apply(this, arguments);
+    };
+    try{ acaoRapida = window.acaoRapida; }catch(e){}
+  }
+
+  function protegerMudancaModulo(){
+    if(window.__CMFIN_MUDAR_MODULO_FINAL_COFRE__) return;
+    if(typeof window.mudarModulo !== "function") return;
+    window.__CMFIN_MUDAR_MODULO_FINAL_COFRE__ = true;
+    var original = window.mudarModulo;
+    window.mudarModulo = function(id){
+      if(id === "cofre") id = "dashboard";
+      var retorno = original.apply(this, arguments.length ? [id] : arguments);
+      setTimeout(corrigirMenuLateral, 40);
+      setTimeout(corrigirMenuLateral, 180);
+      return retorno;
+    };
+    try{ mudarModulo = window.mudarModulo; }catch(e){}
+  }
+
+  function tick(){
+    corrigirMenuLateral();
+    instalarNovoRegistro();
+    protegerAcaoRapida();
+    protegerMudancaModulo();
+    var cofre = document.getElementById("cofre");
+    if(cofre && cofre.classList.contains("active")) abrirModulo("dashboard");
+  }
+
+  document.addEventListener("click", function(e){
+    if(!e.target.closest || !e.target.closest(".cmfin-novo-registro-wrap")) fecharMenuNovoRegistro();
+  }, true);
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", tick);
+  else tick();
+  window.addEventListener("load", function(){ tick(); setTimeout(tick, 250); setTimeout(tick, 900); setTimeout(tick, 1600); });
+  setInterval(tick, 1200);
+})();
+</script>
+
+</body>
+</html>
