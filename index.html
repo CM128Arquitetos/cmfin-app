@@ -34244,3 +34244,181 @@ body.ello-modo-trocando .module.active {
 })();
 </script>
 
+
+<script id="cmfin-ajuste-dashboard-cofre-subtextos-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isVisible(el){
+    if(!el) return false;
+    var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    if(!r) return false;
+    return r.width > 0 && r.height > 0;
+  }
+
+  function findTitleByText(texts){
+    var wanted = texts.map(norm);
+
+    var titles = Array.prototype.slice.call(document.querySelectorAll("h1, h2"));
+    return titles.find(function(el){
+      return isVisible(el) && wanted.indexOf(norm(el.textContent)) >= 0;
+    }) || null;
+  }
+
+  function findSubtitleNearTitle(title){
+    if(!title) return null;
+
+    var parent = title.parentElement;
+    if(!parent) return null;
+
+    // Primeiro procura dentro do mesmo bloco do título.
+    var direct = Array.prototype.slice.call(parent.querySelectorAll("p, small, .subtitle, .description, [class*='subtitle'], [class*='desc']"))
+      .find(function(el){
+        var t = norm(el.textContent);
+        return t &&
+               t !== norm(title.textContent) &&
+               t.indexOf("modo pessoal") < 0 &&
+               t.indexOf("modo empresarial") < 0;
+      });
+
+    if(direct) return direct;
+
+    // Depois procura nos irmãos próximos.
+    var node = title.nextElementSibling;
+    var attempts = 0;
+    while(node && attempts < 6){
+      if(node.matches && node.matches("p, small, .subtitle, .description, [class*='subtitle'], [class*='desc']")){
+        return node;
+      }
+
+      var inner = node.querySelector ? node.querySelector("p, small, .subtitle, .description, [class*='subtitle'], [class*='desc']") : null;
+      if(inner) return inner;
+
+      node = node.nextElementSibling;
+      attempts++;
+    }
+
+    return null;
+  }
+
+  function ajustarBlocoTitulo(title, maxWidth){
+    if(!title) return;
+
+    var block = title.parentElement;
+    if(!block) return;
+
+    block.classList.add("cmfin-subtexto-curto-bloco");
+    block.style.minWidth = "0";
+    block.style.maxWidth = maxWidth || "620px";
+    block.style.flex = "0 1 " + (maxWidth || "620px");
+  }
+
+  function setSubtitleHTML(el, html){
+    if(!el) return;
+
+    if(el.getAttribute("data-cmfin-subtexto-ajustado") === "1") return;
+
+    el.innerHTML = html;
+    el.setAttribute("data-cmfin-subtexto-ajustado", "1");
+    el.classList.add("cmfin-subtexto-quebrado");
+  }
+
+  function ajustarDashboard(){
+    var title = findTitleByText(["Dashboard"]);
+    if(!title) return;
+
+    var subtitle = findSubtitleNearTitle(title);
+    if(!subtitle) return;
+
+    ajustarBlocoTitulo(title, "660px");
+
+    setSubtitleHTML(
+      subtitle,
+      "CMFin — Gestão Financeira Inteligente para organizar entradas,<br>saídas, cartões, metas e saldos de forma clara."
+    );
+  }
+
+  function ajustarCofre(){
+    var title = findTitleByText(["Cofre Pessoal", "Cofre Empresarial", "Cofre"]);
+    if(!title) return;
+
+    var subtitle = findSubtitleNearTitle(title);
+    if(!subtitle) return;
+
+    ajustarBlocoTitulo(title, "680px");
+
+    setSubtitleHTML(
+      subtitle,
+      "Saldo vindo do mês anterior, despesas pessoais do mês atual,<br>fixos do mês seguinte e saldo livre real."
+    );
+  }
+
+  function ensureStyle(){
+    if(document.getElementById("cmfin-ajuste-dashboard-cofre-subtextos-style")) return;
+
+    var css = document.createElement("style");
+    css.id = "cmfin-ajuste-dashboard-cofre-subtextos-style";
+    css.textContent = `
+      .cmfin-subtexto-curto-bloco{
+        min-width:0 !important;
+        max-width:680px !important;
+        flex-shrink:1 !important;
+      }
+
+      .cmfin-subtexto-quebrado{
+        white-space:normal !important;
+        line-height:1.45 !important;
+        max-width:680px !important;
+        overflow-wrap:normal !important;
+        word-break:normal !important;
+      }
+
+      .cmfin-subtexto-quebrado br{
+        display:block !important;
+      }
+
+      /* Segurança: textos dos botões do topo não quebram, mas sem mover nenhum botão */
+      button, a{
+        word-break:normal;
+      }
+
+      button:has(+ *),
+      a:has(+ *){
+        overflow-wrap:normal;
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  function tick(){
+    ensureStyle();
+    ajustarDashboard();
+    ajustarCofre();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", function(){
+      setInterval(tick, 900);
+      tick();
+    });
+  }else{
+    setInterval(tick, 900);
+    tick();
+  }
+
+  document.addEventListener("click", function(){
+    setTimeout(tick, 150);
+    setTimeout(tick, 650);
+  }, true);
+})();
+</script>
+
