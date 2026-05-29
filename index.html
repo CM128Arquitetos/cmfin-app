@@ -10764,7 +10764,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           </div>
         </div>
         <div><label>Sócio</label><select id="arqPgArquiteto"><option value="">Selecione</option><option value="Elton Menezes">Elton Menezes</option><option value="Lael Cavalcante">Lael Cavalcante</option></select></div>
-        <div><label>Tipo de Retirada</label><select id="arqPgTipoRetirada"><option value="Pró-Labore Fixo">Pró-Labore Fixo</option><option value="Bônus / Produção">Bônus / Produção</option><option value="Distribuição de Lucro">Distribuição de Lucro</option><option value="Adiantamento de Sócio">Adiantamento de Sócio</option><option value="Reembolso ao Sócio">Reembolso ao Sócio</option><option value="Retirada a Classificar">Retirada a Classificar</option></select></div>
+        <div><label>Tipo de Retirada</label><select id="arqPgTipoRetirada"><option value="Pró-Labore">Pró-Labore</option><option value="Bônus / Produção">Bônus / Produção</option><option value="Distribuição de Lucro">Distribuição de Lucro</option><option value="Adiantamento de Sócio">Adiantamento de Sócio</option><option value="Reembolso ao Sócio">Reembolso ao Sócio</option><option value="Retirada a Classificar">Retirada a Classificar</option></select></div>
         <div><label>Origem / Projeto</label><input id="arqPgServico" placeholder="Ex.: Administração mensal, Projeto Silva, Lucro Maio/2026" /></div>
         <div style="grid-column:1 / -1;"><label>Descrição / Projeto vinculado</label><textarea id="arqPgDescricaoServico" placeholder=""></textarea></div>
         <div style="grid-column:1 / -1;"><label>Observação contábil / referência</label><textarea id="arqPgObservacao" placeholder=""></textarea></div>
@@ -10785,7 +10785,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         </div>
         <div id="campoComprovanteArquiteto" style="display:none; grid-column:1 / -1;">
           <label>Comprovante de Pagamento</label>
-          <input type="file" id="arqPgComprovante" accept="image/*,.pdf" onchange="sugerirNomeComprovante('arqPgComprovante','arqPgComprovanteNome')" />
+          <input type="file" id="arqPgComprovante" accept="image/*,.pdf" multiple onchange="sugerirNomeComprovante('arqPgComprovante','arqPgComprovanteNome')" />
           <label style="margin-top:10px;">Nome do arquivo no cadastro</label>
           <input id="arqPgComprovanteNome" placeholder="" />
           <div class="file-note" id="arqPgComprovanteAtual">Anexe o comprovante do PIX, se desejar.</div>
@@ -11058,6 +11058,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       <div class="actions" style="margin-top:16px;">
         <button class="btn btn-secondary" onclick="fecharModais()">Fechar</button>
         <button class="btn btn-secondary" onclick="renomearComprovanteAtual()">Salvar Nome</button>
+        <button class="btn btn-danger" onclick="removerComprovanteAtual()">Excluir Comprovante</button>
         <a class="btn btn-primary" id="comprovanteDownload" href="#" download="comprovante" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Baixar Comprovante</a>
       </div>
     </div>
@@ -11120,7 +11121,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     const categoriasPadrao = [
       "Alimentação", "Moradia", "Transporte", "Saúde", "Educação",
-      "Lazer", "Serviços", "Compras", "Cartão", "Pró-Labore Fixo", "Bônus / Produção", "Distribuição de Lucro", "Adiantamento de Sócio", "Reembolso ao Sócio", "Retirada a Classificar", "Outros"
+      "Lazer", "Serviços", "Compras", "Cartão", "Pró-Labore", "Bônus / Produção", "Distribuição de Lucro", "Adiantamento de Sócio", "Reembolso ao Sócio", "Retirada a Classificar", "Outros"
     ];
 
     const tipologiasPadrao = ["Essenciais", "Investimentos", "Lazer"];
@@ -13770,6 +13771,46 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       salvarDados();
       renderizarModalComprovante();
       renderizarTudo();
+    }
+
+
+    function removerComprovanteAtual() {
+      if (!comprovanteContextoAtual) return;
+      const item = obterItemComprovante(comprovanteContextoAtual.tipo, comprovanteContextoAtual.id);
+      if (!item) return alert("Nenhum comprovante encontrado.");
+      const compBruto = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
+      const listaComp = normalizarComprovantesLista(compBruto).filter(c => c && c.dados);
+      const indice = comprovanteContextoAtual.indice || 0;
+      if (!listaComp.length) return alert("Nenhum comprovante encontrado.");
+      if (!confirm("Deseja excluir este comprovante anexado?")) return;
+      listaComp.splice(indice, 1);
+      const atualizado = compactarComprovantes(listaComp);
+
+      if (comprovanteContextoAtual.tipo === "boletosFixos" || comprovanteContextoAtual.tipo === "boletosVariaveis") {
+        const mes = mesParaComprovante(comprovanteContextoAtual.mesReferencia);
+        item.boletosPorMes = { ...(item.boletosPorMes || {}) };
+        if (atualizado) item.boletosPorMes[mes] = Array.isArray(atualizado) ? atualizado[0] : atualizado;
+        else delete item.boletosPorMes[mes];
+        item.boleto = null;
+      } else if (usarComprovanteMensalEmpresarial(comprovanteContextoAtual.tipo)) {
+        const mes = mesParaComprovante(comprovanteContextoAtual.mesReferencia);
+        item.comprovantesPorMes = { ...(item.comprovantesPorMes || {}) };
+        if (atualizado) item.comprovantesPorMes[mes] = atualizado;
+        else delete item.comprovantesPorMes[mes];
+        item.comprovante = null;
+      } else {
+        item.comprovante = atualizado;
+      }
+
+      salvarDados();
+      renderizarTudo();
+      if (atualizado) {
+        comprovanteContextoAtual.indice = Math.min(indice, normalizarComprovantesLista(atualizado).length - 1);
+        renderizarModalComprovante();
+      } else {
+        comprovanteContextoAtual = null;
+        fecharModais();
+      }
     }
 
     function limparFormularioGastoVariavel() {
@@ -17099,7 +17140,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     function renderizarCelulaPrestadorTerceirizado(i) {
       const prestador = escaparHtml(i.prestador || "-");
       const servico = escaparHtml(i.servico || "Origem não informada");
-      const tipoRetirada = escaparHtml(i.tipoRetirada || i.categoria || "Pró-Labore Fixo");
+      const tipoRetirada = escaparHtml(i.tipoRetirada || i.categoria || "Pró-Labore");
       const descricao = i.descricaoServico ? escaparHtml(i.descricaoServico) : "";
       const parcela = i.parcela ? `<span class="terc-chip terc-chip-installment">Parcela ${escaparHtml(i.parcela)}</span>` : "";
       const comprovante = linkComprovante(i.comprovante, "terceirizados", i.id);
@@ -17209,7 +17250,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       document.getElementById("arqPgArquiteto").value = "";
       document.getElementById("arqPgServico").value = "";
       const arqTipoRetirada = document.getElementById("arqPgTipoRetirada");
-      if (arqTipoRetirada) arqTipoRetirada.value = "Pró-Labore Fixo";
+      if (arqTipoRetirada) arqTipoRetirada.value = "Pró-Labore";
       document.getElementById("arqPgDescricaoServico").value = "";
       const arqPgObservacao = document.getElementById("arqPgObservacao");
       if (arqPgObservacao) arqPgObservacao.value = "";
@@ -17265,7 +17306,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const comp = document.getElementById("arqPgComprovante");
       if (comp) comp.value = "";
       const compNome = document.getElementById("arqPgComprovanteNome");
-      if (compNome) compNome.value = item.comprovante?.nome || "";
+      if (compNome) {
+        const compsAtuais = normalizarComprovantesLista(item.comprovante).filter(c => c && c.nome);
+        compNome.value = compsAtuais.length === 1 ? (compsAtuais[0].nome || "") : "";
+        compNome.placeholder = compsAtuais.length > 1 ? `${compsAtuais.length} comprovantes já anexados` : "";
+      }
       const compAtual = document.getElementById("arqPgComprovanteAtual");
       if (compAtual) compAtual.innerText = textoComprovanteAtual(item.comprovante);
       atualizarCamposPagamentoArquiteto();
@@ -17293,13 +17338,13 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const arquiteto = document.getElementById("arqPgArquiteto").value.trim();
       const servico = document.getElementById("arqPgServico").value.trim();
       const descricaoServico = document.getElementById("arqPgDescricaoServico").value.trim();
-      const tipoRetirada = document.getElementById("arqPgTipoRetirada")?.value || "Pró-Labore Fixo";
+      const tipoRetirada = document.getElementById("arqPgTipoRetirada")?.value || "Pró-Labore";
       const observacao = document.getElementById("arqPgObservacao")?.value.trim() || "";
       const valorTotal = limparMoeda(document.getElementById("arqPgValor").value);
       const forma = document.getElementById("arqPgForma").value;
       const editId = document.getElementById("arqPgEditId").value;
       const mesReferenciaEscolhido = document.getElementById("arqPgMesReferencia").value || document.getElementById("dashboardMes").value || (document.getElementById("arqPgData").value || hoje()).slice(0,7);
-      const novoComprovante = aplicarNomeComprovante(await lerArquivoComoBase64(document.getElementById("arqPgComprovante")?.files?.[0]), "arqPgComprovanteNome");
+      const novoComprovante = aplicarNomeComprovante(await lerArquivosComoBase64(document.getElementById("arqPgComprovante")?.files), "arqPgComprovanteNome");
 
       if (!arquiteto || !servico || !valorTotal) return alert("Preencha Sócio, Origem/Projeto e Valor.");
 
@@ -17425,14 +17470,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
 
 
-    const TIPOS_RETIRADA_SOCIOS = ["Pró-Labore Fixo", "Bônus / Produção", "Distribuição de Lucro", "Adiantamento de Sócio", "Reembolso ao Sócio", "Retirada a Classificar"];
+    const TIPOS_RETIRADA_SOCIOS = ["Pró-Labore", "Bônus / Produção", "Distribuição de Lucro", "Adiantamento de Sócio", "Reembolso ao Sócio", "Retirada a Classificar"];
 
     function tipoRetiradaSocioRotulo(item) {
       const bruto = String(item?.tipoRetirada || item?.categoria || "").trim();
       const normalizado = bruto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
       if (!bruto || normalizado === "servicos" || normalizado === "servico") return "Bônus / Produção";
       if (normalizado.includes("bonus") || normalizado.includes("producao")) return "Bônus / Produção";
-      if (normalizado.includes("pro-labore") || normalizado.includes("pro labore")) return "Pró-Labore Fixo";
+      if (normalizado.includes("pro-labore") || normalizado.includes("pro labore")) return "Pró-Labore";
       if (normalizado.includes("lucro")) return "Distribuição de Lucro";
       if (normalizado.includes("adiantamento")) return "Adiantamento de Sócio";
       if (normalizado.includes("reembolso")) return "Reembolso ao Sócio";
@@ -26494,8 +26539,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         arquiteto: s.nome,
         servico: 'Pró-labore mensal',
         descricaoServico: 'Lançamento automático conforme configuração mensal dos sócios.',
-        tipoRetirada: 'Pró-Labore Fixo',
-        categoria: 'Pró-Labore Fixo',
+        tipoRetirada: 'Pró-Labore',
+        categoria: 'Pró-Labore',
         banco: '',
         forma: 'Pix',
         data: (typeof hoje === 'function' ? hoje() : new Date().toISOString().slice(0,10)),
@@ -26577,7 +26622,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     const n = bruto.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     if (!bruto || n === 'servicos' || n === 'servico') return 'Bônus / Produção';
     if (n.includes('bonus') || n.includes('producao')) return 'Bônus / Produção';
-    if (n.includes('pro-labore') || n.includes('pro labore')) return 'Pró-Labore Fixo';
+    if (n.includes('pro-labore') || n.includes('pro labore')) return 'Pró-Labore';
     if (n.includes('lucro')) return 'Distribuição de Lucro';
     if (n.includes('adiantamento')) return 'Adiantamento de Sócio';
     if (n.includes('reembolso')) return 'Reembolso ao Sócio';
@@ -26599,7 +26644,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const selSocio = document.getElementById('arqPgArquiteto');
       if (selSocio) selSocio.innerHTML = '<option value="">Selecione</option><option value="Elton Menezes">Elton Menezes</option><option value="Lael Cavalcante">Lael Cavalcante</option>';
       const selTipo = document.getElementById('arqPgTipoRetirada');
-      if (selTipo) selTipo.innerHTML = ['Pró-Labore Fixo','Bônus / Produção','Distribuição de Lucro','Adiantamento de Sócio','Reembolso ao Sócio','Retirada a Classificar'].map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
+      if (selTipo) selTipo.innerHTML = ['Pró-Labore','Bônus / Produção','Distribuição de Lucro','Adiantamento de Sócio','Reembolso ao Sócio','Retirada a Classificar'].map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
       const n1=document.getElementById('socioNome1'); if(n1 && (!n1.value || n1.value==='Sócio 01')) n1.value='Elton Menezes';
       const n2=document.getElementById('socioNome2'); if(n2 && (!n2.value || n2.value==='Sócio 02')) n2.value='Lael Cavalcante';
       if (typeof salvarDados === 'function') salvarDados();
