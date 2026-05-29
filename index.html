@@ -8689,25 +8689,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 #dreSimplificada table.dre-table-premium td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important;}
 </style>
 
-  <style id="cmfin-modulos-licenca-bloqueio-style">
-    .mode-switch button.cmfin-mode-locked{
-      opacity:.42 !important;
-      cursor:not-allowed !important;
-      filter:grayscale(.25) !important;
-      position:relative !important;
-    }
-    .mode-switch button.cmfin-mode-locked::after{
-      content:"🔒";
-      margin-left:6px;
-      font-size:11px;
-      opacity:.85;
-    }
-    .nav button.cmfin-module-locked{
-      opacity:.42 !important;
-      pointer-events:none !important;
-      filter:grayscale(.25) !important;
-    }
-  </style>
+<style id="cmfin-modulos-licenca-css-v10">
+  .mode-switch button.cmfin-mode-locked{opacity:.42!important; cursor:not-allowed!important; filter:grayscale(.35)!important; position:relative;}
+  .mode-switch button.cmfin-mode-locked::after{content:" 🔒"; font-size:11px;}
+</style>
 </head>
 <body class="cmfin-lock">
 
@@ -12095,6 +12080,86 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       });
     }
 
+
+    function cmfinBoolLicenca(valor, padrao) {
+      if (valor === undefined || valor === null || valor === "") return padrao;
+      if (typeof valor === "boolean") return valor;
+      const v = String(valor).trim().toLowerCase();
+      if (["true", "1", "sim", "s", "yes", "verdadeiro"].includes(v)) return true;
+      if (["false", "0", "nao", "não", "n", "no", "falso"].includes(v)) return false;
+      return padrao;
+    }
+
+    function cmfinSessaoLicencaAtual() {
+      try {
+        if (typeof getSessao === "function") {
+          return getSessao(localStorage) || getSessao(sessionStorage) || null;
+        }
+      } catch(e) {}
+      try {
+        return JSON.parse(localStorage.getItem("cmfin_auth_v2") || sessionStorage.getItem("cmfin_auth_v2") || "null");
+      } catch(e) { return null; }
+    }
+
+    function cmfinPermissoesModo() {
+      const sessao = cmfinSessaoLicencaAtual();
+      if (!sessao) return { pessoal:true, empresarial:true };
+      return {
+        pessoal: cmfinBoolLicenca(sessao.acesso_pessoal, true),
+        empresarial: cmfinBoolLicenca(sessao.acesso_empresarial, true)
+      };
+    }
+
+    function cmfinModoPermitido(modo) {
+      const p = cmfinPermissoesModo();
+      return modo === "empresarial" ? p.empresarial : p.pessoal;
+    }
+
+    function cmfinPrimeiroModoPermitido() {
+      const p = cmfinPermissoesModo();
+      if (p.pessoal) return "pessoal";
+      if (p.empresarial) return "empresarial";
+      return "pessoal";
+    }
+
+    function cmfinAplicarBloqueioVisualModos() {
+      const p = cmfinPermissoesModo();
+      const btnPessoal = document.getElementById("btnModoPessoal");
+      const btnEmpresarial = document.getElementById("btnModoEmpresarial");
+      if (btnPessoal) {
+        btnPessoal.classList.toggle("cmfin-mode-locked", !p.pessoal);
+        btnPessoal.disabled = !p.pessoal;
+        btnPessoal.title = p.pessoal ? "" : "Modo Pessoal não incluso nesta licença.";
+      }
+      if (btnEmpresarial) {
+        btnEmpresarial.classList.toggle("cmfin-mode-locked", !p.empresarial);
+        btnEmpresarial.disabled = !p.empresarial;
+        btnEmpresarial.title = p.empresarial ? "" : "Modo Empresarial não incluso nesta licença.";
+      }
+    }
+
+    function cmfinAplicarModoPermitidoPorLicenca(redesenhar) {
+      const permitido = cmfinModoPermitido(modoAtual);
+      cmfinAplicarBloqueioVisualModos();
+      if (permitido) return false;
+      const novoModo = cmfinPrimeiroModoPermitido();
+      if (novoModo === modoAtual) return false;
+      modoAtual = novoModo;
+      const base = carregarBaseStorage();
+      base.modoAtual = modoAtual;
+      base.modos = base.modos || {};
+      base.modos[modoAtual] = base.modos[modoAtual] || criarDadosVazios();
+      salvarBaseStorage(base);
+      aplicarSnapshot(base.modos[modoAtual]);
+      if (redesenhar) {
+        preencherCategorias();
+        atualizarSelects();
+        carregarConfiguracaoDistribuicaoNaTela();
+        renderizarTudo();
+      }
+      return true;
+    }
+
     function atualizarUIModo() {
       cmfinAplicarModoPermitidoPorLicenca(false);
       const pessoal = document.getElementById("btnModoPessoal");
@@ -12128,94 +12193,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     let elloTrocaModoEmAndamento = false;
-
-    function cmfinBoolLicenca(valor, padrao) {
-      if (valor === undefined || valor === null || valor === "") return padrao;
-      if (typeof valor === "boolean") return valor;
-      const v = String(valor).trim().toLowerCase();
-      if (["true", "1", "sim", "s", "yes", "verdadeiro"].includes(v)) return true;
-      if (["false", "0", "nao", "não", "n", "no", "falso"].includes(v)) return false;
-      return padrao;
-    }
-
-    function cmfinSessaoLicencaAtual() {
-      try {
-        if (typeof getSessao === "function") {
-          return getSessao(localStorage) || getSessao(sessionStorage) || null;
-        }
-      } catch(e) {}
-      try {
-        return JSON.parse(localStorage.getItem("cmfin_auth_v2") || sessionStorage.getItem("cmfin_auth_v2") || "null");
-      } catch(e) { return null; }
-    }
-
-    function cmfinEhAdminSessao(sessao) {
-      const tipo = String(sessao?.tipo_usuario || "").trim().toLowerCase();
-      return ["admin", "administrador", "administracao", "administração"].includes(tipo) || sessao?.acesso_vitalicio === true;
-    }
-
-    function cmfinPermissoesModo() {
-      const sessao = cmfinSessaoLicencaAtual();
-      if (!sessao || cmfinEhAdminSessao(sessao)) return { pessoal:true, empresarial:true };
-      return {
-        pessoal: cmfinBoolLicenca(sessao.acesso_pessoal, true),
-        empresarial: cmfinBoolLicenca(sessao.acesso_empresarial, true)
-      };
-    }
-
-    function cmfinModoPermitido(modo) {
-      const p = cmfinPermissoesModo();
-      return modo === "empresarial" ? p.empresarial : p.pessoal;
-    }
-
-    function cmfinPrimeiroModoPermitido() {
-      const p = cmfinPermissoesModo();
-      if (p.pessoal) return "pessoal";
-      if (p.empresarial) return "empresarial";
-      return "pessoal";
-    }
-
-    function cmfinAplicarBloqueioVisualModos() {
-      const p = cmfinPermissoesModo();
-      const btnPessoal = document.getElementById("btnModoPessoal");
-      const btnEmpresarial = document.getElementById("btnModoEmpresarial");
-
-      if (btnPessoal) {
-        btnPessoal.classList.toggle("cmfin-mode-locked", !p.pessoal);
-        btnPessoal.disabled = !p.pessoal;
-        btnPessoal.title = p.pessoal ? "" : "Modo Pessoal não incluso nesta licença.";
-      }
-      if (btnEmpresarial) {
-        btnEmpresarial.classList.toggle("cmfin-mode-locked", !p.empresarial);
-        btnEmpresarial.disabled = !p.empresarial;
-        btnEmpresarial.title = p.empresarial ? "" : "Modo Empresarial não incluso nesta licença.";
-      }
-    }
-
-    function cmfinAplicarModoPermitidoPorLicenca(redesenhar) {
-      const permitido = cmfinModoPermitido(modoAtual);
-      cmfinAplicarBloqueioVisualModos();
-      if (permitido) return false;
-
-      const novoModo = cmfinPrimeiroModoPermitido();
-      if (novoModo === modoAtual) return false;
-
-      modoAtual = novoModo;
-      const base = carregarBaseStorage();
-      base.modoAtual = modoAtual;
-      base.modos = base.modos || {};
-      base.modos[modoAtual] = base.modos[modoAtual] || criarDadosVazios();
-      salvarBaseStorage(base);
-      aplicarSnapshot(base.modos[modoAtual]);
-
-      if (redesenhar) {
-        preencherCategorias();
-        atualizarSelects();
-        carregarConfiguracaoDistribuicaoNaTela();
-        renderizarTudo();
-      }
-      return true;
-    }
 
     function trocarModo(novoModo) {
       if (!cmfinModoPermitido(novoModo)) {
@@ -24246,26 +24223,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 .section-space{margin-top:18px}.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cat{border:1px solid var(--line);background:linear-gradient(180deg,#fbfcfc,#f6f9f8);border-radius:20px;padding:16px}.cat-top{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start}.cat-top strong{display:block;font-size:16px}.cat-top span{display:block;color:var(--muted);font-size:12px;margin-top:4px}.cat em{font-style:normal;font-weight:900;font-size:20px;letter-spacing:-.02em}.bar{height:10px;border-radius:999px;background:#eaf0ee;overflow:hidden;margin:12px 0 10px}.bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#123b63,#16a085)}.cat-foot{display:flex;justify-content:space-between;gap:10px;color:#71837e;font-size:12px}
 @media (max-width:1180px){.hero-body,.layout,.cats{grid-template-columns:1fr}.metrics,.hero-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.page{padding:92px 14px 24px}.print{top:12px;left:12px;padding:11px 15px}.hero{padding:18px}.hero-top{flex-direction:column;align-items:flex-start}.hero-title{font-size:24px}.hero-value{font-size:38px}.hero-kpis,.metrics,.quick-grid,.cats{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.metric .val{font-size:28px}.sec-head{flex-direction:column;align-items:flex-start}.tag{white-space:normal}}
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
-
-  <style id="cmfin-modulos-licenca-bloqueio-style">
-    .mode-switch button.cmfin-mode-locked{
-      opacity:.42 !important;
-      cursor:not-allowed !important;
-      filter:grayscale(.25) !important;
-      position:relative !important;
-    }
-    .mode-switch button.cmfin-mode-locked::after{
-      content:"🔒";
-      margin-left:6px;
-      font-size:11px;
-      opacity:.85;
-    }
-    .nav button.cmfin-module-locked{
-      opacity:.42 !important;
-      pointer-events:none !important;
-      filter:grayscale(.25) !important;
-    }
-  </style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
 
 <style id="cmfin-terceiros-icon-estavel-style">
@@ -29386,8 +29343,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      acesso_pessoal: u.acesso_pessoal !== false,
-      acesso_empresarial: u.acesso_empresarial !== false,
       dispositivo: getDeviceId(),
       lembradoEm: new Date().toISOString()
     }));
@@ -29413,8 +29368,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      acesso_pessoal: u.acesso_pessoal !== false,
-      acesso_empresarial: u.acesso_empresarial !== false,
       dispositivo: getDeviceId(),
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
@@ -29433,8 +29386,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     var overlay = document.getElementById("cmfinLoginOverlay");
     if(overlay) overlay.style.display = "none";
     atualizarBadgeLicenca();
-    try { cmfinAplicarModoPermitidoPorLicenca(true); atualizarUIModo(); } catch(e) { console.warn("Não foi possível aplicar módulos da licença:", e); }
     posicionarControlesTopo();
+    try{ if(typeof cmfinAplicarModoPermitidoPorLicenca === "function") cmfinAplicarModoPermitidoPorLicenca(true); }catch(e){}
   }
 
   function bloquearSistema(){
@@ -29613,8 +29566,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       acesso_vitalicio: !!row.acesso_vitalicio || ehAdmin,
       bloqueado: !!row.bloqueado,
       limite_dispositivos: limite,
-      acesso_pessoal: ehAdmin ? true : !(row.acesso_pessoal === false || row.acesso_pessoal === "false" || row.acesso_pessoal === 0 || row.acesso_pessoal === "0"),
-      acesso_empresarial: ehAdmin ? true : !(row.acesso_empresarial === false || row.acesso_empresarial === "false" || row.acesso_empresarial === 0 || row.acesso_empresarial === "0")
+      acesso_pessoal: !(row.acesso_pessoal === false || row.acesso_pessoal === "false" || row.acesso_pessoal === 0 || row.acesso_pessoal === "0"),
+      acesso_empresarial: !(row.acesso_empresarial === false || row.acesso_empresarial === "false" || row.acesso_empresarial === 0 || row.acesso_empresarial === "0")
     };
   }
 
@@ -29693,13 +29646,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       document.body.appendChild(b);
     }
 
-    var ehAdmin = String(s.tipo_usuario || "").toLowerCase() === "admin" || s.acesso_vitalicio === true;
-    var modulos = "";
-    if(!ehAdmin){
-      var ap = s.acesso_pessoal !== false;
-      var ae = s.acesso_empresarial !== false;
-      modulos = ap && ae ? " · Completo" : ap ? " · Modo Pessoal" : ae ? " · Modo Empresarial" : " · Sem módulo";
-    }
+    var ehAdmin = String(s.tipo_usuario || "").toLowerCase() === "admin" || String(s.tipo_usuario || "").toLowerCase() === "administrador" || s.acesso_vitalicio === true;
+    var ap = s.acesso_pessoal !== false;
+    var ae = s.acesso_empresarial !== false;
+    var modulos = ap && ae ? " · Completo" : ap ? " · Modo Pessoal" : ae ? " · Modo Empresarial" : " · Sem módulo";
     var val = ehAdmin ? " · Admin · Acesso vitalício" : (s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "");
     b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + modulos + val;
     posicionarControlesTopo();
