@@ -30498,14 +30498,35 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   function aplicarDadosNaTela(dados){
-    if(!dados || !dados.localStorage) return false;
+    if(!dados || !dados.localStorage || typeof dados.localStorage !== "object") return false;
 
     CMFIN_CLOUD_LOADING = true;
 
-    Object.keys(dados.localStorage).forEach(function(k){
-      if(shouldIgnoreKey(k)) return;
-      try { localStorage.setItem(k, dados.localStorage[k]); } catch(e){}
-    });
+    try{
+      var incoming = dados.localStorage || {};
+      // Remove chaves antigas do CMFin que não vieram no backup, mas preserva login/licença/dispositivo.
+      var atuais = [];
+      for(var i = 0; i < localStorage.length; i++){
+        atuais.push(localStorage.key(i));
+      }
+      atuais.forEach(function(k){
+        if(shouldIgnoreKey(k)) return;
+        if(!Object.prototype.hasOwnProperty.call(incoming, k)){
+          try { localStorage.removeItem(k); } catch(e){}
+        }
+      });
+
+      Object.keys(incoming).forEach(function(k){
+        if(shouldIgnoreKey(k)) return;
+        try { localStorage.setItem(k, incoming[k]); } catch(e){}
+      });
+
+      sessionStorage.setItem("cmfin_cloud_last_import_ok", new Date().toISOString());
+    }catch(_applyErr){
+      console.warn("Falha ao aplicar dados da nuvem:", _applyErr);
+      CMFIN_CLOUD_LOADING = false;
+      return false;
+    }
 
     try{
       if(typeof window.carregarDados === "function") window.carregarDados();
@@ -30581,10 +30602,15 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       }
 
       if(data.existe && data.dados){
-        aplicarDadosNaTela(data.dados);
-        atualizarBadgeCloud("Dados carregados da nuvem.", "ok");
+        var aplicado = aplicarDadosNaTela(data.dados);
+        if(!aplicado){
+          atualizarBadgeCloud("Backup encontrado, mas não foi possível aplicar os dados.", "erro");
+          return false;
+        }
+        atualizarBadgeCloud("Dados carregados da nuvem. Recarregando sistema...", "ok");
 
         sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
+        setTimeout(function(){ try { location.reload(); } catch(e){} }, 900);
       }else{
         atualizarBadgeCloud("Nenhum backup online encontrado para esta licença.", "erro");
         CMFIN_CLOUD_READY = true;
@@ -30664,32 +30690,26 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   var originalSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function(key, value){
     var r = originalSetItem(key, value);
-
-    if(!shouldIgnoreKey(key)){
-      CMFIN_CLOUD_KEYS_CACHE = null;
-      if(CMFIN_CLOUD_READY && !CMFIN_CLOUD_LOADING){
-        agendarSalvarDadosNuvem(1800);
-      }
-    }
-
+    if(!shouldIgnoreKey(key)) CMFIN_CLOUD_KEYS_CACHE = null;
+    // Nuvem manual: nenhuma alteração local agenda salvamento automático.
+    // Isso impede que Resetar Dados sobrescreva a Supabase com um backup vazio.
     return r;
   };
 
   var originalRemoveItem = localStorage.removeItem.bind(localStorage);
   localStorage.removeItem = function(key){
     var r = originalRemoveItem(key);
-
-    if(!shouldIgnoreKey(key)){
-      CMFIN_CLOUD_KEYS_CACHE = null;
-      if(CMFIN_CLOUD_READY && !CMFIN_CLOUD_LOADING){
-        agendarSalvarDadosNuvem(1800);
-      }
-    }
-
+    if(!shouldIgnoreKey(key)) CMFIN_CLOUD_KEYS_CACHE = null;
+    // Nuvem manual: remover dados localmente não salva automaticamente na Supabase.
     return r;
   };
 
-  // Salvamento automático desativado: evita sobrescrever o backup da nuvem após Resetar Dados.
+  function agendarSalvarDadosNuvem(){
+    // Desativado de propósito. Salvar na nuvem acontece somente por clique manual.
+    return false;
+  }
+
+  // Salvamento automático desativado de verdade: evita sobrescrever o backup da nuvem após Resetar Dados.
   // A gravação na nuvem passa a acontecer somente por ação manual do usuário.
 
   window.cmfinSalvarDadosNuvem = salvarDadosNuvem;
@@ -31424,6 +31444,13 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       var client = await getClient();
       var pacote = coletarLocalStorage();
+      var totalChaves = pacote && pacote.localStorage ? Object.keys(pacote.localStorage).length : 0;
+      if(totalChaves === 0){
+        if(!confirm("Nenhum dado financeiro local foi encontrado para enviar. Deseja salvar mesmo assim?")){
+          toast("Salvamento cancelado para proteger o backup da nuvem.", "erro");
+          return false;
+        }
+      }
 
       var res = await client.rpc("cmfin_salvar_dados", {
         p_usuario: usuario,
