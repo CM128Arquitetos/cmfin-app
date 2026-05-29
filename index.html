@@ -15551,7 +15551,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const largura = 1080;
       const margem = 54;
       const linhaAltura = 92;
-      const gruposQtd = Math.max(Object.keys(grupos).length, 1);
+      const exibirCabecalhosGrupo = pessoa === "todos";
+      const gruposQtd = exibirCabecalhosGrupo ? Math.max(Object.keys(grupos).length, 1) : 0;
       const altura = Math.max(620, 330 + lista.length * linhaAltura + gruposQtd * 58);
       const canvas = document.createElement("canvas");
       canvas.width = largura;
@@ -15607,15 +15608,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         ctx.fillText("Nenhum lançamento encontrado para os filtros selecionados.", margem + 24, y + 40);
       } else {
         Object.entries(grupos).forEach(([nome, itens]) => {
-          const subtotal = itens.reduce((acc, item) => acc + valorTotalTerceiro(item), 0);
-          ctx.fillStyle = "#08251f";
-          ctx.font = "900 26px Arial";
-          ctx.fillText(nome, margem + 10, y + 22);
-          ctx.textAlign = "right";
-          ctx.font = "900 24px Arial";
-          ctx.fillText(moeda(subtotal), largura - margem - 10, y + 22);
-          ctx.textAlign = "left";
-          y += 44;
+          if (exibirCabecalhosGrupo) {
+            const subtotal = itens.reduce((acc, item) => acc + valorTotalTerceiro(item), 0);
+            ctx.fillStyle = "#08251f";
+            ctx.font = "900 26px Arial";
+            ctx.fillText(nome, margem + 10, y + 22);
+            ctx.textAlign = "right";
+            ctx.font = "900 24px Arial";
+            ctx.fillText(moeda(subtotal), largura - margem - 10, y + 22);
+            ctx.textAlign = "left";
+            y += 44;
+          }
 
           itens.forEach(item => {
             arredondarRetangulo(ctx, margem, y, largura - margem*2, 76, 18);
@@ -15654,7 +15657,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             ctx.textAlign = "left";
             y += linhaAltura;
           });
-          y += 14;
+          if (exibirCabecalhosGrupo) y += 14;
         });
       }
 
