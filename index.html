@@ -30399,6 +30399,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     "cmfin_remembered_access_supabase",
     "cmfin_last_user",
     "cmfin_device_id",
+    "cmfin_cloud_status",
     "supabase.auth.token"
   ];
 
@@ -30588,7 +30589,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
   }
 
-  async function salvarDadosNuvem(){
+  async function salvarDadosNuvem(silencioso){
+    silencioso = silencioso === true;
     if(CMFIN_CLOUD_LOADING) return false;
 
     var s = getSessaoCloud();
@@ -30620,7 +30622,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if(res.error){
         console.warn("CMFin cloud save error:", res.error);
-        atualizarBadgeCloud("Falha ao salvar na nuvem.", "erro");
+        if(!silencioso) atualizarBadgeCloud("Falha ao salvar na nuvem.", "erro");
         return false;
       }
 
@@ -30630,22 +30632,22 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       }
 
       if(!data || !data.ok){
-        atualizarBadgeCloud((data && data.mensagem) || "Não foi possível salvar na nuvem.", "erro");
+        if(!silencioso) atualizarBadgeCloud((data && data.mensagem) || "Não foi possível salvar na nuvem.", "erro");
         return false;
       }
 
-      atualizarBadgeCloud("Dados salvos na nuvem.", "ok");
+      if(!silencioso) atualizarBadgeCloud("Dados salvos na nuvem.", "ok");
       return true;
     }catch(err){
       console.warn("CMFin cloud save failed:", err);
-      atualizarBadgeCloud("Erro ao salvar na nuvem.", "erro");
+      if(!silencioso) atualizarBadgeCloud("Erro ao salvar na nuvem.", "erro");
       return false;
     }
   }
 
   function agendarSalvarDadosNuvem(delay){
     clearTimeout(CMFIN_CLOUD_TIMER);
-    CMFIN_CLOUD_TIMER = setTimeout(salvarDadosNuvem, delay || 1800);
+    CMFIN_CLOUD_TIMER = setTimeout(function(){ salvarDadosNuvem(true); }, delay || 1800);
   }
 
   var originalSetItem = localStorage.setItem.bind(localStorage);
@@ -30691,7 +30693,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   window.cmfinCarregarDadosNuvem = carregarDadosNuvem;
 
   window.addEventListener("beforeunload", function(){
-    try { salvarDadosNuvem(); } catch(e){}
+    try { salvarDadosNuvem(true); } catch(e){}
   });
 
   function iniciarCloud(){
@@ -34224,7 +34226,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     if(typeof window.cmfinSalvarDadosNuvem === "function"){
       setTimeout(function(){
-        try{ window.cmfinSalvarDadosNuvem(); }catch(err){}
+        try{ window.cmfinSalvarDadosNuvem(true); }catch(err){}
       }, 700);
     }
 
