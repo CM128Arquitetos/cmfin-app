@@ -29585,9 +29585,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if(!error){
         var r = cmfinNormalizarRetornoLicenca(data, fallback);
-        if(r.ok || !normalizar(senha)) return r;
-        // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
+
+        // Mesmo quando a RPC libera o acesso, buscamos a linha real da tabela.
+        // Isso garante que acesso_pessoal/acesso_empresarial venham atualizados,
+        // inclusive quando a função cmfin_ativar_licenca do Supabase ainda estiver antiga.
         var direto = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
+        if(direto && direto.ok) return direto;
+
+        if(r.ok || !normalizar(senha)) return r;
         return direto || r;
       }
 
@@ -36224,6 +36229,81 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     return valor;
   }
 
+  function cmfinBoolLocal(valor, padrao){
+    if(valor === undefined || valor === null || valor === "") return padrao;
+    if(typeof valor === "boolean") return valor;
+    var v = String(valor).trim().toLowerCase();
+    if(["true","1","sim","s","yes","verdadeiro"].indexOf(v) >= 0) return true;
+    if(["false","0","nao","não","n","no","falso"].indexOf(v) >= 0) return false;
+    return padrao;
+  }
+
+  function cmfinSessaoLocal(){
+    try{
+      if(typeof getSessao === "function"){
+        return getSessao(localStorage) || getSessao(sessionStorage) || null;
+      }
+    }catch(e){}
+    try{
+      return JSON.parse(localStorage.getItem("cmfin_auth_v2") || sessionStorage.getItem("cmfin_auth_v2") || "null");
+    }catch(e){ return null; }
+  }
+
+  function cmfinPermissoesLocal(){
+    var s = cmfinSessaoLocal();
+    if(!s) return { pessoal:true, empresarial:true };
+    return {
+      pessoal: cmfinBoolLocal(s.acesso_pessoal, true),
+      empresarial: cmfinBoolLocal(s.acesso_empresarial, true)
+    };
+  }
+
+  function cmfinModoPermitidoLocal(m){
+    var p = cmfinPermissoesLocal();
+    return m === "empresarial" ? !!p.empresarial : !!p.pessoal;
+  }
+
+  function cmfinPrimeiroModoPermitidoLocal(){
+    var p = cmfinPermissoesLocal();
+    if(p.pessoal) return "pessoal";
+    if(p.empresarial) return "empresarial";
+    return "pessoal";
+  }
+
+  function cmfinAplicarBloqueioVisualLocal(){
+    var p = cmfinPermissoesLocal();
+    var btnP = document.getElementById("btnModoPessoal");
+    var btnE = document.getElementById("btnModoEmpresarial");
+    if(btnP){
+      btnP.classList.toggle("cmfin-mode-locked", !p.pessoal);
+      btnP.disabled = !p.pessoal;
+      btnP.title = p.pessoal ? "" : "Modo Pessoal não incluso nesta licença.";
+    }
+    if(btnE){
+      btnE.classList.toggle("cmfin-mode-locked", !p.empresarial);
+      btnE.disabled = !p.empresarial;
+      btnE.title = p.empresarial ? "" : "Modo Empresarial não incluso nesta licença.";
+    }
+  }
+
+  function cmfinGarantirModoPermitidoLocal(){
+    var atual = modo();
+    if(cmfinModoPermitidoLocal(atual)) return atual;
+    var permitido = cmfinPrimeiroModoPermitidoLocal();
+    setModo(permitido);
+    try{
+      if(typeof carregarBaseStorage === "function" && typeof salvarBaseStorage === "function"){
+        var base = carregarBaseStorage() || {};
+        base.modoAtual = permitido;
+        base.modos = base.modos || {};
+        if(typeof criarDadosVazios === "function") base.modos[permitido] = base.modos[permitido] || criarDadosVazios();
+        salvarBaseStorage(base);
+        if(typeof aplicarSnapshot === "function") aplicarSnapshot(base.modos[permitido]);
+      }
+    }catch(e){ console.warn("CMFin modo permitido:", e); }
+    return permitido;
+  }
+
   function moduloAtivo(){
     return document.querySelector(".module.active")?.id || "dashboard";
   }
@@ -36236,9 +36316,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   function syncNavModo(){
-    var m = modo();
+    var m = cmfinGarantirModoPermitidoLocal();
     var btnP = document.getElementById("btnModoPessoal");
     var btnE = document.getElementById("btnModoEmpresarial");
+    cmfinAplicarBloqueioVisualLocal();
     if(btnP) btnP.classList.toggle("active", m === "pessoal");
     if(btnE) btnE.classList.toggle("active", m === "empresarial");
 
@@ -36314,6 +36395,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   var trocarOriginal = (typeof window.trocarModo === "function") ? window.trocarModo : (typeof trocarModo === "function" ? trocarModo : null);
   window.trocarModo = trocarModo = function(novoModo){
     novoModo = novoModo === "empresarial" ? "empresarial" : "pessoal";
+    if(!cmfinModoPermitidoLocal(novoModo)){
+      cmfinAplicarBloqueioVisualLocal();
+      alert(novoModo === "empresarial" ? "Modo Empresarial não incluso nesta licença." : "Modo Pessoal não incluso nesta licença.");
+      return;
+    }
     if(modoBusy || novoModo === modo()) return;
     modoBusy = true;
     document.body.classList.add("cmfin-mode-switching");
