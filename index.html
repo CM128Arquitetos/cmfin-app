@@ -29841,13 +29841,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       }
       var ok = await window.cmfinCarregarDadosNuvem();
       try{
+        if(ok && typeof carregarDados === "function") carregarDados();
         if(typeof preencherCategorias === "function") preencherCategorias();
         if(typeof atualizarSelects === "function") atualizarSelects();
         if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela();
         if(typeof atualizarUIModo === "function") atualizarUIModo();
         if(typeof renderizarTudo === "function") renderizarTudo();
       }catch(_e){}
-      toast(ok ? "Dados da nuvem reconhecidos com sucesso." : "Não foi possível importar da nuvem.", ok ? "ok" : "erro");
+      toast(ok ? "Dados importados da nuvem com sucesso." : "Nenhum dado da nuvem foi aplicado. Verifique se existe backup salvo para esta licença.", ok ? "ok" : "erro");
     }catch(err){
       console.warn(err);
       toast("Erro ao importar da nuvem.", "erro");
@@ -30506,6 +30507,15 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       try { localStorage.setItem(k, dados.localStorage[k]); } catch(e){}
     });
 
+    try{
+      if(typeof window.carregarDados === "function") window.carregarDados();
+      if(typeof window.preencherCategorias === "function") window.preencherCategorias();
+      if(typeof window.atualizarSelects === "function") window.atualizarSelects();
+      if(typeof window.carregarConfiguracaoDistribuicaoNaTela === "function") window.carregarConfiguracaoDistribuicaoNaTela();
+      if(typeof window.atualizarUIModo === "function") window.atualizarUIModo();
+      if(typeof window.renderizarTudo === "function") window.renderizarTudo();
+    }catch(_e){}
+
     CMFIN_CLOUD_LOADING = false;
     return true;
   }
@@ -30576,8 +30586,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
         sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
       }else{
-        atualizarBadgeCloud("Nenhum backup online ainda. Criando primeiro salvamento...", "info");
-        agendarSalvarDadosNuvem(1200);
+        atualizarBadgeCloud("Nenhum backup online encontrado para esta licença.", "erro");
+        CMFIN_CLOUD_READY = true;
+        return false;
       }
 
       CMFIN_CLOUD_READY = true;
@@ -30678,28 +30689,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     return r;
   };
 
-  document.addEventListener("click", function(e){
-    var t = e.target;
-    if(t && (t.closest("button") || t.closest("[role='button']")) && CMFIN_CLOUD_READY){
-      agendarSalvarDadosNuvem(2200);
-    }
-  }, true);
-
-  document.addEventListener("change", function(){
-    if(CMFIN_CLOUD_READY) agendarSalvarDadosNuvem(2200);
-  }, true);
+  // Salvamento automático desativado: evita sobrescrever o backup da nuvem após Resetar Dados.
+  // A gravação na nuvem passa a acontecer somente por ação manual do usuário.
 
   window.cmfinSalvarDadosNuvem = salvarDadosNuvem;
   window.cmfinCarregarDadosNuvem = carregarDadosNuvem;
 
-  window.addEventListener("beforeunload", function(){
-    try { salvarDadosNuvem(true); } catch(e){}
-  });
+  // Salvamento ao fechar a página desativado para preservar o último backup manual.
 
   function iniciarCloud(){
-    setTimeout(function(){
-      carregarDadosNuvem();
-    }, 1800);
+    // Não carrega nem salva automaticamente. Importação/Exportação ficam manuais.
+    CMFIN_CLOUD_READY = true;
   }
 
   if(document.readyState === "loading"){
@@ -30972,6 +30972,16 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     try{
       if(typeof window.cmfinCarregarDadosNuvem === "function"){
         var ok = await window.cmfinCarregarDadosNuvem();
+        if(ok){
+          try{
+            if(typeof window.carregarDados === "function") window.carregarDados();
+            if(typeof window.preencherCategorias === "function") window.preencherCategorias();
+            if(typeof window.atualizarSelects === "function") window.atualizarSelects();
+            if(typeof window.carregarConfiguracaoDistribuicaoNaTela === "function") window.carregarConfiguracaoDistribuicaoNaTela();
+            if(typeof window.atualizarUIModo === "function") window.atualizarUIModo();
+            if(typeof window.renderizarTudo === "function") window.renderizarTudo();
+          }catch(_e){}
+        }
         setStatus({
           status: ok ? "Dados carregados" : "Falha ao carregar",
           pill: ok ? "Nuvem ativa" : "Verificar nuvem",
