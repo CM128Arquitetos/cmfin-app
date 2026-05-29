@@ -10436,11 +10436,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
               <div><label>Dia de Vencimento</label><select id="fixoVencimento"></select></div>
 
               <div id="campoComprovanteFixo" style="display:none; grid-column:1 / -1;">
-                <label>Comprovante de Pagamento</label>
-                <input type="file" id="fixoComprovante" accept="image/*,.pdf" onchange="sugerirNomeComprovante('fixoComprovante','fixoComprovanteNome')" />
+                <label>Comprovantes de Pagamento</label>
+                <input type="file" id="fixoComprovante" accept="image/*,.pdf" multiple onchange="sugerirNomeComprovante('fixoComprovante','fixoComprovanteNome')" />
                 <label style="margin-top:10px;">Nome do arquivo no cadastro</label>
-                <input id="fixoComprovanteNome" placeholder="" />
-                <div class="file-note" id="fixoComprovanteAtual">Este campo aparece para pagamentos em PIX. Anexe ou substitua o comprovante ao editar o gasto.</div>
+                <input id="fixoComprovanteNome" placeholder="Use este campo quando anexar apenas 1 comprovante" />
+                <div class="file-note" id="fixoComprovanteAtual">Este campo aparece para pagamentos em PIX. Você pode anexar um ou vários comprovantes ao editar o gasto.</div>
               </div>
 
               <div id="campoBoletoFixo" style="grid-column:1 / -1;">
@@ -12444,7 +12444,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const bancosSelectIds = ["fixoBanco", "varBanco", "tercPgBanco", "arqPgBanco", "recebBanco", "cofBanco", "movBanco"];
       bancosSelectIds.forEach(id => {
         const sel = document.getElementById(id);
-        sel.innerHTML = bancos.length ? "" : '<option value="">Nenhum banco cadastrado</option>';
+        if (!sel) return;
+        if (id === "fixoBanco") {
+          sel.innerHTML = '<option value="">Nenhum — não é cartão de crédito</option>';
+        } else {
+          sel.innerHTML = bancos.length ? "" : '<option value="">Nenhum banco cadastrado</option>';
+        }
         bancos.forEach(b => sel.innerHTML += `<option value="${b.nome}">${b.nome}</option>`);
       });
 
@@ -13256,7 +13261,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const fixoComprovanteNome = document.getElementById("fixoComprovanteNome");
       if (fixoComprovanteNome) fixoComprovanteNome.value = "";
       const fixoComprovanteAtual = document.getElementById("fixoComprovanteAtual");
-      if (fixoComprovanteAtual) fixoComprovanteAtual.innerText = "Nenhum comprovante anexado. Este campo aparece para pagamentos em PIX.";
+      if (fixoComprovanteAtual) fixoComprovanteAtual.innerText = "Nenhum comprovante anexado. Este campo aparece para pagamentos em PIX e permite vários arquivos.";
       const fixoBoleto = document.getElementById("fixoBoleto");
       if (fixoBoleto) fixoBoleto.value = "";
       const fixoBoletoNome = document.getElementById("fixoBoletoNome");
@@ -13341,7 +13346,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const totalParcelas = Number(document.getElementById("fixoTotalParcelas").value || 1);
       const editId = document.getElementById("fixoEditId").value;
       const formaFixo = document.getElementById("fixoForma").value;
-      const novoComprovante = aplicarNomeComprovante(await lerArquivoComoBase64(document.getElementById("fixoComprovante")?.files?.[0]), "fixoComprovanteNome");
+      const novoComprovante = aplicarNomesComprovantes(await lerArquivosComoBase64(document.getElementById("fixoComprovante")?.files), "fixoComprovanteNome");
       const novoBoleto = aplicarNomeComprovante(await lerArquivoComoBase64(document.getElementById("fixoBoleto")?.files?.[0]), "fixoBoletoNome");
       const mesComprovanteFixo = editId ? (document.getElementById("fixoEditId")?.dataset?.mesComprovante || mesReferencia) : mesReferencia;
 
@@ -13534,14 +13539,42 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       });
     }
 
+    async function lerArquivosComoBase64(fileList) {
+      const arquivos = Array.from(fileList || []).filter(Boolean);
+      if (!arquivos.length) return null;
+      const lidos = await Promise.all(arquivos.map(file => lerArquivoComoBase64(file)));
+      return lidos.filter(Boolean);
+    }
+
+    function normalizarComprovantesLista(comprovante) {
+      if (!comprovante) return [];
+      return Array.isArray(comprovante) ? comprovante.filter(Boolean) : [comprovante];
+    }
+
+    function compactarComprovantes(lista) {
+      const itens = normalizarComprovantesLista(lista);
+      if (!itens.length) return null;
+      return itens.length === 1 ? itens[0] : itens;
+    }
+
+    function aplicarNomesComprovantes(comprovantes, inputNomeId) {
+      const lista = normalizarComprovantesLista(comprovantes);
+      if (!lista.length) return null;
+      const nomeDigitado = inputNomeId ? document.getElementById(inputNomeId)?.value.trim() : "";
+      if (lista.length === 1 && nomeDigitado) lista[0].nome = nomeDigitado;
+      return lista;
+    }
+
     function sugerirNomeComprovante(inputArquivoId, inputNomeId) {
-      const arquivo = document.getElementById(inputArquivoId)?.files?.[0];
+      const arquivos = Array.from(document.getElementById(inputArquivoId)?.files || []);
       const campoNome = document.getElementById(inputNomeId);
-      if (arquivo && campoNome && !campoNome.value.trim()) campoNome.value = arquivo.name;
+      if (!arquivos.length || !campoNome || campoNome.value.trim()) return;
+      campoNome.value = arquivos.length === 1 ? arquivos[0].name : `${arquivos.length} comprovantes selecionados`;
     }
 
     function aplicarNomeComprovante(comprovante, inputNomeId) {
       if (!comprovante) return null;
+      if (Array.isArray(comprovante)) return aplicarNomesComprovantes(comprovante, inputNomeId);
       const nomeDigitado = inputNomeId ? document.getElementById(inputNomeId)?.value.trim() : "";
       if (nomeDigitado) comprovante.nome = nomeDigitado;
       return comprovante;
@@ -13549,13 +13582,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     function definirNomeComprovanteExistente(comprovante, inputNomeId) {
       if (!comprovante) return null;
+      if (Array.isArray(comprovante)) return comprovante;
       const nomeDigitado = document.getElementById(inputNomeId)?.value.trim();
       return nomeDigitado ? { ...comprovante, nome: nomeDigitado } : comprovante;
     }
 
     function comprovanteFinalPix(novoComprovante, comprovanteExistente, inputNomeId) {
-      const novo = aplicarNomeComprovante(novoComprovante, inputNomeId);
-      if (novo) return novo;
+      const novos = normalizarComprovantesLista(aplicarNomeComprovante(novoComprovante, inputNomeId));
+      if (novos.length) {
+        const existentes = normalizarComprovantesLista(comprovanteExistente);
+        return compactarComprovantes([...existentes, ...novos]);
+      }
       return definirNomeComprovanteExistente(comprovanteExistente, inputNomeId);
     }
 
@@ -13626,9 +13663,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function linkComprovante(comprovante, tipo, id, mesReferencia) {
-      if (!comprovante || !comprovante.dados) return "";
+      const lista = normalizarComprovantesLista(comprovante).filter(c => c && c.dados);
+      if (!lista.length) return "";
       const mes = mesParaComprovante(mesReferencia);
-      return `<button type="button" class="attachment-link" onclick="abrirComprovante('${tipo}', ${id}, '${mes}')">📎 ${escaparHtml(comprovante.nome || 'Comprovante')}</button>`;
+      return lista.map((comp, indice) => `<button type="button" class="attachment-link" onclick="abrirComprovante('${tipo}', ${id}, '${mes}', ${indice})">📎 ${escaparHtml(comp.nome || ('Comprovante ' + (indice + 1)))}</button>`).join("");
     }
 
     function linkBoleto(boleto, id, mesReferencia, tipo = "boletosFixos") {
@@ -13642,7 +13680,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function textoComprovanteAtual(comprovante) {
-      return comprovante && comprovante.nome ? `Comprovante atual: ${comprovante.nome}. Para substituir, selecione outro arquivo.` : "Nenhum comprovante anexado.";
+      const lista = normalizarComprovantesLista(comprovante).filter(c => c && c.nome);
+      if (!lista.length) return "Nenhum comprovante anexado.";
+      if (lista.length === 1) return `Comprovante atual: ${lista[0].nome}. Para adicionar outro, selecione mais arquivos.`;
+      return `Comprovantes atuais: ${lista.length} arquivos. Para adicionar novos comprovantes, selecione mais arquivos.`;
     }
 
     let comprovanteContextoAtual = null;
@@ -13661,11 +13702,13 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       return listaPorTipoComprovante(tipo).find(i => i.id === Number(id));
     }
 
-    function abrirComprovante(tipo, id, mesReferencia) {
+    function abrirComprovante(tipo, id, mesReferencia, indice = 0) {
       const item = obterItemComprovante(tipo, id);
       const compItem = obterComprovanteDoItem(item, tipo, mesReferencia);
-      if (!item || !compItem || !compItem.dados) return alert("Nenhum comprovante encontrado.");
-      comprovanteContextoAtual = { tipo, id: Number(id), mesReferencia: mesParaComprovante(mesReferencia) };
+      const lista = normalizarComprovantesLista(compItem).filter(c => c && c.dados);
+      const compSelecionado = lista[Number(indice) || 0];
+      if (!item || !compSelecionado || !compSelecionado.dados) return alert("Nenhum comprovante encontrado.");
+      comprovanteContextoAtual = { tipo, id: Number(id), mesReferencia: mesParaComprovante(mesReferencia), indice: Number(indice) || 0 };
       renderizarModalComprovante();
       abrirModal("modalComprovante");
     }
@@ -13673,7 +13716,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     function renderizarModalComprovante() {
       if (!comprovanteContextoAtual) return;
       const item = obterItemComprovante(comprovanteContextoAtual.tipo, comprovanteContextoAtual.id);
-      const comp = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
+      const compBruto = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
+      const listaComp = normalizarComprovantesLista(compBruto).filter(c => c && c.dados);
+      const comp = listaComp[comprovanteContextoAtual.indice || 0] || listaComp[0];
       if (!comp) return;
       const nome = comp.nome || "comprovante";
       const inputNome = document.getElementById("comprovanteNomeEdit");
@@ -13702,19 +13747,24 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       if (!comprovanteContextoAtual) return;
       const item = obterItemComprovante(comprovanteContextoAtual.tipo, comprovanteContextoAtual.id);
       const novoNome = document.getElementById("comprovanteNomeEdit")?.value.trim();
-      const comp = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
+      const compBruto = obterComprovanteDoItem(item, comprovanteContextoAtual.tipo, comprovanteContextoAtual.mesReferencia);
+      const listaComp = normalizarComprovantesLista(compBruto);
+      const indice = comprovanteContextoAtual.indice || 0;
+      const comp = listaComp[indice] || listaComp[0];
       if (!item || !comp || !novoNome) return alert("Informe um nome para o comprovante.");
+      listaComp[indice] = { ...comp, nome: novoNome };
+      const atualizado = compactarComprovantes(listaComp);
 
       if (comprovanteContextoAtual.tipo === "boletosFixos" || comprovanteContextoAtual.tipo === "boletosVariaveis") {
         const mes = mesParaComprovante(comprovanteContextoAtual.mesReferencia);
-        item.boletosPorMes = { ...(item.boletosPorMes || {}), [mes]: { ...comp, nome: novoNome } };
+        item.boletosPorMes = { ...(item.boletosPorMes || {}), [mes]: Array.isArray(atualizado) ? atualizado[0] : atualizado };
         item.boleto = null;
       } else if (usarComprovanteMensalEmpresarial(comprovanteContextoAtual.tipo)) {
         const mes = mesParaComprovante(comprovanteContextoAtual.mesReferencia);
-        item.comprovantesPorMes = { ...(item.comprovantesPorMes || {}), [mes]: { ...comp, nome: novoNome } };
+        item.comprovantesPorMes = { ...(item.comprovantesPorMes || {}), [mes]: atualizado };
         item.comprovante = null;
       } else {
-        item.comprovante.nome = novoNome;
+        item.comprovante = atualizado;
       }
 
       salvarDados();
@@ -13742,7 +13792,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const varComprovanteNome = document.getElementById("varComprovanteNome");
       if (varComprovanteNome) varComprovanteNome.value = "";
       const varComprovanteAtual = document.getElementById("varComprovanteAtual");
-      if (varComprovanteAtual) varComprovanteAtual.innerText = "Nenhum comprovante anexado. Este campo aparece para pagamentos em PIX.";
+      if (varComprovanteAtual) varComprovanteAtual.innerText = "Nenhum comprovante anexado. Este campo aparece para pagamentos em PIX e permite vários arquivos.";
       const varBoleto = document.getElementById("varBoleto");
       if (varBoleto) varBoleto.value = "";
       const varBoletoNome = document.getElementById("varBoletoNome");
