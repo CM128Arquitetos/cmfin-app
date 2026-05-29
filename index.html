@@ -15525,6 +15525,20 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       return "#475569";
     }
 
+    function obterLogoCMFinCanvas() {
+      return document.querySelector(".brand-logo img") || document.querySelector(".cmfin-login-logo");
+    }
+
+    function desenharLogoCMFinCanvas(ctx, x, y, larguraMaxima, alturaMaxima) {
+      const logo = obterLogoCMFinCanvas();
+      if (!logo || !logo.complete || !logo.naturalWidth || !logo.naturalHeight) return false;
+      const escala = Math.min(larguraMaxima / logo.naturalWidth, alturaMaxima / logo.naturalHeight);
+      const w = logo.naturalWidth * escala;
+      const h = logo.naturalHeight * escala;
+      ctx.drawImage(logo, x, y + (alturaMaxima - h) / 2, w, h);
+      return true;
+    }
+
     function criarCanvasResumoTerceiros() {
       const { pessoa, status, lista, total, mesTexto } = prepararDadosExportacaoTerceiros();
       const grupos = {};
@@ -15565,11 +15579,18 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const pessoaTitulo = pessoa === "todos" ? "Todas as pessoas" : pessoa;
       const rotuloTotal = status === "Recebido" ? "TOTAL RECEBIDO" : "TOTAL A REPASSAR";
 
-      ctx.font = "900 38px Arial";
-      ctx.fillText(pessoaTitulo, margem + 30, margem + 62);
-      ctx.font = "700 24px Arial";
+      const logoDesenhada = desenharLogoCMFinCanvas(ctx, margem + 28, margem + 31, 205, 72);
+      const textoInicioX = logoDesenhada ? margem + 260 : margem + 30;
+
+      ctx.font = "800 13px Arial";
+      ctx.fillStyle = "rgba(255,255,255,.74)";
+      ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE", textoInicioX, margem + 35);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 34px Arial";
+      ctx.fillText(pessoaTitulo, textoInicioX, margem + 72);
+      ctx.font = "700 22px Arial";
       ctx.fillStyle = "rgba(255,255,255,.90)";
-      ctx.fillText(mesTexto, margem + 30, margem + 100);
+      ctx.fillText(mesTexto, textoInicioX, margem + 104);
 
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffffff";
@@ -15640,6 +15661,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       ctx.fillStyle = "#94a3b8";
       ctx.font = "600 15px Arial";
       ctx.fillText(`Gerado no CMFin Gestão Financeira Inteligente • ${new Date().toLocaleDateString("pt-BR")}`, margem, altura - 54);
+      const logoRodape = obterLogoCMFinCanvas();
+      if (logoRodape && logoRodape.complete && logoRodape.naturalWidth && logoRodape.naturalHeight) {
+        ctx.globalAlpha = 0.16;
+        const rodapeW = 132;
+        const rodapeH = rodapeW * (logoRodape.naturalHeight / logoRodape.naturalWidth);
+        ctx.drawImage(logoRodape, largura - margem - rodapeW, altura - 82, rodapeW, rodapeH);
+        ctx.globalAlpha = 1;
+      }
       return canvas;
     }
 
