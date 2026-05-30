@@ -29220,15 +29220,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   function normalizar(v){ return String(v || "").trim(); }
   function normalizarLicenca(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function hojeISO(){ return new Date().toISOString().slice(0,10); }
-  function cmfinBool(v, padrao){
-    if(v === undefined || v === null || v === "") return padrao;
-    if(v === true || v === 1) return true;
-    if(v === false || v === 0) return false;
-    var t = String(v).trim().toLowerCase();
-    if(["true","t","1","sim","yes","verdadeiro"].includes(t)) return true;
-    if(["false","f","0","nao","não","no","falso"].includes(t)) return false;
-    return padrao;
-  }
 
   function getDeviceId(){
     var id = localStorage.getItem(CMFIN_DEVICE_KEY);
@@ -29259,9 +29250,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: u.tipo_usuario || "usuario",
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
+      acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
+      acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      acesso_pessoal: cmfinBool(u.acesso_pessoal, true),
-      acesso_empresarial: cmfinBool(u.acesso_empresarial, true),
       dispositivo: getDeviceId(),
       lembradoEm: new Date().toISOString()
     }));
@@ -29286,9 +29277,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: u.tipo_usuario || "usuario",
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
+      acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
+      acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      acesso_pessoal: cmfinBool(u.acesso_pessoal, true),
-      acesso_empresarial: cmfinBool(u.acesso_empresarial, true),
       dispositivo: getDeviceId(),
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
@@ -29374,9 +29365,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: data.tipo_usuario || "usuario",
       acesso_vitalicio: data.acesso_vitalicio === true || data.acesso_vitalicio === "true",
       bloqueado: data.bloqueado === true || data.bloqueado === "true",
-      limite_dispositivos: Number(data.limite_dispositivos || 1),
-      acesso_pessoal: cmfinBool(data.acesso_pessoal, true),
-      acesso_empresarial: cmfinBool(data.acesso_empresarial, true)
+      acesso_pessoal: data.acesso_pessoal === undefined || data.acesso_pessoal === null ? true : (data.acesso_pessoal === true || data.acesso_pessoal === "true"),
+      acesso_empresarial: data.acesso_empresarial === undefined || data.acesso_empresarial === null ? true : (data.acesso_empresarial === true || data.acesso_empresarial === "true"),
+      limite_dispositivos: Number(data.limite_dispositivos || 1)
     };
   }
 
@@ -29408,7 +29399,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     var query = client
       .from("licencas")
-      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,limite_dispositivos,dispositivos_autorizados,acesso_pessoal,acesso_empresarial")
+      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,dispositivos_autorizados")
       .eq("usuario", normalizar(usuario))
       .eq("senha", normalizar(senha))
       .eq("licenca", normalizarLicenca(licenca))
@@ -29485,9 +29476,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: row.tipo_usuario || (ehAdmin ? "admin" : "usuario"),
       acesso_vitalicio: !!row.acesso_vitalicio || ehAdmin,
       bloqueado: !!row.bloqueado,
-      limite_dispositivos: limite,
-      acesso_pessoal: ehAdmin ? true : cmfinBool(row.acesso_pessoal, true),
-      acesso_empresarial: ehAdmin ? true : cmfinBool(row.acesso_empresarial, true)
+      acesso_pessoal: row.acesso_pessoal !== false && row.acesso_pessoal !== "false",
+      acesso_empresarial: row.acesso_empresarial !== false && row.acesso_empresarial !== "false",
+      limite_dispositivos: limite
     };
   }
 
@@ -29505,12 +29496,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if(!error){
         var r = cmfinNormalizarRetornoLicenca(data, fallback);
-        // Mesmo se a RPC liberar o login, consulta a linha real da tabela para capturar
-        // acesso_pessoal/acesso_empresarial atualizados no Supabase.
-        if(r.ok && normalizar(senha)){
-          var diretoOk = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
-          return diretoOk || r;
-        }
         if(r.ok || !normalizar(senha)) return r;
         // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
         var direto = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
@@ -29572,12 +29557,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       document.body.appendChild(b);
     }
 
-    var ehAdmin = ["admin","administrador","administracao","administração"].includes(String(s.tipo_usuario || "").toLowerCase()) || s.acesso_vitalicio === true;
-    var ap = ehAdmin ? true : cmfinBool(s.acesso_pessoal, true);
-    var ae = ehAdmin ? true : cmfinBool(s.acesso_empresarial, true);
-    var moduloTxt = ap && ae ? "Completo" : (ap ? "Modo Pessoal" : (ae ? "Modo Empresarial" : "Sem módulo"));
+    var ehAdmin = String(s.tipo_usuario || "").toLowerCase() === "admin" || s.acesso_vitalicio === true;
     var val = ehAdmin ? " · Admin · Acesso vitalício" : (s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "");
-    b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + " · " + moduloTxt + val;
+    b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + val;
     posicionarControlesTopo();
   }
 
@@ -29608,9 +29590,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         tipo_usuario: resultado.tipo_usuario || salvo.tipo_usuario || "usuario",
         acesso_vitalicio: !!(resultado.acesso_vitalicio || salvo.acesso_vitalicio),
         bloqueado: !!resultado.bloqueado,
-        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1),
-        acesso_pessoal: cmfinBool(resultado.acesso_pessoal, cmfinBool(salvo.acesso_pessoal, true)),
-        acesso_empresarial: cmfinBool(resultado.acesso_empresarial, cmfinBool(salvo.acesso_empresarial, true))
+        acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (salvo.acesso_pessoal !== false),
+        acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (salvo.acesso_empresarial !== false),
+        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1)
       };
 
       salvarSessao(u, localStorage);
@@ -29673,9 +29655,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         tipo_usuario: resultado.tipo_usuario || sessao.tipo_usuario || "usuario",
         acesso_vitalicio: !!(resultado.acesso_vitalicio || sessao.acesso_vitalicio),
         bloqueado: !!resultado.bloqueado,
-        limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1),
-        acesso_pessoal: cmfinBool(resultado.acesso_pessoal, cmfinBool(sessao.acesso_pessoal, true)),
-        acesso_empresarial: cmfinBool(resultado.acesso_empresarial, cmfinBool(sessao.acesso_empresarial, true))
+        acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (sessao.acesso_pessoal !== false),
+        acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (sessao.acesso_empresarial !== false),
+        limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1)
       }, storage);
 
       ocultarErro();
@@ -29747,9 +29729,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             tipo_usuario: r.tipo_usuario || "usuario",
             acesso_vitalicio: !!r.acesso_vitalicio,
             bloqueado: !!r.bloqueado,
-            limite_dispositivos: Number(r.limite_dispositivos || 1),
-            acesso_pessoal: cmfinBool(r.acesso_pessoal, true),
-            acesso_empresarial: cmfinBool(r.acesso_empresarial, true)
+            acesso_pessoal: r.acesso_pessoal !== false,
+            acesso_empresarial: r.acesso_empresarial !== false,
+            limite_dispositivos: Number(r.limite_dispositivos || 1)
           };
 
           if(lembrarEl && lembrarEl.checked) {
@@ -30412,163 +30394,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 </script>
 
 
-
-<style id="cmfin-modulos-licenca-guard-style">
-  #btnModoPessoal.cmfin-modo-bloqueado,
-  #btnModoEmpresarial.cmfin-modo-bloqueado{
-    opacity:.45 !important;
-    cursor:not-allowed !important;
-    pointer-events:auto !important;
-    filter:grayscale(.25) !important;
-  }
-</style>
-<script id="cmfin-modulos-licenca-guard-final-js">
-(function(){
-  "use strict";
-  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
-  var busy = false;
-
-  function parseBool(v, def){
-    if(v === undefined || v === null || v === "") return def;
-    if(v === true || v === 1) return true;
-    if(v === false || v === 0) return false;
-    var t = String(v).trim().toLowerCase();
-    if(["true","t","1","sim","yes","verdadeiro"].includes(t)) return true;
-    if(["false","f","0","nao","não","no","falso"].includes(t)) return false;
-    return def;
-  }
-  function sessao(){
-    var s = null;
-    try{ s = JSON.parse(localStorage.getItem(AUTH_KEY) || "null"); }catch(e){}
-    if(!s || !s.autenticado){ try{ s = JSON.parse(sessionStorage.getItem(AUTH_KEY) || "null"); }catch(e){} }
-    return s || {};
-  }
-  function admin(s){
-    var t = String(s.tipo_usuario || "").trim().toLowerCase();
-    return ["admin","administrador","administracao","administração"].includes(t) || parseBool(s.acesso_vitalicio, false);
-  }
-  function acessos(){
-    var s = sessao();
-    if(admin(s)) return { pessoal:true, empresarial:true, modulo:"Completo" };
-    var pessoal = parseBool(s.acesso_pessoal, true);
-    var empresarial = parseBool(s.acesso_empresarial, true);
-    return { pessoal:pessoal, empresarial:empresarial, modulo: pessoal && empresarial ? "Completo" : (pessoal ? "Modo Pessoal" : (empresarial ? "Modo Empresarial" : "Sem módulo")) };
-  }
-  function modoAtualSeguro(){
-    try{ return (typeof modoAtual !== "undefined" && modoAtual === "empresarial") ? "empresarial" : "pessoal"; }
-    catch(e){ return window.modoAtual === "empresarial" ? "empresarial" : "pessoal"; }
-  }
-  function setModoSeguro(m){
-    m = m === "empresarial" ? "empresarial" : "pessoal";
-    try{ modoAtual = m; }catch(e){}
-    window.modoAtual = m;
-    try{
-      if(typeof carregarBaseStorage === "function" && typeof salvarBaseStorage === "function"){
-        var base = carregarBaseStorage() || {};
-        base.modoAtual = m;
-        salvarBaseStorage(base);
-      }
-    }catch(e){}
-    return m;
-  }
-  function modoPermitido(m){
-    var a = acessos();
-    m = m === "empresarial" ? "empresarial" : "pessoal";
-    if(m === "pessoal" && !a.pessoal) return a.empresarial ? "empresarial" : "pessoal";
-    if(m === "empresarial" && !a.empresarial) return a.pessoal ? "pessoal" : "empresarial";
-    return m;
-  }
-  function moduloPermitidoLicenca(id, m){
-    id = id || "dashboard";
-    if(!document.getElementById(id)) return "dashboard";
-    if(m === "empresarial" && id === "terceiros") return "dashboard";
-    if(m === "pessoal" && (id === "pagamentosTerceirizados" || id === "pagamentosArquitetos")) return "dashboard";
-    return id;
-  }
-  function syncUI(){
-    var a = acessos();
-    var m = modoPermitido(modoAtualSeguro());
-    if(m !== modoAtualSeguro()) setModoSeguro(m);
-
-    var btnP = document.getElementById("btnModoPessoal");
-    var btnE = document.getElementById("btnModoEmpresarial");
-    if(btnP){
-      btnP.classList.toggle("active", m === "pessoal");
-      btnP.classList.toggle("cmfin-modo-bloqueado", !a.pessoal);
-      btnP.title = a.pessoal ? "Modo Pessoal" : "Modo Pessoal não incluso nesta licença";
-      btnP.innerHTML = a.pessoal ? "Pessoal" : "🔒 Pessoal";
-    }
-    if(btnE){
-      btnE.classList.toggle("active", m === "empresarial");
-      btnE.classList.toggle("cmfin-modo-bloqueado", !a.empresarial);
-      btnE.title = a.empresarial ? "Modo Empresarial" : "Modo Empresarial não incluso nesta licença";
-      btnE.innerHTML = a.empresarial ? "Empresarial" : "🔒 Empresarial";
-    }
-    var indicador = document.getElementById("indicadorModoAtual");
-    if(indicador) indicador.innerText = m === "empresarial" ? "Modo Empresarial" : "Modo Pessoal";
-
-    var navTerceiros = document.getElementById("navTerceiros");
-    if(navTerceiros) navTerceiros.classList.toggle("nav-hidden", m === "empresarial");
-    ["navPagamentosTerceirizados","navPagamentosArquitetos"].forEach(function(id){
-      var btn = document.getElementById(id);
-      if(btn) btn.classList.toggle("nav-hidden", m === "pessoal");
-    });
-
-    var ativo = document.querySelector(".module.active")?.id || "dashboard";
-    var alvo = moduloPermitidoLicenca(ativo, m);
-    if(alvo !== ativo){
-      document.querySelectorAll(".module").forEach(function(el){ el.classList.toggle("active", el.id === alvo); });
-      document.querySelectorAll(".nav button").forEach(function(btn){ btn.classList.toggle("active", btn.getAttribute("data-module") === alvo); });
-    }
-
-    var badge = document.getElementById("cmfinLicenseBadge");
-    if(badge && badge.textContent && !badge.textContent.includes(a.modulo)){
-      badge.textContent = badge.textContent.replace(/ · (Completo|Modo Pessoal|Modo Empresarial|Sem módulo)/g, "") + " · " + a.modulo;
-    }
-  }
-
-  var trocarAnterior = window.trocarModo;
-  window.trocarModo = function(novoModo){
-    novoModo = novoModo === "empresarial" ? "empresarial" : "pessoal";
-    var permitido = modoPermitido(novoModo);
-    if(permitido !== novoModo){
-      alert((novoModo === "empresarial" ? "Modo Empresarial" : "Modo Pessoal") + " não está incluso nesta licença.");
-      syncUI();
-      return false;
-    }
-    if(busy) return false;
-    busy = true;
-    try{
-      if(typeof trocarAnterior === "function") trocarAnterior.call(this, novoModo);
-      else setModoSeguro(novoModo);
-    }finally{
-      setTimeout(function(){ busy = false; syncUI(); }, 160);
-      setTimeout(syncUI, 600);
-    }
-    return true;
-  };
-  try{ trocarModo = window.trocarModo; }catch(e){}
-
-  var mudarAnterior = window.mudarModulo;
-  window.mudarModulo = function(id){
-    var m = modoPermitido(modoAtualSeguro());
-    if(m !== modoAtualSeguro()) setModoSeguro(m);
-    id = moduloPermitidoLicenca(id, m);
-    var r;
-    try{ if(typeof mudarAnterior === "function") r = mudarAnterior.call(this, id); }
-    catch(e){ console.warn("CMFin módulo licença:", e); }
-    setTimeout(syncUI, 50);
-    return r;
-  };
-  try{ mudarModulo = window.mudarModulo; }catch(e){}
-
-  function tick(){ syncUI(); }
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(tick,80); });
-  else setTimeout(tick,80);
-  window.addEventListener("load", function(){ setTimeout(tick,200); setTimeout(tick,900); setTimeout(tick,1800); });
-  document.addEventListener("click", function(){ setTimeout(tick,60); }, true);
-})();
-</script>
 </body>
 </html>
 
@@ -36445,160 +36270,160 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 </script>
 
 
-<!-- CMFin — guarda definitivo de módulos da licença: precisa ficar depois de todos os scripts -->
-<style id="cmfin-modulos-licenca-guard-final-end-style">
-  #btnModoPessoal.cmfin-modo-bloqueado,
-  #btnModoEmpresarial.cmfin-modo-bloqueado{
-    opacity:.45 !important;
-    cursor:not-allowed !important;
-    pointer-events:auto !important;
-    filter:grayscale(.25) !important;
-  }
-</style>
-<script id="cmfin-modulos-licenca-guard-final-end-js">
+<script id="cmfin-controle-acesso-modulos-js">
 (function(){
   "use strict";
-  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
-  var busy = false;
 
-  function parseBool(v, def){
-    if(v === undefined || v === null || v === "") return def;
-    if(v === true || v === 1) return true;
-    if(v === false || v === 0) return false;
-    var t = String(v).trim().toLowerCase();
-    if(["true","t","1","sim","yes","verdadeiro"].includes(t)) return true;
-    if(["false","f","0","nao","não","no","falso"].includes(t)) return false;
-    return def;
+  var CMFIN_AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+
+  function boolAcesso(v){
+    if(v === false || v === "false" || v === 0 || v === "0" || v === "nao" || v === "não") return false;
+    return true;
   }
-  function sessao(){
-    var s = null;
-    try{ s = JSON.parse(localStorage.getItem(AUTH_KEY) || "null"); }catch(e){}
-    if(!s || !s.autenticado){ try{ s = JSON.parse(sessionStorage.getItem(AUTH_KEY) || "null"); }catch(e){} }
-    return s || {};
+
+  function getSessao(){
+    try{
+      return JSON.parse(localStorage.getItem(CMFIN_AUTH_KEY) || sessionStorage.getItem(CMFIN_AUTH_KEY) || "null") || {};
+    }catch(e){ return {}; }
   }
-  function admin(s){
-    var t = String(s.tipo_usuario || "").trim().toLowerCase();
-    return ["admin","administrador","administracao","administração"].includes(t) || parseBool(s.acesso_vitalicio, false);
+
+  function permissoes(){
+    var s = getSessao();
+    return { pessoal: boolAcesso(s.acesso_pessoal), empresarial: boolAcesso(s.acesso_empresarial) };
   }
-  function acessos(){
-    var s = sessao();
-    if(admin(s)) return { pessoal:true, empresarial:true, modulo:"Completo" };
-    var pessoal = parseBool(s.acesso_pessoal, true);
-    var empresarial = parseBool(s.acesso_empresarial, true);
-    return { pessoal:pessoal, empresarial:empresarial, modulo: pessoal && empresarial ? "Completo" : (pessoal ? "Modo Pessoal" : (empresarial ? "Modo Empresarial" : "Sem módulo")) };
+
+  function modoPermitido(modo){
+    var p = permissoes();
+    modo = modo === "empresarial" ? "empresarial" : "pessoal";
+    return modo === "empresarial" ? p.empresarial : p.pessoal;
   }
-  function modoAtualSeguro(){
-    try{ return (typeof modoAtual !== "undefined" && modoAtual === "empresarial") ? "empresarial" : "pessoal"; }
-    catch(e){ return window.modoAtual === "empresarial" ? "empresarial" : "pessoal"; }
+
+  function primeiroModoPermitido(){
+    var p = permissoes();
+    if(p.pessoal) return "pessoal";
+    if(p.empresarial) return "empresarial";
+    return null;
   }
-  function setModoSeguro(m){
-    m = m === "empresarial" ? "empresarial" : "pessoal";
-    try{ modoAtual = m; }catch(e){}
-    window.modoAtual = m;
+
+  function avisarModuloBloqueado(modo){
+    var nome = modo === "empresarial" ? "Empresarial" : "Pessoal";
+    var id = "cmfinModuloBloqueadoToast";
+    var b = document.getElementById(id);
+    if(!b){
+      b = document.createElement("div");
+      b.id = id;
+      b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:12000;max-width:420px;padding:12px 15px;border-radius:999px;background:rgba(153,27,27,.94);color:#fff;box-shadow:0 18px 42px rgba(15,23,42,.22);font-size:12px;font-weight:900;";
+      document.body.appendChild(b);
+    }
+    b.textContent = "Módulo " + nome + " bloqueado para esta licença.";
+    b.style.display = "block";
+    clearTimeout(b._t);
+    b._t = setTimeout(function(){ b.style.display = "none"; }, 3500);
+  }
+
+  function setModoGlobal(modo){
+    modo = modo === "empresarial" ? "empresarial" : "pessoal";
+    try{ modoAtual = modo; }catch(e){}
+    try{ window.modoAtual = modo; }catch(e){}
     try{
       if(typeof carregarBaseStorage === "function" && typeof salvarBaseStorage === "function"){
         var base = carregarBaseStorage() || {};
-        base.modoAtual = m;
+        base.modoAtual = modo;
+        base.modos = base.modos || {};
+        if(typeof criarDadosVazios === "function") base.modos[modo] = base.modos[modo] || criarDadosVazios();
         salvarBaseStorage(base);
       }
-    }catch(e){}
-    return m;
+    }catch(e){ console.warn("CMFin acesso módulos: não foi possível salvar modo permitido", e); }
+    return modo;
   }
-  function modoPermitido(m){
-    var a = acessos();
-    m = m === "empresarial" ? "empresarial" : "pessoal";
-    if(m === "pessoal" && !a.pessoal) return a.empresarial ? "empresarial" : "pessoal";
-    if(m === "empresarial" && !a.empresarial) return a.pessoal ? "pessoal" : "empresarial";
-    return m;
+
+  function aplicarSnapshotModo(modo){
+    try{
+      if(typeof carregarBaseStorage === "function" && typeof aplicarSnapshot === "function"){
+        var base = carregarBaseStorage() || {};
+        base.modos = base.modos || {};
+        if(!base.modos[modo] && typeof criarDadosVazios === "function") base.modos[modo] = criarDadosVazios();
+        aplicarSnapshot(base.modos[modo]);
+      }
+    }catch(e){ console.warn("CMFin acesso módulos: snapshot", e); }
   }
-  function moduloPermitidoLicenca(id, m){
-    id = id || "dashboard";
-    if(!document.getElementById(id)) return "dashboard";
-    if(m === "empresarial" && id === "terceiros") return "dashboard";
-    if(m === "pessoal" && (id === "pagamentosTerceirizados" || id === "pagamentosArquitetos")) return "dashboard";
-    return id;
+
+  function renderModo(){
+    try{ if(typeof atualizarSelects === "function") atualizarSelects(); }catch(e){}
+    try{ if(typeof preencherCategorias === "function") preencherCategorias(); }catch(e){}
+    try{ if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); }catch(e){}
+    try{ if(typeof atualizarUIModo === "function") atualizarUIModo(); }catch(e){}
+    try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){}
+    try{ if(typeof mudarModulo === "function") mudarModulo("dashboard"); }catch(e){}
   }
-  function syncUI(){
-    var a = acessos();
-    var m = modoPermitido(modoAtualSeguro());
-    if(m !== modoAtualSeguro()) setModoSeguro(m);
 
-    var btnP = document.getElementById("btnModoPessoal");
-    var btnE = document.getElementById("btnModoEmpresarial");
-    if(btnP){
-      btnP.classList.toggle("active", m === "pessoal");
-      btnP.classList.toggle("cmfin-modo-bloqueado", !a.pessoal);
-      btnP.title = a.pessoal ? "Modo Pessoal" : "Modo Pessoal não incluso nesta licença";
-      btnP.innerHTML = a.pessoal ? "Pessoal" : "🔒 Pessoal";
-    }
-    if(btnE){
-      btnE.classList.toggle("active", m === "empresarial");
-      btnE.classList.toggle("cmfin-modo-bloqueado", !a.empresarial);
-      btnE.title = a.empresarial ? "Modo Empresarial" : "Modo Empresarial não incluso nesta licença";
-      btnE.innerHTML = a.empresarial ? "Empresarial" : "🔒 Empresarial";
-    }
-    var indicador = document.getElementById("indicadorModoAtual");
-    if(indicador) indicador.innerText = m === "empresarial" ? "Modo Empresarial" : "Modo Pessoal";
+  function bloquearBotao(btn, bloqueado, modo){
+    if(!btn) return;
+    btn.disabled = !!bloqueado;
+    btn.classList.toggle("cmfin-modulo-bloqueado", !!bloqueado);
+    btn.style.opacity = bloqueado ? ".38" : "";
+    btn.style.cursor = bloqueado ? "not-allowed" : "";
+    btn.title = bloqueado ? ("Módulo " + (modo === "empresarial" ? "Empresarial" : "Pessoal") + " bloqueado para esta licença") : "";
+  }
 
-    var navTerceiros = document.getElementById("navTerceiros");
-    if(navTerceiros) navTerceiros.classList.toggle("nav-hidden", m === "empresarial");
-    ["navPagamentosTerceirizados","navPagamentosArquitetos"].forEach(function(id){
-      var btn = document.getElementById(id);
-      if(btn) btn.classList.toggle("nav-hidden", m === "pessoal");
-    });
+  function aplicarRestricoes(){
+    var p = permissoes();
+    bloquearBotao(document.getElementById("btnModoPessoal"), !p.pessoal, "pessoal");
+    bloquearBotao(document.getElementById("btnModoEmpresarial"), !p.empresarial, "empresarial");
 
-    var ativo = document.querySelector(".module.active")?.id || "dashboard";
-    var alvo = moduloPermitidoLicenca(ativo, m);
-    if(alvo !== ativo){
-      document.querySelectorAll(".module").forEach(function(el){ el.classList.toggle("active", el.id === alvo); });
-      document.querySelectorAll(".nav button").forEach(function(btn){ btn.classList.toggle("active", btn.getAttribute("data-module") === alvo); });
-    }
-
-    var badge = document.getElementById("cmfinLicenseBadge");
-    if(badge && badge.textContent && !badge.textContent.includes(a.modulo)){
-      badge.textContent = badge.textContent.replace(/ · (Completo|Modo Pessoal|Modo Empresarial|Sem módulo)/g, "") + " · " + a.modulo;
+    var atual = (typeof modoAtual !== "undefined" && modoAtual === "empresarial") ? "empresarial" : (window.modoAtual === "empresarial" ? "empresarial" : "pessoal");
+    if(!modoPermitido(atual)){
+      var alvo = primeiroModoPermitido();
+      if(alvo){
+        setModoGlobal(alvo);
+        aplicarSnapshotModo(alvo);
+        renderModo();
+      }
     }
   }
 
-  var trocarAnterior = window.trocarModo;
-  window.trocarModo = function(novoModo){
+  var trocarAnterior = (typeof window.trocarModo === "function") ? window.trocarModo : (typeof trocarModo === "function" ? trocarModo : null);
+  window.cmfinLicencaPermiteModo = modoPermitido;
+  window.cmfinAplicarRestricoesModo = aplicarRestricoes;
+
+  window.trocarModo = trocarModo = function(novoModo){
     novoModo = novoModo === "empresarial" ? "empresarial" : "pessoal";
-    var permitido = modoPermitido(novoModo);
-    if(permitido !== novoModo){
-      alert((novoModo === "empresarial" ? "Modo Empresarial" : "Modo Pessoal") + " não está incluso nesta licença.");
-      syncUI();
+    if(!modoPermitido(novoModo)){
+      aplicarRestricoes();
+      avisarModuloBloqueado(novoModo);
       return false;
     }
-    if(busy) return false;
-    busy = true;
-    try{
-      if(typeof trocarAnterior === "function") trocarAnterior.call(this, novoModo);
-      else setModoSeguro(novoModo);
-    }finally{
-      setTimeout(function(){ busy = false; syncUI(); }, 160);
-      setTimeout(syncUI, 600);
-    }
+    if(trocarAnterior) return trocarAnterior.call(this, novoModo);
+    setModoGlobal(novoModo);
+    aplicarSnapshotModo(novoModo);
+    renderModo();
     return true;
   };
-  try{ trocarModo = window.trocarModo; }catch(e){}
 
-  var mudarAnterior = window.mudarModulo;
-  window.mudarModulo = function(id){
-    var m = modoPermitido(modoAtualSeguro());
-    if(m !== modoAtualSeguro()) setModoSeguro(m);
-    id = moduloPermitidoLicenca(id, m);
-    var r;
-    try{ if(typeof mudarAnterior === "function") r = mudarAnterior.call(this, id); }
-    catch(e){ console.warn("CMFin módulo licença:", e); }
-    setTimeout(syncUI, 50);
-    return r;
-  };
-  try{ mudarModulo = window.mudarModulo; }catch(e){}
+  document.addEventListener("click", function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest("#btnModoPessoal,#btnModoEmpresarial") : null;
+    if(!btn) return;
+    var modo = btn.id === "btnModoEmpresarial" ? "empresarial" : "pessoal";
+    if(!modoPermitido(modo)){
+      ev.preventDefault();
+      ev.stopPropagation();
+      aplicarRestricoes();
+      avisarModuloBloqueado(modo);
+    }
+  }, true);
 
-  function tick(){ syncUI(); }
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(tick,80); });
-  else setTimeout(tick,80);
-  window.addEventListener("load", function(){ setTimeout(tick,200); setTimeout(tick,900); setTimeout(tick,1800); });
-  document.addEventListener("click", function(){ setTimeout(tick,60); }, true);
+  var liberarAnterior = window.liberarSistema;
+  if(typeof liberarAnterior === "function"){
+    window.liberarSistema = liberarSistema = function(){
+      var r = liberarAnterior.apply(this, arguments);
+      setTimeout(aplicarRestricoes, 80);
+      setTimeout(aplicarRestricoes, 350);
+      return r;
+    };
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(aplicarRestricoes, 150); });
+  else setTimeout(aplicarRestricoes, 150);
+  window.addEventListener("load", function(){ setTimeout(aplicarRestricoes, 600); setTimeout(aplicarRestricoes, 1400); });
 })();
 </script>
