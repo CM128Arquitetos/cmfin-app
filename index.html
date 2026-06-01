@@ -15252,10 +15252,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       }
 
       const inicio = item.primeiraFatura || mesReferencia;
-      const fim = item.encerramentoMes || item.recorrenteEncerradoEm || "";
-      const nMes = numeroMes(mesReferencia);
-      if (nMes < numeroMes(inicio)) return false;
-      if (fim && nMes > numeroMes(fim)) return false;
+      if (numeroMes(mesReferencia) < numeroMes(inicio)) return false;
+
+      const fim = item.encerramentoMes || item.encerramento || "";
+      if (fim && /^\d{4}-\d{2}$/.test(String(fim)) && numeroMes(mesReferencia) > numeroMes(fim)) return false;
+
       return true;
     }
 
@@ -15266,6 +15267,26 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       }
 
       return item.vencimento;
+    }
+
+    function statusTerceiroNoMes(item, mesReferencia) {
+      if (!item) return "Pendente";
+      if ((item.tipo || "Parcelado") === "Recorrente") {
+        const mapa = item.statusMeses || item.statusPorMes || {};
+        return mapa[mesReferencia] || "Pendente";
+      }
+      return item.status || "Pendente";
+    }
+
+    function definirStatusTerceiroNoMes(item, mesReferencia, status) {
+      const novoStatus = status === "Recebido" ? "Recebido" : "Pendente";
+      if (!item) return item;
+      if ((item.tipo || "Parcelado") === "Recorrente") {
+        const mapa = { ...(item.statusMeses || item.statusPorMes || {}) };
+        mapa[mesReferencia] = novoStatus;
+        return { ...item, status: "Pendente", statusMeses: mapa };
+      }
+      return { ...item, status: novoStatus };
     }
 
     function vencimentoTerceiro(cartaoNome, mesFatura) {
@@ -15437,11 +15458,76 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       renderizarTerceiros();
     }
 
-    function alterarStatusTerceiro(id, status, mesReferencia = null) {
+    function alterarStatusTerceiro(id, status) {
+      const mes = obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual();
+      terceiros = terceiros.map(t => t.id === id ? definirStatusTerceiroNoMes(t, mes, status) : t);
+      salvarDados();
+      if (typeof renderizarTudo === "function") renderizarTudo();
+      else renderizarTerceiros();
+    }
+
+    function baixarTotalTerceiroMes(pessoa, formaCartao, mesReferencia = null) {
       const mes = mesReferencia || obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual();
+      const alvoPessoa = String(pessoa || "");
+      const alvoForma = String(formaCartao || "");
+      const itens = terceiros.filter(t =>
+        t && terceiroApareceNoMes(t, mes)
+        && String(t.pessoa || "") === alvoPessoa
+        && String(formaCartaoTerceiro(t) || "") === alvoForma
+        && statusTerceiroNoMes(t, mes) !== "Recebido"
+      );
+
+      if (!itens.length) {
+        alert("Não há pendências para baixar neste mês.");
+        return;
+      }
+
+      const total = itens.reduce((acc, item) => acc + valorTotalTerceiro(item), 0);
+      const msg = `Dar baixa em ${itens.length} lançamento(s) de ${alvoPessoa} em ${alvoForma} no mês selecionado?
+
+Total: ${moeda(total)}`;
+      if (!confirm(msg)) return;
+
+      terceiros = terceiros.map(t => {
+        if (t && terceiroApareceNoMes(t, mes) && String(t.pessoa || "") === alvoPessoa && String(formaCartaoTerceiro(t) || "") === alvoForma) {
+          return definirStatusTerceiroNoMes(t, mes, "Recebido");
+        }
+        return t;
+      });
+      salvarDados();
+      if (typeof renderizarTudo === "function") renderizarTudo();
+      else renderizarTerceiros();
+    }
+
+    function encerrarRecorrenciaTerceiro(id, mesReferencia = null) {
+      const mes = mesReferencia || obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual();
+      const item = terceiros.find(t => Number(t.id) === Number(id));
+      if (!item || (item.tipo || "Parcelado") !== "Recorrente") {
+        alert("Este lançamento não é recorrente.");
+        return;
+      }
+
+      const atual = item.encerramentoMes || mes;
+      const resposta = prompt("Informe o último mês em que esta conta recorrente deve aparecer (formato AAAA-MM).
+
+Exemplo: " + mes + " mantém este mês e remove os próximos.", atual);
+      if (resposta === null) return;
+
+      const fim = String(resposta || "").trim();
+      if (!/^\d{4}-\d{2}$/.test(fim)) {
+        alert("Mês inválido. Use o formato AAAA-MM, por exemplo: " + mes);
+        return;
+      }
+      if (numeroMes(fim) < numeroMes(item.primeiraFatura || mes)) {
+        alert("O mês de encerramento não pode ser anterior à primeira fatura.");
+        return;
+      }
+
       terceiros = terceiros.map(t => {
         if (Number(t.id) !== Number(id)) return t;
-        return definirStatusTerceiroNoMes(t, mes, status);
+        const mapa = { ...(t.statusMeses || t.statusPorMes || {}) };
+        Object.keys(mapa).forEach(chave => { if (numeroMes(chave) > numeroMes(fim)) delete mapa[chave]; });
+        return { ...t, encerramentoMes: fim, statusMeses: mapa };
       });
       salvarDados();
       if (typeof renderizarTudo === "function") renderizarTudo();
@@ -16047,7 +16133,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                 </div>
                 <div class="terc-row-actions terc-row-actions-v13">
                   <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId})">Editar</button>
-                  <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}', '${mes}')">${proximoStatus}</button>
+                  <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}')">${proximoStatus}</button>
+                  <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroMes(decodeURIComponent('${encodeURIComponent(t.pessoa || "")}'), decodeURIComponent('${encodeURIComponent(formaCartao || "")}'), '${mes}')">Baixar total</button>
+                  ${tipoLancamento === "Recorrente" ? `<button class="btn btn-secondary btn-small" onclick="encerrarRecorrenciaTerceiro(${t.id}, '${mes}')">Encerrar recorrência</button>` : ""}
                   <button class="btn btn-danger btn-small" onclick="excluirTerceiro(${t.id})">Excluir</button>
                 </div>
               </div>
@@ -16073,7 +16161,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const statusFiltro = seletorStatus?.value || "pendentes";
       const cartaoAntes = seletorCartao?.value || "todos";
 
-      const listaMes = terceiros.filter(item => terceiroApareceNoMes(item, mes));
+      const listaMes = terceiros
+        .filter(item => terceiroApareceNoMes(item, mes))
+        .map(item => ({ ...item, vencimentoExibido: vencimentoTerceiroNoMes(item, mes), status: statusTerceiroNoMes(item, mes), mesStatusReferencia: mes }));
       const cartoes = [...new Set(listaMes.map(item => formaCartaoTerceiro(item)).filter(Boolean))]
         .sort((a,b) => a.localeCompare(b, "pt-BR"));
 
@@ -16145,6 +16235,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                       <div class="third-party-line-main">
                         <span class="third-party-card-pill" style="${estiloParcelaMarca(linha.cartao)}">${escaparHtml(linha.cartao)}</span>
                         <small>${linha.qtd} lançamento(s)</small>
+                        ${linha.pendente > 0 ? `<button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroMes(decodeURIComponent('${encodeURIComponent(linha.pessoa || "")}'), decodeURIComponent('${encodeURIComponent(linha.cartao || "")}'), '${mes}')">Baixar total</button>` : ""}
                       </div>
                       <div class="third-party-line-values">
                         <div><span>Pendente</span><strong>${moeda(linha.pendente)}</strong></div>
@@ -24190,98 +24281,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 @media (max-width:1180px){.hero-body,.layout,.cats{grid-template-columns:1fr}.metrics,.hero-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.page{padding:92px 14px 24px}.print{top:12px;left:12px;padding:11px 15px}.hero{padding:18px}.hero-top{flex-direction:column;align-items:flex-start}.hero-title{font-size:24px}.hero-value{font-size:38px}.hero-kpis,.metrics,.quick-grid,.cats{grid-template-columns:1fr}.layout{grid-template-columns:1fr}.metric .val{font-size:28px}.sec-head{flex-direction:column;align-items:flex-start}.tag{white-space:normal}}
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
-
-
-
-<script>
-/* ===== CMFin Patch — Terceiros: baixa total e recorrência mensal independente ===== */
-(function(){
-  function mesFiltroTerceirosPatch(){
-    try { return obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual(); }
-    catch(e){ return (new Date()).toISOString().slice(0,7); }
-  }
-
-  window.statusTerceiroNoMes = function(item, mesReferencia){
-    const mes = mesReferencia || mesFiltroTerceirosPatch();
-    if (!item) return "Pendente";
-    if ((item.tipo || "Parcelado") === "Recorrente") {
-      const mapa = item.statusMeses || item.statusPorMes || {};
-      return mapa[mes] || "Pendente";
-    }
-    return item.status || "Pendente";
-  };
-
-  window.definirStatusTerceiroNoMes = function(item, mesReferencia, status){
-    const mes = mesReferencia || mesFiltroTerceirosPatch();
-    const novoStatus = status === "Recebido" ? "Recebido" : "Pendente";
-    if (!item) return item;
-    if ((item.tipo || "Parcelado") === "Recorrente") {
-      const mapa = Object.assign({}, item.statusMeses || item.statusPorMes || {});
-      mapa[mes] = novoStatus;
-      return Object.assign({}, item, { status: "Pendente", statusMeses: mapa });
-    }
-    return Object.assign({}, item, { status: novoStatus });
-  };
-
-  window.baixarTotalTerceiroMes = function(pessoa, formaCartao, mesReferencia){
-    const mes = mesReferencia || mesFiltroTerceirosPatch();
-    const alvoPessoa = String(pessoa || "");
-    const alvoForma = String(formaCartao || "");
-    const itens = (Array.isArray(terceiros) ? terceiros : []).filter(function(t){
-      return t && terceiroApareceNoMes(t, mes)
-        && String(t.pessoa || "") === alvoPessoa
-        && String(formaCartaoTerceiro(t) || "") === alvoForma
-        && statusTerceiroNoMes(t, mes) !== "Recebido";
-    });
-    if (!itens.length) {
-      alert("Não há pendências para baixar neste mês.");
-      return;
-    }
-    const total = itens.reduce(function(acc, item){ return acc + valorTotalTerceiro(item); }, 0);
-    const msg = "Dar baixa em " + itens.length + " lançamento(s) de " + alvoPessoa + " em " + alvoForma + " no mês selecionado?\n\nTotal: " + moeda(total);
-    if (!confirm(msg)) return;
-    terceiros = terceiros.map(function(t){
-      if (t && terceiroApareceNoMes(t, mes) && String(t.pessoa || "") === alvoPessoa && String(formaCartaoTerceiro(t) || "") === alvoForma) {
-        return definirStatusTerceiroNoMes(t, mes, "Recebido");
-      }
-      return t;
-    });
-    salvarDados();
-    if (typeof renderizarTudo === "function") renderizarTudo();
-    else renderizarTerceiros();
-  };
-
-  window.encerrarRecorrenciaTerceiro = function(id, mesReferencia){
-    const mes = mesReferencia || mesFiltroTerceirosPatch();
-    const item = (Array.isArray(terceiros) ? terceiros : []).find(function(t){ return Number(t.id) === Number(id); });
-    if (!item || (item.tipo || "Parcelado") !== "Recorrente") {
-      alert("Este lançamento não é recorrente.");
-      return;
-    }
-    const atual = item.encerramentoMes || mes;
-    const resposta = prompt("Informe o último mês em que esta conta recorrente deve aparecer (formato AAAA-MM).\n\nExemplo: " + mes + " mantém este mês e remove os próximos.", atual);
-    if (resposta === null) return;
-    const fim = String(resposta || "").trim();
-    if (!/^\d{4}-\d{2}$/.test(fim)) {
-      alert("Mês inválido. Use o formato AAAA-MM, por exemplo: " + mes);
-      return;
-    }
-    if (numeroMes(fim) < numeroMes(item.primeiraFatura || mes)) {
-      alert("O mês de encerramento não pode ser anterior à primeira fatura.");
-      return;
-    }
-    terceiros = terceiros.map(function(t){
-      if (Number(t.id) !== Number(id)) return t;
-      const mapa = Object.assign({}, t.statusMeses || {});
-      Object.keys(mapa).forEach(function(chave){ if (numeroMes(chave) > numeroMes(fim)) delete mapa[chave]; });
-      return Object.assign({}, t, { encerramentoMes: fim, statusMeses: mapa });
-    });
-    salvarDados();
-    if (typeof renderizarTudo === "function") renderizarTudo();
-    else renderizarTerceiros();
-  };
-})();
-</script>
 
 </body></html>`;
 
