@@ -29264,6 +29264,18 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   function normalizarLicenca(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function hojeISO(){ return new Date().toISOString().slice(0,10); }
 
+  // V22: normaliza booleanos vindos do Supabase/RPC.
+  // O Supabase pode devolver true, "true", "TRUE", 1, "1", "sim" etc.
+  function cmfinBool(v){
+    if(v === true || v === 1) return true;
+    var t = String(v == null ? "" : v).trim().toLowerCase();
+    return t === "true" || t === "1" || t === "sim" || t === "yes" || t === "s";
+  }
+  function cmfinBoolPadraoTrue(v){
+    if(v === undefined || v === null || v === "") return true;
+    return cmfinBool(v);
+  }
+
   function getDeviceId(){
     var id = localStorage.getItem(CMFIN_DEVICE_KEY);
     if(!id){
@@ -29293,10 +29305,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: u.tipo_usuario || "usuario",
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
-      acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
-      acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
+      acesso_pessoal: cmfinBoolPadraoTrue(u.acesso_pessoal),
+      acesso_empresarial: cmfinBoolPadraoTrue(u.acesso_empresarial),
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      senha_temporaria: u.senha_temporaria === true || u.senha_temporaria === "true",
+      senha_temporaria: cmfinBool(u.senha_temporaria),
       senha_alterada_em: u.senha_alterada_em || null,
       dispositivo: getDeviceId(),
       lembradoEm: new Date().toISOString()
@@ -29327,16 +29339,19 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: u.tipo_usuario || "usuario",
       acesso_vitalicio: !!u.acesso_vitalicio,
       bloqueado: !!u.bloqueado,
-      acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
-      acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
+      acesso_pessoal: cmfinBoolPadraoTrue(u.acesso_pessoal),
+      acesso_empresarial: cmfinBoolPadraoTrue(u.acesso_empresarial),
       limite_dispositivos: Number(u.limite_dispositivos || 1),
-      senha_temporaria: u.senha_temporaria === true || u.senha_temporaria === "true",
+      senha_temporaria: cmfinBool(u.senha_temporaria),
       senha_alterada_em: u.senha_alterada_em || null,
       dispositivo: getDeviceId(),
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
     }));
     localStorage.setItem(CMFIN_LAST_USER_KEY, u.usuario || "");
+    try{
+      window.dispatchEvent(new CustomEvent("cmfin:sessao-atualizada", { detail: { usuario: u.usuario || "", licenca: u.licenca || "" } }));
+    }catch(e){}
   }
 
   function limparSessao(){
@@ -29416,12 +29431,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       licenca: data.licenca || fallback.licenca || "",
       validade: data.validade || null,
       tipo_usuario: data.tipo_usuario || "usuario",
-      acesso_vitalicio: data.acesso_vitalicio === true || data.acesso_vitalicio === "true",
-      bloqueado: data.bloqueado === true || data.bloqueado === "true",
-      acesso_pessoal: data.acesso_pessoal === undefined || data.acesso_pessoal === null ? true : (data.acesso_pessoal === true || data.acesso_pessoal === "true"),
-      acesso_empresarial: data.acesso_empresarial === undefined || data.acesso_empresarial === null ? true : (data.acesso_empresarial === true || data.acesso_empresarial === "true"),
+      acesso_vitalicio: cmfinBool(data.acesso_vitalicio),
+      bloqueado: cmfinBool(data.bloqueado),
+      acesso_pessoal: cmfinBoolPadraoTrue(data.acesso_pessoal),
+      acesso_empresarial: cmfinBoolPadraoTrue(data.acesso_empresarial),
       limite_dispositivos: Number(data.limite_dispositivos || 1),
-      senha_temporaria: data.senha_temporaria === true || data.senha_temporaria === "true",
+      senha_temporaria: cmfinBool(data.senha_temporaria || data.precisa_trocar_senha || data.primeiro_acesso || data.trocar_senha),
       senha_alterada_em: data.senha_alterada_em || null
     };
   }
@@ -29531,12 +29546,55 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       tipo_usuario: row.tipo_usuario || (ehAdmin ? "admin" : "usuario"),
       acesso_vitalicio: !!row.acesso_vitalicio || ehAdmin,
       bloqueado: !!row.bloqueado,
-      acesso_pessoal: row.acesso_pessoal !== false && row.acesso_pessoal !== "false",
-      acesso_empresarial: row.acesso_empresarial !== false && row.acesso_empresarial !== "false",
+      acesso_pessoal: cmfinBoolPadraoTrue(row.acesso_pessoal),
+      acesso_empresarial: cmfinBoolPadraoTrue(row.acesso_empresarial),
       limite_dispositivos: limite,
-      senha_temporaria: row.senha_temporaria === true || row.senha_temporaria === "true",
+      senha_temporaria: cmfinBool(row.senha_temporaria),
       senha_alterada_em: row.senha_alterada_em || null
     };
+  }
+
+  async function confirmarCamposLicencaAtualizados(client, r, usuario, senha, licenca){
+    // V22: sempre confirma no Supabase os campos críticos que controlam primeiro acesso e módulos.
+    // Isso evita depender de RPC antiga/cache que não devolve senha_temporaria, acesso_pessoal ou acesso_empresarial.
+    if(!client || !r || !r.ok) return r;
+    var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
+    var q = null;
+    try{
+      q = await client.from("licencas").select(selects)
+        .eq("usuario", normalizar(usuario))
+        .eq("licenca", normalizarLicenca(licenca))
+        .maybeSingle();
+      if((!q || !q.data) && senha){
+        q = await client.from("licencas").select(selects)
+          .eq("usuario", normalizar(usuario))
+          .eq("senha", normalizar(senha))
+          .eq("licenca", normalizarLicenca(licenca))
+          .maybeSingle();
+      }
+      if((!q || !q.data) && normalizarLicenca(licenca)){
+        q = await client.from("licencas").select(selects)
+          .eq("licenca", normalizarLicenca(licenca))
+          .maybeSingle();
+      }
+      if(q && q.data){
+        r.usuario = q.data.usuario || r.usuario || normalizar(usuario);
+        r.cliente = q.data.cliente || r.cliente || q.data.usuario || normalizar(usuario);
+        r.licenca = q.data.licenca || r.licenca || normalizarLicenca(licenca);
+        r.validade = q.data.validade || r.validade || null;
+        r.tipo_usuario = q.data.tipo_usuario || r.tipo_usuario || "usuario";
+        r.acesso_vitalicio = cmfinBool(q.data.acesso_vitalicio);
+        r.bloqueado = cmfinBool(q.data.bloqueado);
+        r.acesso_pessoal = cmfinBoolPadraoTrue(q.data.acesso_pessoal);
+        r.acesso_empresarial = cmfinBoolPadraoTrue(q.data.acesso_empresarial);
+        r.limite_dispositivos = Number(q.data.limite_dispositivos || r.limite_dispositivos || 1);
+        r.senha_temporaria = cmfinBool(q.data.senha_temporaria);
+        r.senha_alterada_em = q.data.senha_alterada_em || null;
+      }
+    }catch(e){
+      console.warn("V22: não foi possível confirmar campos críticos da licença:", e);
+    }
+    return r;
   }
 
   async function validarSupabase(usuario, senha, licenca){
@@ -29554,36 +29612,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       if(!error){
         var r = cmfinNormalizarRetornoLicenca(data, fallback);
 
-        // HOTFIX V17:
-        // Mesmo quando a RPC valida a licença, confirma diretamente na tabela se a senha é temporária.
-        // Isso evita entrar direto caso alguma versão antiga da função não devolva senha_temporaria corretamente.
-        if(r && r.ok){
-          try{
-            var conf = await client
-              .from("licencas")
-              .select("senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial,limite_dispositivos")
-              .eq("usuario", normalizar(usuario))
-              .eq("senha", normalizar(senha))
-              .eq("licenca", normalizarLicenca(licenca))
-              .maybeSingle();
-            if(!conf || !conf.data){
-              conf = await client
-                .from("licencas")
-                .select("senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial,limite_dispositivos")
-                .eq("licenca", normalizarLicenca(licenca))
-                .maybeSingle();
-            }
-            if(conf && conf.data){
-              r.senha_temporaria = conf.data.senha_temporaria === true || conf.data.senha_temporaria === "true";
-              r.senha_alterada_em = conf.data.senha_alterada_em || null;
-              r.acesso_pessoal = conf.data.acesso_pessoal !== false && conf.data.acesso_pessoal !== "false";
-              r.acesso_empresarial = conf.data.acesso_empresarial !== false && conf.data.acesso_empresarial !== "false";
-              r.limite_dispositivos = Number(conf.data.limite_dispositivos || r.limite_dispositivos || 1);
-            }
-          }catch(e){
-            console.warn("Não foi possível confirmar senha temporária direto na tabela:", e);
-          }
-        }
+        // V22: confirma, a cada entrada, primeiro acesso e módulos direto na tabela.
+        r = await confirmarCamposLicencaAtualizados(client, r, usuario, senha, licenca);
 
         if(r.ok || !normalizar(senha)) return r;
         // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
@@ -29746,18 +29776,28 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             p_nova_senha: novaSenha
           });
 
+          var data = null;
           if(res.error){
-            console.warn("Erro RPC primeiro acesso:", res.error);
-            mostrarErroPrimeiro("Erro ao salvar a nova senha: " + (res.error.message || "verifique o Supabase."));
-            return;
-          }
-          var data = Array.isArray(res.data) ? res.data[0] : res.data;
-          if(typeof data === "string"){
-            try{ data = JSON.parse(data); }catch(err){}
-          }
-          if(!data || !data.ok){
-            mostrarErroPrimeiro((data && data.mensagem) || "Não foi possível salvar a nova senha.");
-            return;
+            console.warn("Erro RPC primeiro acesso, tentando update direto:", res.error);
+            var up = await client.from("licencas").update({
+              senha: novaSenha,
+              senha_temporaria: false,
+              senha_alterada_em: new Date().toISOString()
+            }).eq("usuario", u.usuario).eq("licenca", normalizarLicenca(u.licenca)).eq("senha", senhaTemporaria);
+            if(up.error){
+              mostrarErroPrimeiro("Erro ao salvar a nova senha: " + (up.error.message || res.error.message || "verifique o Supabase."));
+              return;
+            }
+            data = { ok:true };
+          }else{
+            data = Array.isArray(res.data) ? res.data[0] : res.data;
+            if(typeof data === "string"){
+              try{ data = JSON.parse(data); }catch(err){}
+            }
+            if(!data || !data.ok){
+              mostrarErroPrimeiro((data && data.mensagem) || "Não foi possível salvar a nova senha.");
+              return;
+            }
           }
 
           u.senha = novaSenha;
@@ -29811,7 +29851,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (salvo.acesso_pessoal !== false),
         acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (salvo.acesso_empresarial !== false),
         limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1),
-        senha_temporaria: resultado.senha_temporaria === true,
+        senha_temporaria: cmfinBool(resultado.senha_temporaria),
         senha_alterada_em: resultado.senha_alterada_em || null
       };
 
@@ -29849,9 +29889,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       bloquearSistema();
       mostrarErro("Validando licença online...");
 
-      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", sessao.licenca);
-
-      // Se a sessão antiga não guardou a senha, tenta usar o acesso lembrado.
+      // Se a sessão antiga não guardou a senha, tenta usar o acesso lembrado ANTES de consultar o Supabase.
       if(!sessao.senha){
         var salvo = getAcessoLembrado();
         if(salvo && salvo.usuario && salvo.senha && salvo.licenca){
@@ -29864,6 +29902,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           return false;
         }
       }
+
+      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", sessao.licenca);
 
       if(!resultado || !resultado.ok){
         limparSessao();
@@ -29883,12 +29923,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (sessao.acesso_pessoal !== false),
         acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (sessao.acesso_empresarial !== false),
         limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1),
-        senha_temporaria: resultado.senha_temporaria === true,
+        senha_temporaria: cmfinBool(resultado.senha_temporaria),
         senha_alterada_em: resultado.senha_alterada_em || null
       }, storage);
 
       var sessaoAtualizada = getSessao(storage);
-      if(sessaoAtualizada && sessaoAtualizada.senha_temporaria === true){
+      if(sessaoAtualizada && cmfinBool(sessaoAtualizada.senha_temporaria)){
         await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, storage, storage === localStorage);
         return true;
       }
@@ -29962,14 +30002,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             tipo_usuario: r.tipo_usuario || "usuario",
             acesso_vitalicio: !!r.acesso_vitalicio,
             bloqueado: !!r.bloqueado,
-            acesso_pessoal: r.acesso_pessoal !== false,
-            acesso_empresarial: r.acesso_empresarial !== false,
+            acesso_pessoal: cmfinBoolPadraoTrue(r.acesso_pessoal),
+            acesso_empresarial: cmfinBoolPadraoTrue(r.acesso_empresarial),
             limite_dispositivos: Number(r.limite_dispositivos || 1),
-            senha_temporaria: r.senha_temporaria === true,
+            senha_temporaria: cmfinBool(r.senha_temporaria),
             senha_alterada_em: r.senha_alterada_em || null
           };
 
-          if(r.senha_temporaria === true){
+          if(cmfinBool(r.senha_temporaria)){
             setCarregando(false);
             await abrirPrimeiroAcessoSenha(u, senhaDigitada, (lembrarEl && lembrarEl.checked) ? localStorage : sessionStorage, !!(lembrarEl && lembrarEl.checked));
             return;
@@ -30641,6 +30681,110 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
 
 <!-- CMFin V19: guarda externa obrigatória para senha temporária no primeiro acesso -->
+<script id="cmfin-v23-sincroniza-sessao-supabase-js">
+(function(){
+  "use strict";
+  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
+  var URL = "https://ahpefoaspcxgntrquhej.supabase.co";
+  var KEY = "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+  var rodando = false;
+
+  function norm(v){ return String(v || "").trim(); }
+  function normLic(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
+  function bool(v){
+    if(v === true || v === 1) return true;
+    var t = String(v == null ? "" : v).trim().toLowerCase();
+    return t === "true" || t === "1" || t === "sim" || t === "yes" || t === "s";
+  }
+  function boolAcesso(v){
+    if(v === undefined || v === null || v === "") return true;
+    var t = String(v).trim().toLowerCase();
+    return !(v === false || v === 0 || t === "false" || t === "0" || t === "nao" || t === "não" || t === "n" || t === "no");
+  }
+  function client(){
+    if(!window.supabase || !window.supabase.createClient) return null;
+    if(!window.cmfinSupabaseClientV23) window.cmfinSupabaseClientV23 = window.supabase.createClient(URL, KEY);
+    return window.cmfinSupabaseClientV23;
+  }
+  function lerSessao(){
+    var pares = [{storage:sessionStorage, nome:"session"},{storage:localStorage, nome:"local"}];
+    for(var i=0;i<pares.length;i++){
+      try{
+        var raw = pares[i].storage.getItem(AUTH_KEY);
+        if(!raw) continue;
+        var s = JSON.parse(raw);
+        if(s && s.autenticado && (s.usuario || s.cliente) && s.licenca) return {sessao:s, storage:pares[i].storage};
+      }catch(e){}
+    }
+    return null;
+  }
+  function salvar(pair, row){
+    if(!pair || !row) return;
+    var s = pair.sessao || {};
+    s.usuario = row.usuario || s.usuario;
+    s.cliente = row.cliente || s.cliente || row.usuario || s.usuario;
+    s.licenca = row.licenca || s.licenca;
+    s.validade = row.validade || s.validade || null;
+    s.tipo_usuario = row.tipo_usuario || s.tipo_usuario || "usuario";
+    s.acesso_vitalicio = bool(row.acesso_vitalicio);
+    s.bloqueado = bool(row.bloqueado);
+    s.acesso_pessoal = boolAcesso(row.acesso_pessoal);
+    s.acesso_empresarial = boolAcesso(row.acesso_empresarial);
+    s.limite_dispositivos = Number(row.limite_dispositivos || s.limite_dispositivos || 1);
+    s.senha_temporaria = bool(row.senha_temporaria);
+    s.senha_alterada_em = row.senha_alterada_em || null;
+    s.ultimoCheckOnline = new Date().toISOString();
+    try{ pair.storage.setItem(AUTH_KEY, JSON.stringify(s)); }catch(e){}
+    try{
+      var raw = localStorage.getItem(REMEMBER_KEY);
+      if(raw){
+        var l = JSON.parse(raw);
+        if(normLic(l.licenca) === normLic(s.licenca) && norm(l.usuario).toLowerCase() === norm(s.usuario).toLowerCase()){
+          l.acesso_pessoal = s.acesso_pessoal;
+          l.acesso_empresarial = s.acesso_empresarial;
+          l.senha_temporaria = s.senha_temporaria;
+          l.senha_alterada_em = s.senha_alterada_em;
+          l.cliente = s.cliente;
+          l.validade = s.validade;
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify(l));
+        }
+      }
+    }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("cmfin:sessao-atualizada", { detail: { usuario:s.usuario || "", licenca:s.licenca || "", senha_temporaria:s.senha_temporaria } })); }catch(e){}
+  }
+  async function sincronizar(){
+    if(rodando) return;
+    var pair = lerSessao();
+    var c = client();
+    if(!pair || !c) return;
+    rodando = true;
+    try{
+      var s = pair.sessao;
+      var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
+      var q = null;
+      if(s.usuario && s.licenca){
+        q = await c.from("licencas").select(selects).eq("usuario", norm(s.usuario)).eq("licenca", normLic(s.licenca)).maybeSingle();
+      }
+      if((!q || !q.data) && s.licenca){
+        q = await c.from("licencas").select(selects).eq("licenca", normLic(s.licenca)).maybeSingle();
+      }
+      if(q && q.data) salvar(pair, q.data);
+    }catch(e){ console.warn("V23: falha ao sincronizar sessão/licença no Supabase", e); }
+    finally{ rodando = false; }
+  }
+  window.cmfinSincronizarSessaoSupabaseV23 = sincronizar;
+  function start(){
+    setTimeout(sincronizar, 250);
+    setTimeout(sincronizar, 1200);
+    setTimeout(sincronizar, 2600);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+  window.addEventListener("load", function(){ setTimeout(sincronizar, 700); });
+})();
+</script>
+
 <script id="cmfin-v19-forcar-primeiro-acesso-js">
 (function(){
   "use strict";
@@ -30730,9 +30874,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     try{
       var q = await client
         .from("licencas")
-        .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em")
+        .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
+        .eq("usuario", norm(sessao.usuario))
         .eq("licenca", normLic(sessao.licenca))
         .maybeSingle();
+      if((!q || !q.data) && normLic(sessao.licenca)){
+        q = await client
+          .from("licencas")
+          .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
+          .eq("licenca", normLic(sessao.licenca))
+          .maybeSingle();
+      }
       if(!q.error && q.data){
         return {
           precisa: isTrue(q.data.senha_temporaria),
@@ -30824,10 +30976,21 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           p_licenca: normLic(info.licenca || sessao.licenca),
           p_nova_senha: nova
         });
-        if(res.error){ return show('Erro ao salvar a nova senha: ' + (res.error.message || 'verifique o Supabase.')); }
-        var d = Array.isArray(res.data) ? res.data[0] : res.data;
-        if(typeof d === 'string'){ try{ d = JSON.parse(d); }catch(e){} }
-        if(!d || !d.ok){ return show((d && d.mensagem) || 'Não foi possível salvar a nova senha.'); }
+        var d = null;
+        if(res.error){
+          console.warn('V19 RPC primeiro acesso falhou, tentando update direto:', res.error);
+          var up = await client.from('licencas').update({
+            senha: nova,
+            senha_temporaria: false,
+            senha_alterada_em: new Date().toISOString()
+          }).eq('usuario', info.usuario || sessao.usuario).eq('licenca', normLic(info.licenca || sessao.licenca)).eq('senha', sessao.senha || '');
+          if(up.error){ return show('Erro ao salvar a nova senha: ' + (up.error.message || res.error.message || 'verifique o Supabase.')); }
+          d = {ok:true};
+        }else{
+          d = Array.isArray(res.data) ? res.data[0] : res.data;
+          if(typeof d === 'string'){ try{ d = JSON.parse(d); }catch(e){} }
+          if(!d || !d.ok){ return show((d && d.mensagem) || 'Não foi possível salvar a nova senha.'); }
+        }
         updateStoredSession({usuario: info.usuario || sessao.usuario, licenca: info.licenca || sessao.licenca, senha:nova}, storage);
         ov.remove();
         modalAberto = false;
@@ -30857,6 +31020,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   function start(){
+    try{ document.addEventListener("cmfin:sessao-atualizada", function(){ setTimeout(verificar, 150); }); }catch(e){}
     setTimeout(verificar, 350);
     setTimeout(verificar, 1200);
     setTimeout(verificar, 2600);
@@ -36903,6 +37067,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(aplicarRestricoes, 150); });
   else setTimeout(aplicarRestricoes, 150);
+  try{ window.addEventListener("cmfin:sessao-atualizada", function(){ setTimeout(aplicarRestricoes, 80); setTimeout(aplicarRestricoes, 500); }); }catch(e){}
   window.addEventListener("load", function(){ setTimeout(aplicarRestricoes, 600); setTimeout(aplicarRestricoes, 1400); });
 })();
 </script>
