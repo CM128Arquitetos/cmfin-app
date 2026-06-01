@@ -15616,6 +15616,38 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       return "#475569";
     }
 
+    function textoParcelaExportTerceiros(item) {
+      const tipo = item?.tipo || "Parcelado";
+      if (tipo === "Recorrente") return "Recorrente";
+
+      const total = Number(item?.totalParcelas || 0);
+      let numero = Number(item?.numeroParcela || 0);
+
+      if (!numero && typeof item?.parcela === "string" && item.parcela.includes("/")) {
+        numero = Number(item.parcela.split("/")[0] || 0);
+      }
+
+      if (total > 1 && numero > 0) {
+        const faltam = Math.max(total - numero, 0);
+        if (faltam === 0) return `Parcela ${numero}/${total} • Última parcela`;
+        return `Parcela ${numero}/${total} • Falta${faltam > 1 ? "m" : ""} ${faltam} parcela${faltam > 1 ? "s" : ""}`;
+      }
+
+      if (total === 1 || item?.parcela === "1/1") return "À vista";
+      if (item?.parcela && item.parcela !== "Recorrente") return `Parcela ${item.parcela}`;
+      return "";
+    }
+
+    function cortarTextoCanvas(ctx, texto, larguraMaxima) {
+      const bruto = String(texto || "");
+      if (!bruto || ctx.measureText(bruto).width <= larguraMaxima) return bruto;
+      let resultado = bruto;
+      while (resultado.length > 3 && ctx.measureText(`${resultado}…`).width > larguraMaxima) {
+        resultado = resultado.slice(0, -1);
+      }
+      return `${resultado.trim()}…`;
+    }
+
     function obterLogoCMFinCanvas() {
       return document.querySelector(".brand-logo img") || document.querySelector(".cmfin-login-logo");
     }
@@ -15739,7 +15771,22 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             ctx.fillText(sepTxt, baseX + dataW + 4, baseY);
             const sepW = ctx.measureText(sepTxt).width;
             ctx.fillStyle = corMarcaCartaoTerceiro(cartaoMeta);
-            ctx.fillText(String(cartaoMeta || "-").slice(0, 24), baseX + dataW + sepW + 8, baseY);
+            const cartaoTxt = String(cartaoMeta || "-").slice(0, 24);
+            const cartaoX = baseX + dataW + sepW + 8;
+            ctx.fillText(cartaoTxt, cartaoX, baseY);
+
+            const parcelaTxt = textoParcelaExportTerceiros(item);
+            if (parcelaTxt) {
+              const cartaoW = ctx.measureText(cartaoTxt).width;
+              const sep2X = cartaoX + cartaoW + 6;
+              ctx.fillStyle = "#94a3b8";
+              ctx.fillText(sepTxt, sep2X, baseY);
+              const parcelaX = sep2X + sepW + 4;
+              const limiteParcela = (largura - margem - 260) - parcelaX;
+              ctx.fillStyle = "#0f766e";
+              ctx.font = "700 16px Arial";
+              ctx.fillText(cortarTextoCanvas(ctx, parcelaTxt, Math.max(90, limiteParcela)), parcelaX, baseY);
+            }
 
             ctx.textAlign = "right";
             ctx.fillStyle = "#0f172a";
@@ -24137,6 +24184,241 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   .nav button[data-module="terceiros"].cmfin-premium-nav-item .icon{display:none !important;}
   .nav button[data-module="terceiros"] .cmfin-premium-nav-label{white-space:nowrap !important;}
 </style>
+
+
+<!-- CMFin V19: guarda externa obrigatória para senha temporária no primeiro acesso -->
+<script id="cmfin-v19-forcar-primeiro-acesso-js">
+(function(){
+  "use strict";
+
+  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
+  var URL = "https://ahpefoaspcxgntrquhej.supabase.co";
+  var KEY = "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+  var verificando = false;
+  var modalAberto = false;
+
+  function norm(v){ return String(v || "").trim(); }
+  function normLic(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
+  function isTrue(v){ return v === true || v === "true" || v === 1 || v === "1"; }
+
+  function getClient(){
+    if(!window.supabase || !window.supabase.createClient) return null;
+    if(!window.cmfinSupabaseClientV19){
+      window.cmfinSupabaseClientV19 = window.supabase.createClient(URL, KEY);
+    }
+    return window.cmfinSupabaseClientV19;
+  }
+
+  function getSessionPair(){
+    var stores = [sessionStorage, localStorage];
+    for(var i=0;i<stores.length;i++){
+      try{
+        var raw = stores[i].getItem(AUTH_KEY);
+        if(!raw) continue;
+        var s = JSON.parse(raw);
+        if(s && s.autenticado && s.usuario && s.licenca){
+          return { sessao:s, storage:stores[i] };
+        }
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function updateStoredSession(u, storage){
+    try{
+      var raw = storage.getItem(AUTH_KEY);
+      var s = raw ? JSON.parse(raw) : {};
+      s.senha = u.senha;
+      s.senha_temporaria = false;
+      s.senha_alterada_em = new Date().toISOString();
+      storage.setItem(AUTH_KEY, JSON.stringify(s));
+    }catch(e){}
+    try{
+      var rawL = localStorage.getItem(REMEMBER_KEY);
+      if(rawL){
+        var l = JSON.parse(rawL);
+        if(normLic(l.licenca) === normLic(u.licenca) && norm(l.usuario).toLowerCase() === norm(u.usuario).toLowerCase()){
+          l.senha = u.senha;
+          l.senha_temporaria = false;
+          l.senha_alterada_em = new Date().toISOString();
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify(l));
+        }
+      }
+    }catch(e){}
+  }
+
+  async function consultarPrimeiroAcesso(sessao){
+    var client = getClient();
+    if(!client || !sessao || !sessao.usuario || !sessao.licenca) return null;
+
+    // 1) Preferência: RPC security definer, não depende de policy/columns abertas no front.
+    try{
+      var r = await client.rpc("cmfin_precisa_trocar_senha", {
+        p_usuario: norm(sessao.usuario),
+        p_licenca: normLic(sessao.licenca)
+      });
+      if(!r.error && r.data){
+        var d = Array.isArray(r.data) ? r.data[0] : r.data;
+        if(typeof d === "string") { try{ d = JSON.parse(d); }catch(e){} }
+        if(d && d.ok !== false){
+          return {
+            precisa: isTrue(d.senha_temporaria),
+            usuario: d.usuario || sessao.usuario,
+            cliente: d.cliente || sessao.cliente || sessao.usuario,
+            licenca: d.licenca || sessao.licenca
+          };
+        }
+      }
+    }catch(e){ console.warn("V19: RPC cmfin_precisa_trocar_senha indisponível, tentando tabela.", e); }
+
+    // 2) Fallback direto na tabela, caso a policy permita.
+    try{
+      var q = await client
+        .from("licencas")
+        .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em")
+        .eq("licenca", normLic(sessao.licenca))
+        .maybeSingle();
+      if(!q.error && q.data){
+        return {
+          precisa: isTrue(q.data.senha_temporaria),
+          usuario: q.data.usuario || sessao.usuario,
+          cliente: q.data.cliente || sessao.cliente || sessao.usuario,
+          licenca: q.data.licenca || sessao.licenca
+        };
+      }
+    }catch(e){ console.warn("V19: fallback tabela falhou.", e); }
+
+    // 3) Último recurso: o valor já gravado na sessão pelo login.
+    return { precisa: isTrue(sessao.senha_temporaria), usuario:sessao.usuario, cliente:sessao.cliente || sessao.usuario, licenca:sessao.licenca };
+  }
+
+  function validarSenha(nova){
+    if(!nova || nova.length < 8) return "A nova senha deve ter pelo menos 8 caracteres.";
+    if(!/[A-Z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra maiúscula.";
+    if(!/[a-z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra minúscula.";
+    if(!/[0-9]/.test(nova)) return "A nova senha deve ter pelo menos um número.";
+    if(!/[^A-Za-z0-9]/.test(nova)) return "A nova senha deve ter pelo menos um caractere especial.";
+    return "";
+  }
+
+  function ensureCss(){
+    if(document.getElementById("cmfinV19FirstPassCss")) return;
+    var st=document.createElement("style");
+    st.id="cmfinV19FirstPassCss";
+    st.textContent = `
+      .cmfin-v19-first-pass{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.84);backdrop-filter:blur(18px)}
+      .cmfin-v19-card{width:min(470px,100%);border-radius:28px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(135deg,#06110f,#0d201b);box-shadow:0 34px 95px rgba(0,0,0,.55);padding:30px;color:#fff;font-family:Inter,"Segoe UI",Arial,sans-serif}
+      .cmfin-v19-kicker{display:inline-flex;margin-bottom:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.72)}
+      .cmfin-v19-card h2{margin:0 0 8px;font-size:25px;line-height:1.1;letter-spacing:-.035em}.cmfin-v19-card p{margin:0 0 20px;color:rgba(255,255,255,.66);font-size:13px;line-height:1.55;font-weight:650}
+      .cmfin-v19-field{display:grid;gap:7px;margin-bottom:13px}.cmfin-v19-field label{font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.72)}
+      .cmfin-v19-field input{width:100%;height:52px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:0 14px;outline:none;font-size:14px;font-weight:750}.cmfin-v19-field input:focus{border-color:rgba(239,68,68,.75);box-shadow:0 0 0 4px rgba(239,68,68,.12)}
+      .cmfin-v19-note{padding:12px 13px;border-radius:15px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:rgba(255,255,255,.64);font-size:12px;line-height:1.45;font-weight:650;margin:12px 0 15px}.cmfin-v19-error{display:none;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(239,68,68,.32);border-radius:14px;background:rgba(239,68,68,.12);color:#fecaca;font-size:12px;font-weight:800;line-height:1.38}.cmfin-v19-error.show{display:block}
+      .cmfin-v19-actions{display:flex;justify-content:flex-end}.cmfin-v19-btn{height:50px;border:0;border-radius:16px;padding:0 17px;cursor:pointer;font-weight:950;background:linear-gradient(135deg,#ef4444,#991b1b);color:#fff;box-shadow:0 18px 34px rgba(185,28,28,.25)}.cmfin-v19-btn:disabled{opacity:.65;cursor:not-allowed}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function abrirModal(sessao, info, storage){
+    if(modalAberto) return;
+    modalAberto = true;
+    ensureCss();
+    document.body.classList.add("cmfin-lock");
+    var old = document.getElementById("cmfinV19FirstPassOverlay");
+    if(old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = "cmfinV19FirstPassOverlay";
+    ov.className = "cmfin-v19-first-pass";
+    ov.innerHTML = ''+
+      '<div class="cmfin-v19-card" role="dialog" aria-modal="true">'+
+      '<div class="cmfin-v19-kicker">Primeiro acesso obrigatório</div>'+ 
+      '<h2>Crie sua senha de acesso</h2>'+ 
+      '<p>Esta conta está marcada como nova. Defina uma senha definitiva para continuar usando o CMFin.</p>'+ 
+      '<form data-v19-form>'+ 
+      '<div class="cmfin-v19-field"><label>Nova senha</label><input name="nova" type="password" autocomplete="new-password" required></div>'+ 
+      '<div class="cmfin-v19-field"><label>Confirmar nova senha</label><input name="confirmar" type="password" autocomplete="new-password" required></div>'+ 
+      '<div class="cmfin-v19-note">Use no mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial. A nova senha não pode ser igual à senha temporária.</div>'+ 
+      '<div class="cmfin-v19-error" data-v19-erro></div>'+ 
+      '<div class="cmfin-v19-actions"><button class="cmfin-v19-btn" type="submit">Salvar senha e entrar</button></div>'+ 
+      '</form></div>';
+    document.body.appendChild(ov);
+    setTimeout(function(){ try{ ov.querySelector('input[name="nova"]').focus(); }catch(e){} },80);
+
+    var form = ov.querySelector('[data-v19-form]');
+    var erro = ov.querySelector('[data-v19-erro]');
+    function show(msg){ erro.textContent = msg; erro.classList.add('show'); }
+
+    form.addEventListener('submit', async function(ev){
+      ev.preventDefault();
+      erro.classList.remove('show');
+      var fd = new FormData(form);
+      var nova = String(fd.get('nova') || '').trim();
+      var confirmar = String(fd.get('confirmar') || '').trim();
+      var problema = validarSenha(nova);
+      if(problema) return show(problema);
+      if(nova !== confirmar) return show('A confirmação não confere com a nova senha.');
+      if(sessao.senha && nova === sessao.senha) return show('A nova senha não pode ser igual à senha temporária.');
+
+      var btn = form.querySelector('button');
+      var txt = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try{
+        var client = getClient();
+        var res = await client.rpc('cmfin_alterar_senha_primeiro_acesso', {
+          p_usuario: info.usuario || sessao.usuario,
+          p_senha_atual: sessao.senha || '',
+          p_licenca: normLic(info.licenca || sessao.licenca),
+          p_nova_senha: nova
+        });
+        if(res.error){ return show('Erro ao salvar a nova senha: ' + (res.error.message || 'verifique o Supabase.')); }
+        var d = Array.isArray(res.data) ? res.data[0] : res.data;
+        if(typeof d === 'string'){ try{ d = JSON.parse(d); }catch(e){} }
+        if(!d || !d.ok){ return show((d && d.mensagem) || 'Não foi possível salvar a nova senha.'); }
+        updateStoredSession({usuario: info.usuario || sessao.usuario, licenca: info.licenca || sessao.licenca, senha:nova}, storage);
+        ov.remove();
+        modalAberto = false;
+        document.body.classList.remove('cmfin-lock');
+        try{ location.reload(); }catch(e){}
+      }catch(e){
+        console.warn('V19 primeiro acesso:', e);
+        show('Erro ao salvar a nova senha. Verifique a internet e tente novamente.');
+      }finally{
+        btn.disabled = false; btn.textContent = txt;
+      }
+    });
+  }
+
+  async function verificar(){
+    if(verificando || modalAberto) return;
+    var pair = getSessionPair();
+    if(!pair) return;
+    verificando = true;
+    try{
+      var info = await consultarPrimeiroAcesso(pair.sessao);
+      if(info && info.precisa === true){
+        abrirModal(pair.sessao, info, pair.storage);
+      }
+    }catch(e){ console.warn('V19 verificar primeiro acesso:', e); }
+    finally{ verificando = false; }
+  }
+
+  function start(){
+    setTimeout(verificar, 350);
+    setTimeout(verificar, 1200);
+    setTimeout(verificar, 2600);
+    var n = 0;
+    var int = setInterval(function(){
+      n++;
+      verificar();
+      if(n > 30 || modalAberto) clearInterval(int);
+    }, 1000);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -29253,6 +29535,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
       acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
       limite_dispositivos: Number(u.limite_dispositivos || 1),
+      senha_temporaria: u.senha_temporaria === true || u.senha_temporaria === "true",
+      senha_alterada_em: u.senha_alterada_em || null,
       dispositivo: getDeviceId(),
       lembradoEm: new Date().toISOString()
     }));
@@ -29267,6 +29551,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   function salvarSessao(u, storage){
+    storage = storage || sessionStorage;
+    try{
+      if(storage === sessionStorage) localStorage.removeItem(CMFIN_AUTH_KEY);
+      if(storage === localStorage) sessionStorage.removeItem(CMFIN_AUTH_KEY);
+    }catch(e){}
     storage.setItem(CMFIN_AUTH_KEY, JSON.stringify({
       autenticado: true,
       usuario: u.usuario,
@@ -29280,6 +29569,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       acesso_pessoal: u.acesso_pessoal !== false && u.acesso_pessoal !== "false",
       acesso_empresarial: u.acesso_empresarial !== false && u.acesso_empresarial !== "false",
       limite_dispositivos: Number(u.limite_dispositivos || 1),
+      senha_temporaria: u.senha_temporaria === true || u.senha_temporaria === "true",
+      senha_alterada_em: u.senha_alterada_em || null,
       dispositivo: getDeviceId(),
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
@@ -29298,6 +29589,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     var overlay = document.getElementById("cmfinLoginOverlay");
     if(overlay) overlay.style.display = "none";
     atualizarBadgeLicenca();
+    try{ if(typeof window.cmfinAplicarRestricoesModo === "function") window.cmfinAplicarRestricoesModo(); }catch(e){}
     posicionarControlesTopo();
   }
 
@@ -29367,7 +29659,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       bloqueado: data.bloqueado === true || data.bloqueado === "true",
       acesso_pessoal: data.acesso_pessoal === undefined || data.acesso_pessoal === null ? true : (data.acesso_pessoal === true || data.acesso_pessoal === "true"),
       acesso_empresarial: data.acesso_empresarial === undefined || data.acesso_empresarial === null ? true : (data.acesso_empresarial === true || data.acesso_empresarial === "true"),
-      limite_dispositivos: Number(data.limite_dispositivos || 1)
+      limite_dispositivos: Number(data.limite_dispositivos || 1),
+      senha_temporaria: data.senha_temporaria === true || data.senha_temporaria === "true",
+      senha_alterada_em: data.senha_alterada_em || null
     };
   }
 
@@ -29399,7 +29693,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     var query = client
       .from("licencas")
-      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,dispositivos_autorizados")
+      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,dispositivos_autorizados,senha_temporaria,senha_alterada_em")
       .eq("usuario", normalizar(usuario))
       .eq("senha", normalizar(senha))
       .eq("licenca", normalizarLicenca(licenca))
@@ -29478,7 +29772,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       bloqueado: !!row.bloqueado,
       acesso_pessoal: row.acesso_pessoal !== false && row.acesso_pessoal !== "false",
       acesso_empresarial: row.acesso_empresarial !== false && row.acesso_empresarial !== "false",
-      limite_dispositivos: limite
+      limite_dispositivos: limite,
+      senha_temporaria: row.senha_temporaria === true || row.senha_temporaria === "true",
+      senha_alterada_em: row.senha_alterada_em || null
     };
   }
 
@@ -29496,6 +29792,38 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if(!error){
         var r = cmfinNormalizarRetornoLicenca(data, fallback);
+
+        // HOTFIX V17:
+        // Mesmo quando a RPC valida a licença, confirma diretamente na tabela se a senha é temporária.
+        // Isso evita entrar direto caso alguma versão antiga da função não devolva senha_temporaria corretamente.
+        if(r && r.ok){
+          try{
+            var conf = await client
+              .from("licencas")
+              .select("senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial,limite_dispositivos")
+              .eq("usuario", normalizar(usuario))
+              .eq("senha", normalizar(senha))
+              .eq("licenca", normalizarLicenca(licenca))
+              .maybeSingle();
+            if(!conf || !conf.data){
+              conf = await client
+                .from("licencas")
+                .select("senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial,limite_dispositivos")
+                .eq("licenca", normalizarLicenca(licenca))
+                .maybeSingle();
+            }
+            if(conf && conf.data){
+              r.senha_temporaria = conf.data.senha_temporaria === true || conf.data.senha_temporaria === "true";
+              r.senha_alterada_em = conf.data.senha_alterada_em || null;
+              r.acesso_pessoal = conf.data.acesso_pessoal !== false && conf.data.acesso_pessoal !== "false";
+              r.acesso_empresarial = conf.data.acesso_empresarial !== false && conf.data.acesso_empresarial !== "false";
+              r.limite_dispositivos = Number(conf.data.limite_dispositivos || r.limite_dispositivos || 1);
+            }
+          }catch(e){
+            console.warn("Não foi possível confirmar senha temporária direto na tabela:", e);
+          }
+        }
+
         if(r.ok || !normalizar(senha)) return r;
         // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
         var direto = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
@@ -29545,7 +29873,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   function atualizarBadgeLicenca(){
-    var s = getSessao(localStorage) || getSessao(sessionStorage);
+    var s = getSessao(sessionStorage) || getSessao(localStorage);
     if(!sessaoMinima(s)) return;
 
     var b = document.getElementById("cmfinLicenseBadge");
@@ -29561,6 +29889,135 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     var val = ehAdmin ? " · Admin · Acesso vitalício" : (s.validade ? " · Expira: " + String(s.validade).split("-").reverse().join("/") : "");
     b.textContent = "Licença Ativa: " + (s.cliente || s.usuario || "Cliente") + val;
     posicionarControlesTopo();
+  }
+
+
+  function validarForcaSenha(novaSenha){
+    if(!novaSenha || novaSenha.length < 8) return "A nova senha deve ter pelo menos 8 caracteres.";
+    if(!/[A-Z]/.test(novaSenha)) return "A nova senha deve ter pelo menos uma letra maiúscula.";
+    if(!/[a-z]/.test(novaSenha)) return "A nova senha deve ter pelo menos uma letra minúscula.";
+    if(!/[0-9]/.test(novaSenha)) return "A nova senha deve ter pelo menos um número.";
+    if(!/[^A-Za-z0-9]/.test(novaSenha)) return "A nova senha deve ter pelo menos um caractere especial.";
+    return "";
+  }
+
+  function garantirEstiloPrimeiroAcesso(){
+    if(document.getElementById("cmfinPrimeiroAcessoCss")) return;
+    var css = document.createElement("style");
+    css.id = "cmfinPrimeiroAcessoCss";
+    css.textContent = `
+      .cmfin-first-pass-overlay{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.82);backdrop-filter:blur(16px);}
+      .cmfin-first-pass-card{width:min(460px,100%);border:1px solid rgba(255,255,255,.14);border-radius:28px;background:linear-gradient(135deg,rgba(8,26,22,.98),rgba(4,12,10,.98));box-shadow:0 30px 90px rgba(0,0,0,.48);padding:30px;color:#fff;}
+      .cmfin-first-pass-card h2{margin:0 0 8px;font-size:25px;line-height:1.1;letter-spacing:-.035em;}
+      .cmfin-first-pass-card p{margin:0 0 22px;color:rgba(255,255,255,.66);font-size:13px;line-height:1.55;font-weight:600;}
+      .cmfin-first-pass-kicker{display:inline-flex;margin-bottom:13px;padding:7px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);font-size:10.5px;font-weight:950;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.76);}
+      .cmfin-first-pass-field{display:grid;gap:7px;margin-bottom:13px;}
+      .cmfin-first-pass-field label{font-size:10.5px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.72);}
+      .cmfin-first-pass-field input{width:100%;height:52px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:0 14px;outline:none;font-size:14px;font-weight:750;}
+      .cmfin-first-pass-field input:focus{border-color:rgba(239,68,68,.75);box-shadow:0 0 0 4px rgba(239,68,68,.12);}
+      .cmfin-first-pass-note{padding:12px 13px;border-radius:15px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:rgba(255,255,255,.63);font-size:12px;line-height:1.45;font-weight:650;margin:12px 0 15px;}
+      .cmfin-first-pass-error{display:none;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(239,68,68,.32);border-radius:14px;background:rgba(239,68,68,.12);color:#fecaca;font-size:12px;font-weight:800;line-height:1.38;}
+      .cmfin-first-pass-error.show{display:block;}
+      .cmfin-first-pass-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;}
+      .cmfin-first-pass-btn{height:50px;border:0;border-radius:16px;padding:0 16px;cursor:pointer;font-weight:950;}
+      .cmfin-first-pass-btn.primary{background:linear-gradient(135deg,#ef4444,#991b1b);color:#fff;box-shadow:0 18px 34px rgba(185,28,28,.25);}
+    `;
+    document.head.appendChild(css);
+  }
+
+  function abrirPrimeiroAcessoSenha(u, senhaTemporaria, storage, lembrar){
+    return new Promise(function(resolve){
+      garantirEstiloPrimeiroAcesso();
+      var overlay = document.getElementById("cmfinPrimeiroAcessoOverlay");
+      if(!overlay){
+        overlay = document.createElement("div");
+        overlay.id = "cmfinPrimeiroAcessoOverlay";
+        overlay.className = "cmfin-first-pass-overlay";
+        document.body.appendChild(overlay);
+      }
+      overlay.style.display = "flex";
+      overlay.innerHTML = ''
+        + '<div class="cmfin-first-pass-card" role="dialog" aria-modal="true">'
+        + '  <div class="cmfin-first-pass-kicker">Primeiro acesso</div>'
+        + '  <h2>Crie sua senha de acesso</h2>'
+        + '  <p>Esta é uma conta nova. Defina sua senha definitiva para acessar o CMFin.</p>'
+        + '  <form data-first-pass-form>'
+        + '    <div class="cmfin-first-pass-field"><label>Nova senha</label><input name="novaSenha" type="password" autocomplete="new-password" required /></div>'
+        + '    <div class="cmfin-first-pass-field"><label>Confirmar nova senha</label><input name="confirmarSenha" type="password" autocomplete="new-password" required /></div>'
+        + '    <div class="cmfin-first-pass-note">Use no mínimo 8 caracteres, com letra maiúscula, letra minúscula, número e caractere especial. A nova senha não pode ser igual à temporária.</div>'
+        + '    <div class="cmfin-first-pass-error" data-first-pass-error></div>'
+        + '    <div class="cmfin-first-pass-actions"><button type="submit" class="cmfin-first-pass-btn primary">Salvar senha e entrar</button></div>'
+        + '  </form>'
+        + '</div>';
+
+      var form = overlay.querySelector("[data-first-pass-form]");
+      var erro = overlay.querySelector("[data-first-pass-error]");
+      var input = overlay.querySelector("input[name='novaSenha']");
+      setTimeout(function(){ try{ input.focus(); }catch(e){} }, 80);
+
+      function mostrarErroPrimeiro(msg){
+        if(!erro) return;
+        erro.textContent = msg || "Não foi possível alterar a senha.";
+        erro.classList.add("show");
+      }
+
+      form.addEventListener("submit", async function(e){
+        e.preventDefault();
+        if(erro) erro.classList.remove("show");
+        var novaSenha = String(new FormData(form).get("novaSenha") || "").trim();
+        var confirmarSenha = String(new FormData(form).get("confirmarSenha") || "").trim();
+        var problema = validarForcaSenha(novaSenha);
+        if(problema){ mostrarErroPrimeiro(problema); return; }
+        if(novaSenha !== confirmarSenha){ mostrarErroPrimeiro("A confirmação não confere com a nova senha."); return; }
+        if(novaSenha === senhaTemporaria){ mostrarErroPrimeiro("A nova senha não pode ser igual à senha temporária."); return; }
+
+        var btn = form.querySelector("button[type='submit']");
+        var old = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Salvando...";
+
+        try{
+          var client = getSupabaseClient();
+          var res = await client.rpc("cmfin_alterar_senha_primeiro_acesso", {
+            p_usuario: u.usuario,
+            p_senha_atual: senhaTemporaria,
+            p_licenca: normalizarLicenca(u.licenca),
+            p_nova_senha: novaSenha
+          });
+
+          if(res.error){
+            console.warn("Erro RPC primeiro acesso:", res.error);
+            mostrarErroPrimeiro("Erro ao salvar a nova senha: " + (res.error.message || "verifique o Supabase."));
+            return;
+          }
+          var data = Array.isArray(res.data) ? res.data[0] : res.data;
+          if(typeof data === "string"){
+            try{ data = JSON.parse(data); }catch(err){}
+          }
+          if(!data || !data.ok){
+            mostrarErroPrimeiro((data && data.mensagem) || "Não foi possível salvar a nova senha.");
+            return;
+          }
+
+          u.senha = novaSenha;
+          u.senha_temporaria = false;
+          u.senha_alterada_em = new Date().toISOString();
+          salvarSessao(u, storage || sessionStorage);
+          if(lembrar) salvarAcessoLembrado(u); else limparAcessoLembrado();
+          overlay.style.display = "none";
+          overlay.innerHTML = "";
+          ocultarErro();
+          liberarSistema();
+          resolve(true);
+        }catch(err){
+          console.warn(err);
+          mostrarErroPrimeiro("Erro ao salvar a nova senha. Verifique a internet e tente novamente.");
+        }finally{
+          btn.disabled = false;
+          btn.textContent = old;
+        }
+      }, { once:false });
+    });
   }
 
   async function entrarComAcessoLembrado(){
@@ -29592,8 +30049,15 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         bloqueado: !!resultado.bloqueado,
         acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (salvo.acesso_pessoal !== false),
         acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (salvo.acesso_empresarial !== false),
-        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1)
+        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1),
+        senha_temporaria: resultado.senha_temporaria === true,
+        senha_alterada_em: resultado.senha_alterada_em || null
       };
+
+      if(u.senha_temporaria === true){
+        await abrirPrimeiroAcessoSenha(u, salvo.senha, localStorage, true);
+        return true;
+      }
 
       salvarSessao(u, localStorage);
       salvarAcessoLembrado(u);
@@ -29608,12 +30072,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 
   async function revalidarSessaoSalva(){
-    var sessao = getSessao(localStorage);
-    var storage = localStorage;
+    var sessao = getSessao(sessionStorage);
+    var storage = sessionStorage;
 
     if(!sessaoMinima(sessao)){
-      sessao = getSessao(sessionStorage);
-      storage = sessionStorage;
+      sessao = getSessao(localStorage);
+      storage = localStorage;
     }
 
     if(!sessaoMinima(sessao)) return false;
@@ -29657,8 +30121,16 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         bloqueado: !!resultado.bloqueado,
         acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (sessao.acesso_pessoal !== false),
         acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (sessao.acesso_empresarial !== false),
-        limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1)
+        limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1),
+        senha_temporaria: resultado.senha_temporaria === true,
+        senha_alterada_em: resultado.senha_alterada_em || null
       }, storage);
+
+      var sessaoAtualizada = getSessao(storage);
+      if(sessaoAtualizada && sessaoAtualizada.senha_temporaria === true){
+        await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, storage, storage === localStorage);
+        return true;
+      }
 
       ocultarErro();
       liberarSistema();
@@ -29731,14 +30203,25 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             bloqueado: !!r.bloqueado,
             acesso_pessoal: r.acesso_pessoal !== false,
             acesso_empresarial: r.acesso_empresarial !== false,
-            limite_dispositivos: Number(r.limite_dispositivos || 1)
+            limite_dispositivos: Number(r.limite_dispositivos || 1),
+            senha_temporaria: r.senha_temporaria === true,
+            senha_alterada_em: r.senha_alterada_em || null
           };
 
+          if(r.senha_temporaria === true){
+            setCarregando(false);
+            await abrirPrimeiroAcessoSenha(u, senhaDigitada, (lembrarEl && lembrarEl.checked) ? localStorage : sessionStorage, !!(lembrarEl && lembrarEl.checked));
+            return;
+          }
+
           if(lembrarEl && lembrarEl.checked) {
+            try{ sessionStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
             salvarSessao(u, localStorage);
             salvarAcessoLembrado(u);
           } else {
+            try{ localStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
             salvarSessao(u, sessionStorage);
+            limparAcessoLembrado();
           }
 
           ocultarErro();
@@ -30393,6 +30876,241 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 })();
 </script>
 
+
+
+
+<!-- CMFin V19: guarda externa obrigatória para senha temporária no primeiro acesso -->
+<script id="cmfin-v19-forcar-primeiro-acesso-js">
+(function(){
+  "use strict";
+
+  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
+  var URL = "https://ahpefoaspcxgntrquhej.supabase.co";
+  var KEY = "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+  var verificando = false;
+  var modalAberto = false;
+
+  function norm(v){ return String(v || "").trim(); }
+  function normLic(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
+  function isTrue(v){ return v === true || v === "true" || v === 1 || v === "1"; }
+
+  function getClient(){
+    if(!window.supabase || !window.supabase.createClient) return null;
+    if(!window.cmfinSupabaseClientV19){
+      window.cmfinSupabaseClientV19 = window.supabase.createClient(URL, KEY);
+    }
+    return window.cmfinSupabaseClientV19;
+  }
+
+  function getSessionPair(){
+    var stores = [sessionStorage, localStorage];
+    for(var i=0;i<stores.length;i++){
+      try{
+        var raw = stores[i].getItem(AUTH_KEY);
+        if(!raw) continue;
+        var s = JSON.parse(raw);
+        if(s && s.autenticado && s.usuario && s.licenca){
+          return { sessao:s, storage:stores[i] };
+        }
+      }catch(e){}
+    }
+    return null;
+  }
+
+  function updateStoredSession(u, storage){
+    try{
+      var raw = storage.getItem(AUTH_KEY);
+      var s = raw ? JSON.parse(raw) : {};
+      s.senha = u.senha;
+      s.senha_temporaria = false;
+      s.senha_alterada_em = new Date().toISOString();
+      storage.setItem(AUTH_KEY, JSON.stringify(s));
+    }catch(e){}
+    try{
+      var rawL = localStorage.getItem(REMEMBER_KEY);
+      if(rawL){
+        var l = JSON.parse(rawL);
+        if(normLic(l.licenca) === normLic(u.licenca) && norm(l.usuario).toLowerCase() === norm(u.usuario).toLowerCase()){
+          l.senha = u.senha;
+          l.senha_temporaria = false;
+          l.senha_alterada_em = new Date().toISOString();
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify(l));
+        }
+      }
+    }catch(e){}
+  }
+
+  async function consultarPrimeiroAcesso(sessao){
+    var client = getClient();
+    if(!client || !sessao || !sessao.usuario || !sessao.licenca) return null;
+
+    // 1) Preferência: RPC security definer, não depende de policy/columns abertas no front.
+    try{
+      var r = await client.rpc("cmfin_precisa_trocar_senha", {
+        p_usuario: norm(sessao.usuario),
+        p_licenca: normLic(sessao.licenca)
+      });
+      if(!r.error && r.data){
+        var d = Array.isArray(r.data) ? r.data[0] : r.data;
+        if(typeof d === "string") { try{ d = JSON.parse(d); }catch(e){} }
+        if(d && d.ok !== false){
+          return {
+            precisa: isTrue(d.senha_temporaria),
+            usuario: d.usuario || sessao.usuario,
+            cliente: d.cliente || sessao.cliente || sessao.usuario,
+            licenca: d.licenca || sessao.licenca
+          };
+        }
+      }
+    }catch(e){ console.warn("V19: RPC cmfin_precisa_trocar_senha indisponível, tentando tabela.", e); }
+
+    // 2) Fallback direto na tabela, caso a policy permita.
+    try{
+      var q = await client
+        .from("licencas")
+        .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em")
+        .eq("licenca", normLic(sessao.licenca))
+        .maybeSingle();
+      if(!q.error && q.data){
+        return {
+          precisa: isTrue(q.data.senha_temporaria),
+          usuario: q.data.usuario || sessao.usuario,
+          cliente: q.data.cliente || sessao.cliente || sessao.usuario,
+          licenca: q.data.licenca || sessao.licenca
+        };
+      }
+    }catch(e){ console.warn("V19: fallback tabela falhou.", e); }
+
+    // 3) Último recurso: o valor já gravado na sessão pelo login.
+    return { precisa: isTrue(sessao.senha_temporaria), usuario:sessao.usuario, cliente:sessao.cliente || sessao.usuario, licenca:sessao.licenca };
+  }
+
+  function validarSenha(nova){
+    if(!nova || nova.length < 8) return "A nova senha deve ter pelo menos 8 caracteres.";
+    if(!/[A-Z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra maiúscula.";
+    if(!/[a-z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra minúscula.";
+    if(!/[0-9]/.test(nova)) return "A nova senha deve ter pelo menos um número.";
+    if(!/[^A-Za-z0-9]/.test(nova)) return "A nova senha deve ter pelo menos um caractere especial.";
+    return "";
+  }
+
+  function ensureCss(){
+    if(document.getElementById("cmfinV19FirstPassCss")) return;
+    var st=document.createElement("style");
+    st.id="cmfinV19FirstPassCss";
+    st.textContent = `
+      .cmfin-v19-first-pass{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.84);backdrop-filter:blur(18px)}
+      .cmfin-v19-card{width:min(470px,100%);border-radius:28px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(135deg,#06110f,#0d201b);box-shadow:0 34px 95px rgba(0,0,0,.55);padding:30px;color:#fff;font-family:Inter,"Segoe UI",Arial,sans-serif}
+      .cmfin-v19-kicker{display:inline-flex;margin-bottom:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.72)}
+      .cmfin-v19-card h2{margin:0 0 8px;font-size:25px;line-height:1.1;letter-spacing:-.035em}.cmfin-v19-card p{margin:0 0 20px;color:rgba(255,255,255,.66);font-size:13px;line-height:1.55;font-weight:650}
+      .cmfin-v19-field{display:grid;gap:7px;margin-bottom:13px}.cmfin-v19-field label{font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.72)}
+      .cmfin-v19-field input{width:100%;height:52px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:0 14px;outline:none;font-size:14px;font-weight:750}.cmfin-v19-field input:focus{border-color:rgba(239,68,68,.75);box-shadow:0 0 0 4px rgba(239,68,68,.12)}
+      .cmfin-v19-note{padding:12px 13px;border-radius:15px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:rgba(255,255,255,.64);font-size:12px;line-height:1.45;font-weight:650;margin:12px 0 15px}.cmfin-v19-error{display:none;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(239,68,68,.32);border-radius:14px;background:rgba(239,68,68,.12);color:#fecaca;font-size:12px;font-weight:800;line-height:1.38}.cmfin-v19-error.show{display:block}
+      .cmfin-v19-actions{display:flex;justify-content:flex-end}.cmfin-v19-btn{height:50px;border:0;border-radius:16px;padding:0 17px;cursor:pointer;font-weight:950;background:linear-gradient(135deg,#ef4444,#991b1b);color:#fff;box-shadow:0 18px 34px rgba(185,28,28,.25)}.cmfin-v19-btn:disabled{opacity:.65;cursor:not-allowed}
+    `;
+    document.head.appendChild(st);
+  }
+
+  function abrirModal(sessao, info, storage){
+    if(modalAberto) return;
+    modalAberto = true;
+    ensureCss();
+    document.body.classList.add("cmfin-lock");
+    var old = document.getElementById("cmfinV19FirstPassOverlay");
+    if(old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = "cmfinV19FirstPassOverlay";
+    ov.className = "cmfin-v19-first-pass";
+    ov.innerHTML = ''+
+      '<div class="cmfin-v19-card" role="dialog" aria-modal="true">'+
+      '<div class="cmfin-v19-kicker">Primeiro acesso obrigatório</div>'+ 
+      '<h2>Crie sua senha de acesso</h2>'+ 
+      '<p>Esta conta está marcada como nova. Defina uma senha definitiva para continuar usando o CMFin.</p>'+ 
+      '<form data-v19-form>'+ 
+      '<div class="cmfin-v19-field"><label>Nova senha</label><input name="nova" type="password" autocomplete="new-password" required></div>'+ 
+      '<div class="cmfin-v19-field"><label>Confirmar nova senha</label><input name="confirmar" type="password" autocomplete="new-password" required></div>'+ 
+      '<div class="cmfin-v19-note">Use no mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial. A nova senha não pode ser igual à senha temporária.</div>'+ 
+      '<div class="cmfin-v19-error" data-v19-erro></div>'+ 
+      '<div class="cmfin-v19-actions"><button class="cmfin-v19-btn" type="submit">Salvar senha e entrar</button></div>'+ 
+      '</form></div>';
+    document.body.appendChild(ov);
+    setTimeout(function(){ try{ ov.querySelector('input[name="nova"]').focus(); }catch(e){} },80);
+
+    var form = ov.querySelector('[data-v19-form]');
+    var erro = ov.querySelector('[data-v19-erro]');
+    function show(msg){ erro.textContent = msg; erro.classList.add('show'); }
+
+    form.addEventListener('submit', async function(ev){
+      ev.preventDefault();
+      erro.classList.remove('show');
+      var fd = new FormData(form);
+      var nova = String(fd.get('nova') || '').trim();
+      var confirmar = String(fd.get('confirmar') || '').trim();
+      var problema = validarSenha(nova);
+      if(problema) return show(problema);
+      if(nova !== confirmar) return show('A confirmação não confere com a nova senha.');
+      if(sessao.senha && nova === sessao.senha) return show('A nova senha não pode ser igual à senha temporária.');
+
+      var btn = form.querySelector('button');
+      var txt = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try{
+        var client = getClient();
+        var res = await client.rpc('cmfin_alterar_senha_primeiro_acesso', {
+          p_usuario: info.usuario || sessao.usuario,
+          p_senha_atual: sessao.senha || '',
+          p_licenca: normLic(info.licenca || sessao.licenca),
+          p_nova_senha: nova
+        });
+        if(res.error){ return show('Erro ao salvar a nova senha: ' + (res.error.message || 'verifique o Supabase.')); }
+        var d = Array.isArray(res.data) ? res.data[0] : res.data;
+        if(typeof d === 'string'){ try{ d = JSON.parse(d); }catch(e){} }
+        if(!d || !d.ok){ return show((d && d.mensagem) || 'Não foi possível salvar a nova senha.'); }
+        updateStoredSession({usuario: info.usuario || sessao.usuario, licenca: info.licenca || sessao.licenca, senha:nova}, storage);
+        ov.remove();
+        modalAberto = false;
+        document.body.classList.remove('cmfin-lock');
+        try{ location.reload(); }catch(e){}
+      }catch(e){
+        console.warn('V19 primeiro acesso:', e);
+        show('Erro ao salvar a nova senha. Verifique a internet e tente novamente.');
+      }finally{
+        btn.disabled = false; btn.textContent = txt;
+      }
+    });
+  }
+
+  async function verificar(){
+    if(verificando || modalAberto) return;
+    var pair = getSessionPair();
+    if(!pair) return;
+    verificando = true;
+    try{
+      var info = await consultarPrimeiroAcesso(pair.sessao);
+      if(info && info.precisa === true){
+        abrirModal(pair.sessao, info, pair.storage);
+      }
+    }catch(e){ console.warn('V19 verificar primeiro acesso:', e); }
+    finally{ verificando = false; }
+  }
+
+  function start(){
+    setTimeout(verificar, 350);
+    setTimeout(verificar, 1200);
+    setTimeout(verificar, 2600);
+    var n = 0;
+    var int = setInterval(function(){
+      n++;
+      verificar();
+      if(n > 30 || modalAberto) clearInterval(int);
+    }, 1000);
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
 
 </body>
 </html>
@@ -36283,7 +37001,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
   function getSessao(){
     try{
-      return JSON.parse(localStorage.getItem(CMFIN_AUTH_KEY) || sessionStorage.getItem(CMFIN_AUTH_KEY) || "null") || {};
+      return JSON.parse(sessionStorage.getItem(CMFIN_AUTH_KEY) || localStorage.getItem(CMFIN_AUTH_KEY) || "null") || {};
     }catch(e){ return {}; }
   }
 
