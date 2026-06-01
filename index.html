@@ -31037,6 +31037,224 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 })();
 </script>
 
+
+
+<!-- PATCH CMFin — Comprovante imediato ao marcar Pago + separação comprovante/boleto -->
+<script id="cmfin-comprovante-pago-e-boleto-fix">
+(function(){
+  function mesRef(mes){
+    try { return mes || document.getElementById('dashboardMes')?.value || (typeof mesAtual === 'function' ? mesAtual() : new Date().toISOString().slice(0,7)); }
+    catch(e){ return mes || new Date().toISOString().slice(0,7); }
+  }
+
+  function normalizarListaLocal(arquivo){
+    if(!arquivo) return [];
+    if(Array.isArray(arquivo)) return arquivo.filter(Boolean);
+    return [arquivo];
+  }
+
+  function mesmoArquivo(a,b){
+    return !!(a && b && a.dados && b.dados && a.dados === b.dados);
+  }
+
+  function compactarLocal(lista){
+    var limpos = normalizarListaLocal(lista).filter(function(x){ return x && x.dados; });
+    if(!limpos.length) return null;
+    return limpos.length === 1 ? limpos[0] : limpos;
+  }
+
+  function obterLista(tipo){
+    if(tipo === 'fixos') return window.gastosFixos || [];
+    if(tipo === 'variaveis') return window.gastosVariaveis || [];
+    if(tipo === 'terceirizados') return window.pagamentosTerceirizados || [];
+    if(tipo === 'arquitetos') return window.pagamentosArquitetos || [];
+    return [];
+  }
+
+  function setarLista(tipo, lista){
+    if(tipo === 'fixos') window.gastosFixos = gastosFixos = lista;
+    if(tipo === 'variaveis') window.gastosVariaveis = gastosVariaveis = lista;
+    if(tipo === 'terceirizados') window.pagamentosTerceirizados = pagamentosTerceirizados = lista;
+    if(tipo === 'arquitetos') window.pagamentosArquitetos = pagamentosArquitetos = lista;
+  }
+
+  function usarMensal(tipo){
+    try { return typeof usarComprovanteMensalEmpresarial === 'function' && usarComprovanteMensalEmpresarial(tipo); }
+    catch(e){ return false; }
+  }
+
+  function obterComprovantesItem(item,tipo,mes){
+    if(!item) return [];
+    if(usarMensal(tipo)){
+      var mensal = item.comprovantesPorMes && item.comprovantesPorMes[mes];
+      if(mensal) return normalizarListaLocal(mensal);
+      return [];
+    }
+    return normalizarListaLocal(item.comprovante);
+  }
+
+  function removerBoletoSeForMesmoComprovante(item,tipo,mes){
+    if(!item) return item;
+    var comprovantes = obterComprovantesItem(item,tipo,mes);
+    if(!comprovantes.length) return item;
+
+    var atualizado = Object.assign({}, item);
+    var boletos = Object.assign({}, atualizado.boletosPorMes || {});
+    var boletoMes = boletos[mes] || atualizado.boleto || null;
+    var duplicado = boletoMes && comprovantes.some(function(c){ return mesmoArquivo(c, boletoMes); });
+
+    if(duplicado){
+      delete boletos[mes];
+      atualizado.boletosPorMes = boletos;
+      if(mes === (atualizado.mesReferencia || atualizado.mesInicial || mes)) atualizado.boleto = null;
+    }
+    return atualizado;
+  }
+
+  function limparDuplicidadeComprovanteBoleto(tipo,id,mes){
+    if(!['fixos','variaveis'].includes(tipo)) return;
+    var lista = obterLista(tipo);
+    var alterou = false;
+    lista = lista.map(function(item){
+      if(item.id !== Number(id)) return item;
+      var novo = removerBoletoSeForMesmoComprovante(item,tipo,mes);
+      alterou = alterou || JSON.stringify(novo.boletosPorMes || {}) !== JSON.stringify(item.boletosPorMes || {}) || novo.boleto !== item.boleto;
+      return novo;
+    });
+    if(alterou){
+      setarLista(tipo, lista);
+      if(typeof salvarDados === 'function') salvarDados();
+    }
+  }
+
+  async function lerArquivos(files, multiplo){
+    var arr = Array.from(files || []);
+    if(!arr.length) return null;
+    if(typeof lerArquivosComoBase64 === 'function' && multiplo) return await lerArquivosComoBase64(arr);
+    if(typeof lerArquivoComoBase64 === 'function'){
+      if(multiplo){
+        var saida = [];
+        for(var i=0;i<arr.length;i++) saida.push(await lerArquivoComoBase64(arr[i]));
+        return saida.filter(Boolean);
+      }
+      return await lerArquivoComoBase64(arr[0]);
+    }
+    return null;
+  }
+
+  function anexarComprovanteAoItem(item,tipo,mes,novoComprovante){
+    if(!item || !novoComprovante) return item;
+    var novos = normalizarListaLocal(novoComprovante).filter(function(c){ return c && c.dados; });
+    if(!novos.length) return item;
+
+    var atualizado = Object.assign({}, item);
+    if(usarMensal(tipo)){
+      var porMes = Object.assign({}, atualizado.comprovantesPorMes || {});
+      var existentesMes = normalizarListaLocal(porMes[mes]).filter(function(c){ return c && c.dados; });
+      var juntosMes = existentesMes.slice();
+      novos.forEach(function(n){ if(!juntosMes.some(function(e){ return mesmoArquivo(e,n); })) juntosMes.push(n); });
+      porMes[mes] = compactarLocal(juntosMes);
+      atualizado.comprovantesPorMes = porMes;
+      atualizado.comprovante = null;
+    } else {
+      var existentes = normalizarListaLocal(atualizado.comprovante).filter(function(c){ return c && c.dados; });
+      var juntos = existentes.slice();
+      novos.forEach(function(n){ if(!juntos.some(function(e){ return mesmoArquivo(e,n); })) juntos.push(n); });
+      atualizado.comprovante = compactarLocal(juntos);
+    }
+
+    return removerBoletoSeForMesmoComprovante(atualizado,tipo,mes);
+  }
+
+  async function solicitarComprovantePagamento(tipo,id,mes){
+    if(!['fixos','variaveis','terceirizados','arquitetos'].includes(tipo)) return;
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,.pdf';
+    input.multiple = (tipo === 'fixos' || tipo === 'arquitetos');
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+
+    input.onchange = async function(){
+      try{
+        if(!input.files || !input.files.length){ document.body.removeChild(input); return; }
+        var arquivo = await lerArquivos(input.files, input.multiple);
+        var lista = obterLista(tipo);
+        var achou = false;
+        lista = lista.map(function(item){
+          if(item.id !== Number(id)) return item;
+          achou = true;
+          return anexarComprovanteAoItem(item,tipo,mes,arquivo);
+        });
+        if(achou){
+          setarLista(tipo, lista);
+          if(typeof salvarDados === 'function') salvarDados();
+          if(typeof renderizarTudo === 'function') renderizarTudo();
+          if(typeof mostrarToast === 'function') mostrarToast('Comprovante anexado ao pagamento.', 'Ele foi salvo como comprovante, sem duplicar no boleto/documento de cobrança.');
+        }
+      } catch(e){
+        console.error('Erro ao anexar comprovante do pagamento:', e);
+        alert('Não foi possível anexar o comprovante. Tente editar o lançamento e anexar novamente.');
+      } finally {
+        try{ document.body.removeChild(input); }catch(e){}
+      }
+    };
+
+    setTimeout(function(){ input.click(); }, 60);
+  }
+
+  var alterarAnterior = window.alterarStatusSaida;
+  window.alterarStatusSaida = alterarStatusSaida = function(tipo,id,status,mesReferencia){
+    var mes = mesRef(mesReferencia);
+    var eraPago = false;
+    try{
+      var itemAntes = obterLista(tipo).find(function(i){ return i.id === Number(id); });
+      if(tipo === 'fixos' && itemAntes){
+        eraPago = (itemAntes.statusMes && itemAntes.statusMes[mes] === 'Pago') || ((!itemAntes.statusMes || !itemAntes.statusMes[mes]) && itemAntes.status === 'Pago');
+      } else {
+        eraPago = itemAntes && itemAntes.status === 'Pago';
+      }
+    }catch(e){}
+
+    if(typeof alterarAnterior === 'function') alterarAnterior.call(this,tipo,id,status,mesReferencia);
+
+    if(status === 'Pago' && !eraPago){
+      // Abrir o seletor de arquivo ainda dentro do gesto do usuário,
+      // evitando bloqueio do navegador em desktop/celular.
+      solicitarComprovantePagamento(tipo,id,mes);
+    } else {
+      setTimeout(function(){ limparDuplicidadeComprovanteBoleto(tipo,id,mes); }, 80);
+    }
+  };
+
+  var salvarFixoAnterior = window.salvarGastoFixo;
+  if(typeof salvarFixoAnterior === 'function' && !salvarFixoAnterior.__cmfinSepComprovanteBoleto){
+    window.salvarGastoFixo = salvarGastoFixo = async function(){
+      var editId = Number(document.getElementById('fixoEditId')?.value || 0);
+      var mes = document.getElementById('fixoEditId')?.dataset?.mesComprovante || document.getElementById('fixoMesReferencia')?.value || mesRef();
+      var out = await salvarFixoAnterior.apply(this, arguments);
+      if(editId) limparDuplicidadeComprovanteBoleto('fixos', editId, mes);
+      return out;
+    };
+    window.salvarGastoFixo.__cmfinSepComprovanteBoleto = true;
+  }
+
+  var salvarVarAnterior = window.salvarGastoVariavel;
+  if(typeof salvarVarAnterior === 'function' && !salvarVarAnterior.__cmfinSepComprovanteBoleto){
+    window.salvarGastoVariavel = salvarGastoVariavel = async function(){
+      var editId = Number(document.getElementById('varEditId')?.value || 0);
+      var mes = document.getElementById('varMesReferencia')?.value || mesRef();
+      var out = await salvarVarAnterior.apply(this, arguments);
+      if(editId) limparDuplicidadeComprovanteBoleto('variaveis', editId, mes);
+      return out;
+    };
+    window.salvarGastoVariavel.__cmfinSepComprovanteBoleto = true;
+  }
+})();
+</script>
+
 </body>
 </html>
 
