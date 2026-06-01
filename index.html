@@ -15508,9 +15508,7 @@ Total: ${moeda(total)}`;
       }
 
       const atual = item.encerramentoMes || mes;
-      const resposta = prompt("Informe o último mês em que esta conta recorrente deve aparecer (formato AAAA-MM).
-
-Exemplo: " + mes + " mantém este mês e remove os próximos.", atual);
+      const resposta = prompt("Informe o último mês em que esta conta recorrente deve aparecer (formato AAAA-MM).\n\nExemplo: " + mes + " mantém este mês e remove os próximos.", atual);
       if (resposta === null) return;
 
       const fim = String(resposta || "").trim();
