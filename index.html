@@ -37698,3 +37698,119 @@ Total: ${moeda(total)}`;
   setTimeout(reforcarCampos, 300);
 })();
 </script>
+
+
+<style id="cmfin-ajuste-terceiros-largura-encerrar">
+/* ============================================================
+   CMFin — ajuste solicitado em Controle de Terceiros
+   - Reduz a largura do painel "Lançamento de Terceiro"
+   - Entrega mais espaço para os cards do Controle de Terceiros
+   - Mantém o botão Encerrar ao lado do Tipo, sem quebrar linha
+   ============================================================ */
+#terceiros .terc-main-grid-v118{
+  grid-template-columns: minmax(300px, 330px) minmax(0, 1fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+#terceiros .terc-main-launch{
+  max-width: 330px !important;
+  padding: 16px 18px !important;
+}
+
+#terceiros .terc-main-launch h2{
+  font-size: 20px !important;
+}
+
+#terceiros .terc-main-launch .terc-panel-header.v118 p{
+  font-size: 12px !important;
+}
+
+#terceiros .terc-main-launch input,
+#terceiros .terc-main-launch select,
+#terceiros .terc-main-launch .month-trigger{
+  height: 39px !important;
+  min-height: 39px !important;
+  font-size: 13px !important;
+}
+
+#terceiros .terc-table-panel{
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+#terceiros .terc-list-v122,
+#terceiros #listaTerceirosCards{
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#terceiros .terc-row-card-v13{
+  width: 100% !important;
+}
+
+#terceiros .terc-row-main{
+  min-width: 0 !important;
+}
+
+#terceiros .terc-row-meta-v13{
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+#terceiros .terc-row-card-v13 .terc-meta-mini,
+#terceiros .terc-row-card-v13 .terc-meta-encerrar{
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  margin-top: 0 !important;
+}
+
+#terceiros .terc-row-card-v13 .terc-meta-encerrar{
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-left: 0 !important;
+}
+
+#terceiros .terc-row-card-v13 .terc-recorrencia-mini{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+
+@media (min-width: 1500px){
+  #terceiros .terc-main-grid-v118{
+    grid-template-columns: minmax(310px, 340px) minmax(0, 1fr) !important;
+    gap: 18px !important;
+  }
+  #terceiros .terc-main-launch{
+    max-width: 340px !important;
+  }
+}
+
+@media (max-width: 1180px){
+  #terceiros .terc-main-grid-v118{
+    grid-template-columns: 1fr !important;
+  }
+  #terceiros .terc-main-launch{
+    max-width: 520px !important;
+  }
+  #terceiros .terc-row-meta-v13{
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (max-width: 760px){
+  #terceiros .terc-main-launch{
+    max-width: none !important;
+  }
+  #terceiros .terc-row-meta-v13{
+    flex-wrap: wrap !important;
+  }
+}
+</style>
