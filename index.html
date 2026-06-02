@@ -24300,245 +24300,6 @@ Total: ${moeda(total)}`;
 @page{size:A4;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.metric,.sec,.cat{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:22px}.hero-value{font-size:34px}.hero-kpi strong,.quick-item b{font-size:16px}.hero-kpis,.quick-grid{gap:8px}.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric{padding:12px;border-radius:18px}.metric .val{font-size:22px}.metric .helper{font-size:10.5px}.layout{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.sec{padding:14px;border-radius:18px}.sec-head h2{font-size:19px}.sec-head p,.footnote{font-size:10.5px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.section-space{margin-top:10px}.metric,.sec,.cat{break-inside:avoid;page-break-inside:avoid}}</style>
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Imprimir PDF A4</button><section class="hero"><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Eficiência</small><strong>${formatPct(shareLucro)}</strong></div></div></div><div class="hero-side"><div class="side-card"><h3>Visão gerencial rápida</h3><div class="quick-grid"><div class="quick-item"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="quick-item"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="quick-item"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="quick-item"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div></div></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.recebimentos}</div><div class="helper">${txtModo.recebimentosAjuda}</div></div><span class="pill receita">${txtModo.recebimentosPill}</span></div><div class="val">${brl(d.receita)}</div><div class="progress green"><i style="width:100%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.saidas}</div><div class="helper">${txtModo.saidasAjuda}</div></div><span class="pill saidas">${txtModo.saidasPill}</span></div><div class="val">${brl(d.saidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.fixos}</div><div class="helper">${txtModo.fixosAjuda}</div></div><span class="pill fixos">Fixas</span></div><div class="val">${brl(d.fixos)}</div><div class="progress blue"><i style="width:${shareFixos}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">${txtModo.variaveis}</div><div class="helper">${txtModo.variaveisAjuda}</div></div><span class="pill vars">Variáveis</span></div><div class="val">${brl(d.variaveis)}</div><div class="progress purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="layout"><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFootEmp}</div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="sec section-space"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section></div>
 
-
-
-<!-- PATCH CMFin FINAL — comprovante ao marcar Pago + nome no cadastro + anti-duplicidade boleto/comprovante -->
-<script id="cmfin-final-comprovante-pago-sem-duplicar">
-(function(){
-  "use strict";
-
-  function mesAtualSeguro(){
-    try { return (typeof mesAtual === "function" ? mesAtual() : new Date().toISOString().slice(0,7)); }
-    catch(e){ return new Date().toISOString().slice(0,7); }
-  }
-  function mesRef(m){ return m || document.getElementById("dashboardMes")?.value || mesAtualSeguro(); }
-
-  function lista(tipo){
-    if(tipo === "fixos") return window.gastosFixos || [];
-    if(tipo === "variaveis") return window.gastosVariaveis || [];
-    if(tipo === "terceirizados") return window.pagamentosTerceirizados || [];
-    if(tipo === "arquitetos") return window.pagamentosArquitetos || [];
-    if(tipo === "credito") return window.comprasCredito || [];
-    return [];
-  }
-  function setLista(tipo, nova){
-    if(tipo === "fixos") window.gastosFixos = gastosFixos = nova;
-    if(tipo === "variaveis") window.gastosVariaveis = gastosVariaveis = nova;
-    if(tipo === "terceirizados") window.pagamentosTerceirizados = pagamentosTerceirizados = nova;
-    if(tipo === "arquitetos") window.pagamentosArquitetos = pagamentosArquitetos = nova;
-    if(tipo === "credito") window.comprasCredito = comprasCredito = nova;
-  }
-
-  function normalizar(v){
-    if(!v) return [];
-    if(Array.isArray(v)) return v.filter(function(x){ return x && x.dados; });
-    return (v && v.dados) ? [v] : [];
-  }
-  function compactar(v){
-    var a = normalizar(v);
-    if(!a.length) return null;
-    return a.length === 1 ? a[0] : a;
-  }
-  function mesmo(a,b){ return !!(a && b && a.dados && b.dados && a.dados === b.dados); }
-  function semDuplicar(base, novos){
-    var saida = normalizar(base).slice();
-    normalizar(novos).forEach(function(n){
-      if(!saida.some(function(e){ return mesmo(e,n); })) saida.push(n);
-    });
-    return compactar(saida);
-  }
-
-  function lerArquivo(file){
-    return new Promise(function(resolve,reject){
-      if(!file) return resolve(null);
-      var reader = new FileReader();
-      reader.onload = function(){ resolve({ nome:file.name, tipo:file.type || "application/octet-stream", dados:reader.result }); };
-      reader.onerror = function(){ reject(reader.error); };
-      reader.readAsDataURL(file);
-    });
-  }
-  async function lerArquivos(fileList){
-    var files = Array.from(fileList || []).filter(Boolean);
-    var out = [];
-    for(var i=0;i<files.length;i++){
-      var lido = await lerArquivo(files[i]);
-      if(lido) out.push(lido);
-    }
-    return out;
-  }
-
-  function pedirNomeCadastro(arquivos){
-    var arr = normalizar(arquivos);
-    if(!arr.length) return arquivos;
-    var nomePadrao = arr.length === 1 ? (arr[0].nome || "Comprovante de Pagamento") : (arr.length + " comprovantes de pagamento");
-    var nome = prompt("Nome do arquivo no cadastro:", nomePadrao);
-    if(nome !== null && nome.trim()){
-      if(arr.length === 1) arr[0].nome = nome.trim();
-      else arr.forEach(function(a,idx){ a.nome = nome.trim() + " " + (idx+1); });
-    }
-    return compactar(arr);
-  }
-
-  function usarMensalComprovante(tipo){
-    try { return typeof usarComprovanteMensalEmpresarial === "function" && usarComprovanteMensalEmpresarial(tipo); }
-    catch(e){ return false; }
-  }
-
-  function removerBoletoDuplicadoDoItem(item, tipo, mes){
-    if(!item) return item;
-    var novo = Object.assign({}, item);
-    var comps = [];
-    if(usarMensalComprovante(tipo)) comps = normalizar(novo.comprovantesPorMes && novo.comprovantesPorMes[mes]);
-    else comps = normalizar(novo.comprovante);
-    if(!comps.length) return novo;
-
-    var boletos = Object.assign({}, novo.boletosPorMes || {});
-    Object.keys(boletos).forEach(function(k){
-      if(comps.some(function(c){ return mesmo(c, boletos[k]); })) delete boletos[k];
-    });
-    if(novo.boleto && comps.some(function(c){ return mesmo(c, novo.boleto); })) novo.boleto = null;
-    novo.boletosPorMes = boletos;
-    return novo;
-  }
-
-  function anexarComprovante(item, tipo, mes, arquivos){
-    var novo = Object.assign({}, item);
-    if(usarMensalComprovante(tipo)){
-      var porMes = Object.assign({}, novo.comprovantesPorMes || {});
-      porMes[mes] = semDuplicar(porMes[mes], arquivos);
-      novo.comprovantesPorMes = porMes;
-      novo.comprovante = null;
-    } else {
-      novo.comprovante = semDuplicar(novo.comprovante, arquivos);
-    }
-    return removerBoletoDuplicadoDoItem(novo, tipo, mes);
-  }
-
-  function aplicarStatusComprovante(tipo, id, status, mes, arquivos){
-    var novoStatus = status === "Pago" ? "Pago" : (status === "NaoIncluir" || status === "Não incluir" ? "NaoIncluir" : "Pendente");
-    var novaLista = lista(tipo).map(function(item){
-      if(item.id !== Number(id)) return item;
-      var novo = Object.assign({}, item);
-      if(tipo === "fixos"){
-        var statusMes = Object.assign({}, novo.statusMes || {});
-        statusMes[mes] = novoStatus;
-        novo.statusMes = statusMes;
-      } else {
-        novo.status = novoStatus;
-      }
-      if(novoStatus === "Pago" && arquivos) novo = anexarComprovante(novo, tipo, mes, arquivos);
-      else novo = removerBoletoDuplicadoDoItem(novo, tipo, mes);
-      return novo;
-    });
-    setLista(tipo, novaLista);
-    if(typeof salvarDados === "function") salvarDados();
-    if(typeof renderizarTudo === "function") renderizarTudo();
-  }
-
-  function selecionarComprovanteEAplicar(tipo, id, status, mes){
-    var input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,.pdf";
-    input.multiple = tipo === "fixos";
-    input.style.position = "fixed";
-    input.style.left = "-9999px";
-    input.style.opacity = "0";
-    document.body.appendChild(input);
-
-    input.onchange = async function(){
-      try{
-        if(!input.files || !input.files.length){
-          // Se o usuário cancelar o anexo, não mostra erro nem duplica nada.
-          aplicarStatusComprovante(tipo, id, status, mes, null);
-          return;
-        }
-        var arquivos = pedirNomeCadastro(compactar(await lerArquivos(input.files)));
-        aplicarStatusComprovante(tipo, id, status, mes, arquivos);
-        if(typeof mostrarToast === "function") mostrarToast("Pagamento marcado como pago.", "Comprovante salvo com o nome informado e sem duplicar no boleto/documento de cobrança.");
-      }catch(e){
-        console.error("Falha ao anexar comprovante ao marcar pago:", e);
-        aplicarStatusComprovante(tipo, id, status, mes, null);
-        alert("O pagamento foi marcado como pago, mas não foi possível anexar o comprovante automaticamente. Edite o lançamento e anexe novamente em Comprovantes de Pagamento.");
-      }finally{
-        try{ document.body.removeChild(input); }catch(_e){}
-      }
-    };
-    input.click();
-  }
-
-  // Substitui a rotina problemática anterior. Assim, clicar em Pago abre o anexo imediatamente.
-  window.alterarStatusSaida = alterarStatusSaida = function(tipo, id, status, mesReferencia){
-    var mes = mesRef(mesReferencia);
-    if((tipo === "fixos" || tipo === "variaveis") && status === "Pago"){
-      selecionarComprovanteEAplicar(tipo, id, status, mes);
-      return;
-    }
-    aplicarStatusComprovante(tipo, id, status, mes, null);
-  };
-
-  // Mostra o campo de comprovante também quando o status do cadastro está como Pago,
-  // mesmo que a forma não seja Pix. Isso permite editar e anexar comprovante em qualquer pagamento.
-  window.atualizarCampoComprovantePix = atualizarCampoComprovantePix = function(prefixo, forma){
-    var mapa = {
-      fixo: { campo:"campoComprovanteFixo", input:"fixoComprovante", status:"fixoStatus" },
-      var: { campo:"campoComprovanteVariavel", input:"varComprovante", status:"varStatus" },
-      tercPg: { campo:"campoComprovanteTerceirizado", input:"tercPgComprovante", status:"tercPgStatus" },
-      arqPg: { campo:"campoComprovanteArquiteto", input:"arqPgComprovante", status:"arqPgStatus" }
-    };
-    var cfg = mapa[prefixo];
-    if(!cfg) return;
-    var campo = document.getElementById(cfg.campo);
-    var statusAtual = document.getElementById(cfg.status)?.value || "";
-    var mostrar = forma === "Pix" || statusAtual === "Pago" || statusAtual === "Recebido";
-    if(campo) campo.style.display = mostrar ? "block" : "none";
-    if(!mostrar){
-      var input = document.getElementById(cfg.input);
-      if(input) input.value = "";
-    }
-  };
-
-  function limparDuplicidadeLista(tipo, id, mes){
-    setLista(tipo, lista(tipo).map(function(item){
-      return item.id === Number(id) ? removerBoletoDuplicadoDoItem(item, tipo, mes) : item;
-    }));
-  }
-
-  // Ao salvar pelo botão Editar, preserva o comprovante anexado em "Comprovantes de Pagamento"
-  // para qualquer forma de pagamento e impede que ele vá também para Boleto/Documento de Cobrança.
-  function envolverSalvar(nomeFuncao, tipo, editIdCampo, mesCampo, comprovanteCampo, comprovanteNomeCampo){
-    var anterior = window[nomeFuncao];
-    if(typeof anterior !== "function" || anterior.__cmfinFinalSemDuplicar) return;
-    window[nomeFuncao] = window[nomeFuncao.replace(/^window\./,"")] = async function(){
-      var editId = Number(document.getElementById(editIdCampo)?.value || 0);
-      var mes = document.getElementById(mesCampo)?.value || mesRef();
-      var files = document.getElementById(comprovanteCampo)?.files || null;
-      var compNovo = null;
-      if(editId && files && files.length){
-        compNovo = compactar(await lerArquivos(files));
-        var nome = document.getElementById(comprovanteNomeCampo)?.value?.trim();
-        if(nome){ normalizar(compNovo).forEach(function(c,idx){ c.nome = normalizar(compNovo).length === 1 ? nome : nome + " " + (idx+1); }); }
-      }
-      var retorno = await anterior.apply(this, arguments);
-      if(editId){
-        setLista(tipo, lista(tipo).map(function(item){
-          if(item.id !== editId) return item;
-          var novo = compNovo ? anexarComprovante(item, tipo, mes, compNovo) : removerBoletoDuplicadoDoItem(item, tipo, mes);
-          return novo;
-        }));
-        if(typeof salvarDados === "function") salvarDados();
-        if(typeof renderizarTudo === "function") renderizarTudo();
-      }
-      return retorno;
-    };
-    window[nomeFuncao].__cmfinFinalSemDuplicar = true;
-  }
-
-  envolverSalvar("salvarGastoVariavel", "variaveis", "varEditId", "varMesReferencia", "varComprovante", "varComprovanteNome");
-  envolverSalvar("salvarGastoFixo", "fixos", "fixoEditId", "fixoMesReferencia", "fixoComprovante", "fixoComprovanteNome");
-
-})();
-</script>
-
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -37646,5 +37407,262 @@ Total: ${moeda(total)}`;
   else setTimeout(aplicarRestricoes, 150);
   try{ window.addEventListener("cmfin:sessao-atualizada", function(){ setTimeout(aplicarRestricoes, 80); setTimeout(aplicarRestricoes, 500); }); }catch(e){}
   window.addEventListener("load", function(){ setTimeout(aplicarRestricoes, 600); setTimeout(aplicarRestricoes, 1400); });
+})();
+</script>
+
+
+<!-- PATCH CMFin — correção final comprovante ao marcar Pago, sem duplicar boleto -->
+<script id="cmfin-fix-comprovante-pago-sem-bug-v4">
+(function(){
+  "use strict";
+  if(window.__CMFIN_FIX_COMPROVANTE_PAGO_V4__) return;
+  window.__CMFIN_FIX_COMPROVANTE_PAGO_V4__ = true;
+
+  function mesAtualSeguro(){
+    try { return (typeof mesAtual === "function" ? mesAtual() : new Date().toISOString().slice(0,7)); }
+    catch(e){ return new Date().toISOString().slice(0,7); }
+  }
+  function mesTela(m){
+    return m || document.getElementById("dashboardMes")?.value || mesAtualSeguro();
+  }
+  function lista(tipo){
+    if(tipo === "fixos") return window.gastosFixos || [];
+    if(tipo === "variaveis") return window.gastosVariaveis || [];
+    if(tipo === "terceirizados") return window.pagamentosTerceirizados || [];
+    if(tipo === "arquitetos") return window.pagamentosArquitetos || [];
+    if(tipo === "credito") return window.comprasCredito || [];
+    return [];
+  }
+  function setLista(tipo,nova){
+    if(tipo === "fixos") window.gastosFixos = gastosFixos = nova;
+    if(tipo === "variaveis") window.gastosVariaveis = gastosVariaveis = nova;
+    if(tipo === "terceirizados") window.pagamentosTerceirizados = pagamentosTerceirizados = nova;
+    if(tipo === "arquitetos") window.pagamentosArquitetos = pagamentosArquitetos = nova;
+    if(tipo === "credito") window.comprasCredito = comprasCredito = nova;
+  }
+  function arr(v){
+    if(!v) return [];
+    return (Array.isArray(v) ? v : [v]).filter(function(x){ return x && x.dados; });
+  }
+  function compact(a){
+    a = arr(a);
+    if(!a.length) return null;
+    return a.length === 1 ? a[0] : a;
+  }
+  function mesmo(a,b){
+    return !!(a && b && a.dados && b.dados && String(a.dados) === String(b.dados));
+  }
+  function addSemDuplicar(existentes, novos){
+    var saida = arr(existentes).slice();
+    arr(novos).forEach(function(n){
+      if(!saida.some(function(e){ return mesmo(e,n); })) saida.push(n);
+    });
+    return compact(saida);
+  }
+  function lerArquivo(file){
+    return new Promise(function(resolve,reject){
+      if(!file) return resolve(null);
+      var reader = new FileReader();
+      reader.onload = function(){ resolve({ nome:file.name, tipo:file.type || "application/octet-stream", dados:reader.result }); };
+      reader.onerror = function(){ reject(reader.error || new Error("Falha ao ler arquivo")); };
+      reader.readAsDataURL(file);
+    });
+  }
+  async function lerArquivos(files){
+    var fs = Array.from(files || []).filter(Boolean);
+    if(!fs.length) return null;
+    var lidos = await Promise.all(fs.map(lerArquivo));
+    return compact(lidos.filter(Boolean));
+  }
+  function pedirNome(arquivos){
+    var itens = arr(arquivos);
+    if(!itens.length) return arquivos;
+    var padrao = itens.length === 1 ? (itens[0].nome || "Comprovante de Pagamento") : (itens.length + " comprovantes de pagamento");
+    var nome = prompt("Nome do arquivo no cadastro:", padrao);
+    if(nome === null) nome = padrao;
+    nome = String(nome || padrao).trim() || padrao;
+    if(itens.length === 1) itens[0].nome = nome;
+    else itens.forEach(function(c,i){ c.nome = nome + " - " + (i+1); });
+    return compact(itens);
+  }
+  function comprovanteDoItem(item,tipo,mes){
+    if(!item) return null;
+    if(item.comprovantesPorMes && item.comprovantesPorMes[mes]) return item.comprovantesPorMes[mes];
+    return item.comprovante || null;
+  }
+  function limparBoletoDuplicado(item, comp, mes){
+    if(!item) return item;
+    var comps = arr(comp || comprovanteDoItem(item,"",mes));
+    if(!comps.length) return item;
+    var out = Object.assign({}, item);
+    if(out.boleto && comps.some(function(c){ return mesmo(c,out.boleto); })) out.boleto = null;
+    if(out.boletosPorMes){
+      var b = Object.assign({}, out.boletosPorMes || {});
+      Object.keys(b).forEach(function(k){
+        if(comps.some(function(c){ return mesmo(c,b[k]); })) delete b[k];
+      });
+      out.boletosPorMes = b;
+    }
+    return out;
+  }
+  function anexarComprovante(tipo,id,mes,comprovante){
+    if(!comprovante) return false;
+    var nova = lista(tipo).map(function(item){
+      if(Number(item.id) !== Number(id)) return item;
+      var out = Object.assign({}, item);
+      if(tipo === "fixos"){
+        var porMes = Object.assign({}, out.comprovantesPorMes || {});
+        porMes[mes] = addSemDuplicar(porMes[mes], comprovante);
+        out.comprovantesPorMes = porMes;
+        out.comprovante = out.comprovante || null;
+      } else {
+        out.comprovante = addSemDuplicar(out.comprovante, comprovante);
+      }
+      return limparBoletoDuplicado(out, comprovante, mes);
+    });
+    setLista(tipo,nova);
+    try{ if(typeof salvarDados === "function") salvarDados(); }catch(e){}
+    try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){}
+    return true;
+  }
+  function limparDuplicidadesDaLista(tipo,id,mes){
+    var alterou = false;
+    var nova = lista(tipo).map(function(item){
+      if(id != null && Number(item.id) !== Number(id)) return item;
+      var limpo = limparBoletoDuplicado(item, comprovanteDoItem(item,tipo,mes), mes);
+      if(JSON.stringify(limpo.boletosPorMes || {}) !== JSON.stringify(item.boletosPorMes || {}) || !!limpo.boleto !== !!item.boleto) alterou = true;
+      return limpo;
+    });
+    if(alterou){
+      setLista(tipo,nova);
+      try{ if(typeof salvarDados === "function") salvarDados(); }catch(e){}
+      try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){}
+    }
+  }
+  function setStatusDireto(tipo,id,status,mes){
+    var novo = status === "Pago" ? "Pago" : ((status === "NaoIncluir" || status === "Não incluir") ? "NaoIncluir" : "Pendente");
+    var nova = lista(tipo).map(function(item){
+      if(Number(item.id) !== Number(id)) return item;
+      if(tipo === "fixos"){
+        var sm = Object.assign({}, item.statusMes || {});
+        sm[mes] = novo;
+        return Object.assign({}, item, { statusMes: sm });
+      }
+      return Object.assign({}, item, { status: novo });
+    });
+    setLista(tipo,nova);
+    try{ if(typeof salvarDados === "function") salvarDados(); }catch(e){}
+    try{ if(typeof renderizarTudo === "function") renderizarTudo(); }catch(e){}
+  }
+  function statusAtual(tipo,id,mes){
+    var item = lista(tipo).find(function(x){ return Number(x.id) === Number(id); });
+    if(!item) return "Pendente";
+    if(tipo === "fixos") return (item.statusMes && item.statusMes[mes]) || item.status || "Pendente";
+    return item.status || "Pendente";
+  }
+  function abrirSeletorComprovante(tipo,id,mes){
+    if(!["fixos","variaveis","terceirizados","arquitetos"].includes(tipo)) return;
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.pdf,application/pdf";
+    input.multiple = (tipo === "fixos" || tipo === "arquitetos");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.top = "-9999px";
+    document.body.appendChild(input);
+    input.addEventListener("change", async function(){
+      try{
+        if(!input.files || !input.files.length) return;
+        var comp = pedirNome(await lerArquivos(input.files));
+        anexarComprovante(tipo,id,mes,comp);
+      }catch(e){
+        console.error("CMFin comprovante:", e);
+        alert("Não foi possível anexar o comprovante. Tente novamente pelo botão Editar.");
+      }finally{
+        setTimeout(function(){ try{ input.remove(); }catch(e){} }, 100);
+      }
+    }, { once:true });
+    input.click();
+  }
+
+  window.alterarStatusSaida = alterarStatusSaida = function(tipo,id,status,mesReferencia){
+    var mes = mesTela(mesReferencia);
+    var antes = statusAtual(tipo,id,mes);
+    if(status === "Pago" && antes !== "Pago") abrirSeletorComprovante(tipo,id,mes);
+    setStatusDireto(tipo,id,status,mes);
+    if(status !== "Pago") setTimeout(function(){ limparDuplicidadesDaLista(tipo,id,mes); }, 50);
+  };
+
+  var obterOriginal = window.obterComprovanteDoItem;
+  if(typeof obterOriginal === "function" && !obterOriginal.__cmfinV4){
+    window.obterComprovanteDoItem = obterComprovanteDoItem = function(item,tipo,mesReferencia){
+      var mes = mesTela(mesReferencia);
+      if(item && item.comprovantesPorMes && item.comprovantesPorMes[mes]) return item.comprovantesPorMes[mes];
+      return obterOriginal.apply(this, arguments);
+    };
+    window.obterComprovanteDoItem.__cmfinV4 = true;
+  }
+
+  var atualizarCampoOriginal = window.atualizarCampoComprovantePix;
+  window.atualizarCampoComprovantePix = atualizarCampoComprovantePix = function(prefixo, forma){
+    var mapa = {
+      fixo: { campo:"campoComprovanteFixo" },
+      var: { campo:"campoComprovanteVariavel" },
+      tercPg: { campo:"campoComprovanteTerceirizado" },
+      arqPg: { campo:"campoComprovanteArquiteto" }
+    };
+    var cfg = mapa[prefixo];
+    if(cfg){
+      var campo = document.getElementById(cfg.campo);
+      if(campo) campo.style.display = "block";
+    } else if(typeof atualizarCampoOriginal === "function") {
+      return atualizarCampoOriginal.apply(this, arguments);
+    }
+  };
+
+  function capturaInput(id){ return document.getElementById(id); }
+  function nomeCampo(id){ return document.getElementById(id)?.value?.trim() || ""; }
+  async function arquivosDoInput(id,nomeId){
+    var input = capturaInput(id);
+    if(!input || !input.files || !input.files.length) return null;
+    var comp = await lerArquivos(input.files);
+    var itens = arr(comp);
+    var nome = nomeCampo(nomeId);
+    if(nome && itens.length === 1) itens[0].nome = nome;
+    if(nome && itens.length > 1) itens.forEach(function(c,i){ c.nome = nome + " - " + (i+1); });
+    return compact(itens);
+  }
+  function wrapSalvar(nomeFunc,tipo,cfg){
+    var old = window[nomeFunc];
+    if(typeof old !== "function" || old.__cmfinV4) return;
+    var novo = async function(){
+      var editId = Number(document.getElementById(cfg.edit)?.value || 0);
+      var mes = mesTela(document.getElementById(cfg.mes)?.value || document.getElementById(cfg.mesAlt)?.value || "");
+      var comp = null;
+      try{ comp = await arquivosDoInput(cfg.comp,cfg.nome); }catch(e){ console.warn("CMFin: leitura prévia do comprovante", e); }
+      var out = await old.apply(this, arguments);
+      if(editId){
+        if(comp) anexarComprovante(tipo,editId,mes,comp);
+        limparDuplicidadesDaLista(tipo,editId,mes);
+      }
+      return out;
+    };
+    novo.__cmfinV4 = true;
+    window[nomeFunc] = window[nomeFunc.replace(/^window\./,"")] = novo;
+    try{ eval(nomeFunc + " = novo"); }catch(e){}
+  }
+  wrapSalvar("salvarGastoFixo", "fixos", { edit:"fixoEditId", mes:"fixoMesReferencia", mesAlt:"fixoMesInicial", comp:"fixoComprovante", nome:"fixoComprovanteNome" });
+  wrapSalvar("salvarGastoVariavel", "variaveis", { edit:"varEditId", mes:"varMesReferencia", mesAlt:"varPrimeiraFatura", comp:"varComprovante", nome:"varComprovanteNome" });
+  wrapSalvar("salvarPagamentoTerceirizado", "terceirizados", { edit:"tercPgEditId", mes:"tercPgMesReferencia", mesAlt:"tercPgPrimeiraFatura", comp:"tercPgComprovante", nome:"tercPgComprovanteNome" });
+  wrapSalvar("salvarPagamentoArquiteto", "arquitetos", { edit:"arqPgEditId", mes:"arqPgMesReferencia", mesAlt:"arqPgPrimeiraFatura", comp:"arqPgComprovante", nome:"arqPgComprovanteNome" });
+
+  function reforcarCampos(){
+    ["campoComprovanteFixo","campoComprovanteVariavel","campoComprovanteTerceirizado","campoComprovanteArquiteto"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.style.display = "block";
+    });
+  }
+  document.addEventListener("click", function(){ setTimeout(reforcarCampos, 80); }, true);
+  setTimeout(reforcarCampos, 300);
 })();
 </script>
