@@ -24035,14 +24035,47 @@ Total: ${moeda(total)}`;
     const d=new Date(a,(m-1)+delta,1);
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
   }
-  function download(nome,conteudo,tipo='application/json'){
+  async function download(nome,conteudo,tipo='application/json'){
     const blob=new Blob([conteudo],{type:tipo});
+
+    // Preferência: abrir a janela nativa para o usuário escolher a pasta/local de salvamento.
+    // Funciona em navegadores compatíveis (Chrome/Edge). Em navegadores sem suporte,
+    // mantém o download padrão para não quebrar o backup.
+    if(window.showSaveFilePicker){
+      try{
+        let opcoes={
+          id:'cmfin-config-backup',
+          suggestedName:nome,
+          types:[{
+            description:'Arquivo de backup CMFin',
+            accept:{'application/json':['.json'], 'application/octet-stream':['.cmfin']}
+          }]
+        };
+
+        if(typeof montarOpcoesComPastaPadraoELLO==='function'){
+          try{ opcoes = await montarOpcoesComPastaPadraoELLO(opcoes,'readwrite'); }catch(_e){}
+        }
+
+        const arquivoHandle=await window.showSaveFilePicker(opcoes);
+        const gravador=await arquivoHandle.createWritable();
+        await gravador.write(blob);
+        await gravador.close();
+        if(typeof toast==='function') toast('Backup salvo com sucesso.', 'ok');
+        return true;
+      }catch(erro){
+        if(erro && erro.name==='AbortError') return false;
+        console.warn('Não foi possível abrir o seletor de pasta. Usando download padrão.', erro);
+      }
+    }
+
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
     a.download=nome;
     document.body.appendChild(a);
     a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},300);
+    if(typeof toast==='function') toast('Backup exportado pela pasta padrão de downloads.', 'ok');
+    return true;
   }
 
   function aplicarDensidade(){
@@ -31837,7 +31870,7 @@ Total: ${moeda(total)}`;
     }
   }
 
-  function exportarBackup(){
+  async function exportarBackup(){
     try{
       var backup = {};
       for(var i=0;i<localStorage.length;i++){
@@ -31845,6 +31878,7 @@ Total: ${moeda(total)}`;
         backup[key] = localStorage.getItem(key);
       }
 
+      var nomeArquivo = "backup-local-cmfin-" + new Date().toISOString().slice(0,10) + ".json";
       var blob = new Blob([JSON.stringify({
         sistema:"CMFin",
         tipo:"Backup local",
@@ -31852,9 +31886,38 @@ Total: ${moeda(total)}`;
         dados:backup
       }, null, 2)], {type:"application/json;charset=utf-8"});
 
+      // Abre a janela para escolher onde salvar o backup, igual ao fluxo de exportação.
+      if(window.showSaveFilePicker){
+        try{
+          var opcoes = {
+            id:"cmfin-cloud-backup-local",
+            suggestedName:nomeArquivo,
+            types:[{
+              description:"Backup local CMFin (.json)",
+              accept:{"application/json":[".json"]}
+            }]
+          };
+
+          if(typeof montarOpcoesComPastaPadraoELLO === "function"){
+            try{ opcoes = await montarOpcoesComPastaPadraoELLO(opcoes, "readwrite"); }catch(_e){}
+          }
+
+          var arquivoHandle = await window.showSaveFilePicker(opcoes);
+          var gravador = await arquivoHandle.createWritable();
+          await gravador.write(blob);
+          await gravador.close();
+
+          toast("Backup local salvo com sucesso.", "ok");
+          return;
+        }catch(erro){
+          if(erro && erro.name === "AbortError") return;
+          console.warn("Não foi possível abrir a janela de salvar. Usando download padrão.", erro);
+        }
+      }
+
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "backup-local-cmfin-" + new Date().toISOString().slice(0,10) + ".json";
+      a.download = nomeArquivo;
       document.body.appendChild(a);
       a.click();
 
@@ -31863,7 +31926,7 @@ Total: ${moeda(total)}`;
         a.remove();
       }, 700);
 
-      toast("Backup local exportado.", "ok");
+      toast("Backup local exportado pela pasta padrão de downloads.", "ok");
     }catch(err){
       console.warn(err);
       toast("Erro ao exportar backup local.", "erro");
@@ -32650,8 +32713,35 @@ Total: ${moeda(total)}`;
     };
   }
 
-  function baixarArquivo(obj, nome){
+  async function baixarArquivo(obj, nome){
     var blob = new Blob([JSON.stringify(obj, null, 2)], {type:"application/json;charset=utf-8"});
+
+    if(window.showSaveFilePicker){
+      try{
+        var opcoes = {
+          id:"cmfin-acoes-backup",
+          suggestedName:nome,
+          types:[{
+            description:"Arquivo de backup CMFin",
+            accept:{"application/json":[".json"], "application/octet-stream":[".cmfin"]}
+          }]
+        };
+
+        if(typeof montarOpcoesComPastaPadraoELLO === "function"){
+          try{ opcoes = await montarOpcoesComPastaPadraoELLO(opcoes, "readwrite"); }catch(_e){}
+        }
+
+        var arquivoHandle = await window.showSaveFilePicker(opcoes);
+        var gravador = await arquivoHandle.createWritable();
+        await gravador.write(blob);
+        await gravador.close();
+        return true;
+      }catch(erro){
+        if(erro && erro.name === "AbortError") return false;
+        console.warn("Não foi possível abrir a janela de salvar. Usando download padrão.", erro);
+      }
+    }
+
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = nome;
@@ -32661,6 +32751,7 @@ Total: ${moeda(total)}`;
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 700);
+    return true;
   }
 
   function baixarBackupCompleto(){
