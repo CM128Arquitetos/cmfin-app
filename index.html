@@ -6276,6 +6276,38 @@ html, body{
       border-color:#0d4d42 !important;
       box-shadow:0 0 0 3px rgba(13,77,66,.10) !important;
     }
+    #terceiros .terc-row-card-v13 .terc-meta-encerrar{
+      margin-left:-2px !important;
+    }
+    #terceiros .terc-row-card-v13 .terc-meta-encerrar::before{
+      content:"";
+      width:4px;
+      height:4px;
+      border-radius:999px;
+      background:#c7d0db;
+      margin-right:6px;
+      display:inline-block;
+    }
+    #terceiros .terc-row-card-v13 .terc-recorrencia-mini{
+      height:28px !important;
+      min-height:28px !important;
+      padding:0 14px !important;
+      border-radius:14px !important;
+      border:1px solid #dbe5ec !important;
+      background:#fff !important;
+      color:#253246 !important;
+      font-size:11px !important;
+      font-weight:800 !important;
+      line-height:26px !important;
+      box-shadow:none !important;
+      white-space:nowrap !important;
+      cursor:pointer !important;
+    }
+    #terceiros .terc-row-card-v13 .terc-recorrencia-mini:hover{
+      background:#f8fafc !important;
+      border-color:#cbd7e1 !important;
+      color:#0d4d42 !important;
+    }
 
   
 /* ============================================================
@@ -16131,7 +16163,6 @@ Total: ${moeda(total)}`;
                     <div class="terc-vencimento-inline">${mesReferenciaSaidaSelect("terceiros", t.id, (t.vencimentoExibido || t.vencimento || mes).slice(0,7))}</div>
                     <span class="badge ${t.status === "Recebido" ? "b-green" : "b-amber"}">${t.status}</span>
                     <span class="badge b-gray">${t.parcela || "Recorrente"}</span>
-                    ${tipoLancamento === "Recorrente" ? `<button type="button" class="terc-recorrencia-mini" onclick="encerrarRecorrenciaTerceiro(${t.id}, '${mes}')" title="Encerrar esta recorrência nos meses seguintes">Encerrar</button>` : ""}
                   </div>
                 </div>
                 <div class="terc-row-desc">${t.descricao}</div>
@@ -16142,6 +16173,7 @@ Total: ${moeda(total)}`;
                   <div class="terc-meta-mini"><span class="k">Categoria</span>${categoriaTerceiroSelect(t.id, t.categoria || "Outros")}</div>
                   <div class="terc-meta-dot"></div>
                   <div class="terc-meta-mini"><span class="k">Tipo</span>${tipoTerceiroSelect(t.id, tipoLancamento)}</div>
+                  ${tipoLancamento === "Recorrente" ? `<div class="terc-meta-mini terc-meta-encerrar"><button type="button" class="terc-recorrencia-mini" onclick="encerrarRecorrenciaTerceiro(${t.id}, '${mes}')" title="Encerrar esta recorrência nos meses seguintes">Encerrar</button></div>` : ""}
                 </div>
               </div>
 
