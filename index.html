@@ -38329,3 +38329,53 @@ Total: ${moeda(total)}`;
   }, 1200);
 })();
 </script>
+
+
+<script id="cmfin-fix-label-dividas-v40">
+(function(){
+  "use strict";
+
+  function corrigirNomeAbaDividas(){
+    var candidatos = Array.from(document.querySelectorAll('.nav button, button'));
+    candidatos.forEach(function(btn){
+      var dm = btn.getAttribute('data-module') || '';
+      var oc = btn.getAttribute('onclick') || '';
+      var ehDividas = dm === 'dividasTerceiros' || oc.indexOf("dividasTerceiros") !== -1 || btn.id === 'navDividasTerceiros';
+      if(ehDividas){
+        btn.id = 'navDividasTerceiros';
+        btn.setAttribute('data-module', 'dividasTerceiros');
+        btn.setAttribute('onclick', "mudarModulo('dividasTerceiros')");
+        btn.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
+        btn.title = 'Dívidas com Terceiros';
+        btn.setAttribute('aria-label', 'Dívidas com Terceiros');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    corrigirNomeAbaDividas();
+    setTimeout(corrigirNomeAbaDividas, 100);
+    setTimeout(corrigirNomeAbaDividas, 500);
+    setTimeout(corrigirNomeAbaDividas, 1200);
+  });
+
+  window.addEventListener('load', function(){
+    corrigirNomeAbaDividas();
+    setTimeout(corrigirNomeAbaDividas, 400);
+    setTimeout(corrigirNomeAbaDividas, 1500);
+  });
+
+  var mudarOriginal = window.mudarModulo;
+  if(typeof mudarOriginal === 'function' && !mudarOriginal.__cmfinV40Fix){
+    window.mudarModulo = function(){
+      var r = mudarOriginal.apply(this, arguments);
+      setTimeout(corrigirNomeAbaDividas, 50);
+      setTimeout(corrigirNomeAbaDividas, 300);
+      return r;
+    };
+    window.mudarModulo.__cmfinV40Fix = true;
+    try { mudarModulo = window.mudarModulo; } catch(e) {}
+  }
+})();
+</script>
+
