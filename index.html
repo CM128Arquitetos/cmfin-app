@@ -38318,3 +38318,95 @@ Total: ${moeda(total)}`;
   }, 1200);
 })();
 </script>
+
+
+<script id="cmfin-fix-nav-dividas-terceiros-v37">
+(function(){
+  "use strict";
+
+  function garantirBotaoDividasTerceiros(){
+    var nav = document.querySelector(".nav");
+    if(!nav) return;
+
+    var btnTerceiros = document.getElementById("navTerceiros") || nav.querySelector('button[data-module="terceiros"]');
+    var btnDividas = document.getElementById("navDividasTerceiros") || nav.querySelector('button[data-module="dividasTerceiros"]');
+
+    if(!btnDividas && btnTerceiros){
+      btnDividas = document.createElement("button");
+      btnDividas.id = "navDividasTerceiros";
+      btnDividas.setAttribute("data-module", "dividasTerceiros");
+      btnDividas.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
+      btnTerceiros.insertAdjacentElement("afterend", btnDividas);
+    }
+
+    if(btnDividas){
+      btnDividas.id = "navDividasTerceiros";
+      btnDividas.setAttribute("data-module", "dividasTerceiros");
+      btnDividas.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
+      btnDividas.setAttribute("title", "Dívidas com Terceiros");
+      btnDividas.setAttribute("aria-label", "Dívidas com Terceiros");
+      btnDividas.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
+    }
+
+    var ativos = nav.querySelectorAll("button.active");
+    ativos.forEach(function(btn){
+      if(btn !== btnDividas && (btn.id === "navDividasTerceiros" || btn.getAttribute("data-module") === "dividasTerceiros")){
+        btn.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
+      }
+    });
+  }
+
+  function reforcarQuandoAbaAtiva(){
+    var modulo = document.querySelector(".module.active");
+    if(!modulo || modulo.id !== "dividasTerceiros") return;
+
+    var titulo = document.getElementById("tituloModulo");
+    var subtitulo = document.getElementById("subtituloModulo");
+    if(titulo) titulo.innerText = "Dívidas com Terceiros";
+    if(subtitulo) subtitulo.innerText = "Controle valores que você deve para outras pessoas, com vencimentos, pagamentos parciais e anexos.";
+
+    var btnDividas = document.getElementById("navDividasTerceiros");
+    if(btnDividas){
+      document.querySelectorAll(".nav button").forEach(function(b){ b.classList.remove("active"); });
+      btnDividas.classList.add("active");
+      btnDividas.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
+    }
+  }
+
+  function aplicarFix(){
+    garantirBotaoDividasTerceiros();
+    reforcarQuandoAbaAtiva();
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    aplicarFix();
+    setTimeout(aplicarFix, 100);
+    setTimeout(aplicarFix, 400);
+    setTimeout(aplicarFix, 1000);
+  });
+
+  window.addEventListener("load", function(){
+    aplicarFix();
+    setTimeout(aplicarFix, 250);
+    setTimeout(aplicarFix, 900);
+    setTimeout(aplicarFix, 1800);
+  });
+
+  var observer;
+  function observarNav(){
+    var nav = document.querySelector(".nav");
+    if(!nav || observer) return;
+    observer = new MutationObserver(function(){ aplicarFix(); });
+    observer.observe(nav, { childList:true, subtree:true, characterData:true });
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", observarNav);
+  }else{
+    observarNav();
+  }
+
+  setInterval(aplicarFix, 2000);
+})();
+</script>
+
