@@ -8799,7 +8799,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <button id="navPagamentosArquitetos" data-module="pagamentosArquitetos" onclick="mudarModulo('pagamentosArquitetos')"><span class="icon">▧</span>Sócios e Pró-Labore</button>
         <button data-module="recebimentos" onclick="mudarModulo('recebimentos')"><span class="icon">↓</span>Recebimentos</button>
         <button id="navTerceiros" data-module="terceiros" onclick="mudarModulo('terceiros')"><span class="icon">☷</span>Gastos por Terceiros</button>
-        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">⇄</span>Dívidas com Terceiros</button>
+        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">◔</span>Dívidas com Terceiros</button>
         <button data-module="bancos" onclick="mudarModulo('bancos')"><span class="icon">⌂</span>Bancos e Cartões</button>
         <button data-module="analiseFinanceira" onclick="mudarModulo('analiseFinanceira')"><span class="icon">!</span>Análise Financeira</button>
         <button data-module="configuracoes" onclick="mudarModulo('configuracoes')"><span class="icon">⚙</span>Configurações</button>
@@ -10178,12 +10178,30 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                   <input id="dtcValorPago" placeholder="R$ 0,00" oninput="formatarCampoMoeda && formatarCampoMoeda(this)" />
                 </div>
                 <div>
-                  <label>Data da dívida</label>
-                  <input id="dtcData" type="date" />
+                  <label>Mês da dívida</label>
+                  <div class="month-field">
+                    <input type="hidden" id="dtcData" />
+                    <button type="button" class="month-trigger empty" id="dtcDataDisplay" onclick="abrirSeletorMes('dtcData','Mês da Dívida')">
+                      <div>
+                        <span class="month-value" id="dtcDataDisplayText">Selecionar mês</span>
+                        <span class="month-sub">Toque para escolher</span>
+                      </div>
+                      <span class="month-icon">📅</span>
+                    </button>
+                  </div>
                 </div>
                 <div>
-                  <label>Vencimento</label>
-                  <input id="dtcVencimento" type="date" />
+                  <label>Mês de vencimento</label>
+                  <div class="month-field">
+                    <input type="hidden" id="dtcVencimento" />
+                    <button type="button" class="month-trigger empty" id="dtcVencimentoDisplay" onclick="abrirSeletorMes('dtcVencimento','Mês de Vencimento')">
+                      <div>
+                        <span class="month-value" id="dtcVencimentoDisplayText">Selecionar mês</span>
+                        <span class="month-sub">Toque para escolher</span>
+                      </div>
+                      <span class="month-icon">📅</span>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label>Forma de pagamento</label>
@@ -12398,8 +12416,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     function mudarModulo(id) {
       if (!document.getElementById(id)) id = "dashboard";
-      if (id === "terceiros" && modoAtual === "empresarial") {
-        alert("A aba Terceiros está disponível apenas no Modo Pessoal.");
+      if ((id === "terceiros" || id === "dividasTerceiros") && modoAtual === "empresarial") {
+        alert("Esta aba está disponível apenas no Modo Pessoal.");
         id = "dashboard";
       }
       if (["pagamentosTerceirizados", "pagamentosArquitetos"].includes(id) && modoAtual === "pessoal") {
@@ -12420,7 +12438,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         pagamentosArquitetos: ["", "Sócios e Pró-Labore", "Controle pró-labore, bônus, distribuição de lucros, adiantamentos e reembolsos dos sócios."],
         cartoes: ["", "Cartões de Crédito", "Gerencie faturas, limites, vencimentos e parcelamentos."],
         recebimentos: ["", "Recebimentos", "Registre salários, rendas extras e outras entradas."],
-        terceiros: ["", "Terceiros", "Controle compras feitas por outras pessoas no seu cartão e acompanhe o que precisa receber."],
+        terceiros: ["", "Gastos por Terceiros", "Controle compras feitas por outras pessoas no seu cartão e acompanhe o que precisa receber."],
+        dividasTerceiros: ["", "Dívidas com Terceiros", "Controle valores que você deve para outras pessoas, com vencimentos, pagamentos parciais e anexos."],
         bancos: ["", "Bancos e Cartões", "Gerencie bancos, cartões, crédito, débito, Pix, saldos e movimentações."],
         objetivos: ["", "Objetivos", "Cadastre metas financeiras e acompanhe o progresso de cada objetivo."],
         documentos: ["", "Notas & Documentos", "Controle notas fiscais, vencimentos, comprovantes e lançamentos integrados aos gastos."],
@@ -12445,6 +12464,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       if (mod === "pagamentosArquitetos") return abrirModalPagamentoArquiteto();
       if (mod === "recebimentos") return abrirModalRecebimento();
       if (mod === "terceiros") return salvarLancamentoTerceiro();
+      if (mod === "dividasTerceiros") return dtcSalvarDivida();
       if (mod === "bancos") return abrirModalBanco();
       abrirModal("modalVariavel");
     }
@@ -29618,6 +29638,18 @@ Total: ${moeda(total)}`;
   function normalizar(v){ return String(v || "").trim(); }
   function normalizarLicenca(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function hojeISO(){ return new Date().toISOString().slice(0,10); }
+  function hojeMes(){ return new Date().toISOString().slice(0,7); }
+  function mesLegivel(v){
+    if(!v) return "-";
+    if(typeof nomeMes === "function" && /^\d{4}-\d{2}$/.test(String(v))) return nomeMes(v);
+    return String(v);
+  }
+  function definirMes(id, valor){
+    if(typeof setValorMes === "function") setValorMes(id, valor || "");
+    else {
+      var el=document.getElementById(id); if(el) el.value = valor || "";
+    }
+  }
 
   // V22: normaliza booleanos vindos do Supabase/RPC.
   // O Supabase pode devolver true, "true", "TRUE", 1, "1", "sim" etc.
@@ -31475,7 +31507,7 @@ Total: ${moeda(total)}`;
   function hojeISO(){ return new Date().toISOString().slice(0,10); }
   function vencida(item){
     var pend=Math.max(0,Number(item.valorTotal||0)-Number(item.valorPago||0));
-    return pend>0 && item.vencimento && item.vencimento < hojeISO() && item.status !== "Pago";
+    return pend>0 && item.vencimento && item.vencimento < hojeMes() && item.status !== "Pago";
   }
   function statusReal(item){
     if(vencida(item)) return "Vencido";
@@ -31522,9 +31554,11 @@ Total: ${moeda(total)}`;
   }
 
   window.dtcLimparFormulario=function(){
-    ["dtcIdEdicao","dtcCredor","dtcCategoria","dtcDescricao","dtcValorTotal","dtcValorPago","dtcData","dtcVencimento","dtcObs"].forEach(function(id){
+    ["dtcIdEdicao","dtcCredor","dtcCategoria","dtcDescricao","dtcValorTotal","dtcValorPago","dtcObs"].forEach(function(id){
       var el=document.getElementById(id); if(el) el.value="";
     });
+    definirMes("dtcData", "");
+    definirMes("dtcVencimento", "");
     var forma=document.getElementById("dtcForma"); if(forma) forma.value="Pix";
     var status=document.getElementById("dtcStatus"); if(status) status.value="Pendente";
     var anexo=document.getElementById("dtcAnexo"); if(anexo) anexo.value="";
@@ -31555,7 +31589,7 @@ Total: ${moeda(total)}`;
       descricao: descricao,
       valorTotal: valorTotal,
       valorPago: valorPago,
-      data:(document.getElementById("dtcData")||{}).value || hojeISO(),
+      data:(document.getElementById("dtcData")||{}).value || hojeMes(),
       vencimento:(document.getElementById("dtcVencimento")||{}).value || "",
       forma:(document.getElementById("dtcForma")||{}).value || "Pix",
       status:(document.getElementById("dtcStatus")||{}).value || "Pendente",
@@ -31582,8 +31616,8 @@ Total: ${moeda(total)}`;
     document.getElementById("dtcDescricao").value=item.descricao||"";
     document.getElementById("dtcValorTotal").value=moeda(item.valorTotal||0);
     document.getElementById("dtcValorPago").value=moeda(item.valorPago||0);
-    document.getElementById("dtcData").value=item.data||"";
-    document.getElementById("dtcVencimento").value=item.vencimento||"";
+    definirMes("dtcData", item.data||"");
+    definirMes("dtcVencimento", item.vencimento||"");
     document.getElementById("dtcForma").value=item.forma||"Pix";
     document.getElementById("dtcStatus").value=item.status||"Pendente";
     document.getElementById("dtcObs").value=item.obs||"";
@@ -31662,7 +31696,7 @@ Total: ${moeda(total)}`;
       return '<tr>'+
         '<td><strong>'+esc(x.credor)+'</strong><br><small>'+esc(x.categoria||"")+'</small></td>'+
         '<td>'+esc(x.descricao)+'</td>'+
-        '<td>'+(x.vencimento?x.vencimento.split("-").reverse().join("/"):"-")+'</td>'+
+        '<td>'+mesLegivel(x.vencimento)+'</td>'+
         '<td><span class="dtc-status '+st+'">'+st+'</span></td>'+
         '<td class="right">'+moeda(x.valorTotal||0)+'</td>'+
         '<td class="right">'+moeda(x.valorPago||0)+'</td>'+
@@ -31700,7 +31734,13 @@ Total: ${moeda(total)}`;
     try{ mudarModulo=window.mudarModulo; }catch(e){}
   }
 
-  document.addEventListener("DOMContentLoaded", function(){ setTimeout(dtcRenderizar,120); });
+  document.addEventListener("DOMContentLoaded", function(){
+    var btnNav = document.getElementById("navDividasTerceiros");
+    if(btnNav) btnNav.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
+    setTimeout(dtcRenderizar,120);
+  });
+  var btnNavInit = document.getElementById("navDividasTerceiros");
+  if(btnNavInit) btnNavInit.innerHTML = '<span class="icon">◔</span>Dívidas com Terceiros';
   setTimeout(dtcRenderizar,250);
 })();
 </script>
