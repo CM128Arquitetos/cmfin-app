@@ -31831,6 +31831,165 @@ Total: ${moeda(total)}`;
   }
 </style>
 
+
+<style id="cmfin-perfil-nav-fix-v51-style">
+  .cmfin-profile-nav-btn{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    min-height:56px !important;
+    padding:0 14px !important;
+    border:1px solid transparent !important;
+    border-radius:18px !important;
+    background:transparent !important;
+    color:#ffffff !important;
+    font:inherit !important;
+    font-weight:900 !important;
+    text-align:left !important;
+    cursor:pointer !important;
+    box-shadow:none !important;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease !important;
+  }
+
+  .cmfin-profile-nav-btn:hover{
+    background:rgba(255,255,255,.08) !important;
+  }
+
+  .cmfin-profile-nav-btn.active{
+    background:#ffffff !important;
+    color:#082f27 !important;
+    border-color:#ef4444 !important;
+    box-shadow:0 10px 24px rgba(2,6,23,.12) !important;
+  }
+
+  .cmfin-profile-nav-btn .icon{
+    width:30px !important;
+    height:30px !important;
+    min-width:30px !important;
+    flex:0 0 30px !important;
+    display:inline-grid !important;
+    place-items:center !important;
+    border-radius:10px !important;
+    background:rgba(255,255,255,.08) !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.12) !important;
+    color:rgba(255,255,255,.92) !important;
+    line-height:1 !important;
+  }
+
+  .cmfin-profile-nav-btn.active .icon{
+    background:#eef2f1 !important;
+    border-color:#d7e0dd !important;
+    color:#6b7280 !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.90), 0 8px 18px rgba(15,23,42,.06) !important;
+  }
+
+  .cmfin-profile-nav-btn .icon svg{
+    width:16px !important;
+    height:16px !important;
+    display:block !important;
+    stroke:currentColor !important;
+    fill:none !important;
+    stroke-width:1.9 !important;
+    stroke-linecap:round !important;
+    stroke-linejoin:round !important;
+  }
+
+  .cmfin-profile-nav-btn .cmfin-profile-label{
+    display:inline-block !important;
+    white-space:nowrap !important;
+  }
+</style>
+
+<script id="cmfin-perfil-nav-fix-v51-js">
+(function(){
+  "use strict";
+
+  function norm(txt){
+    return String(txt || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function perfilIconHTML(){
+    return '<span class="icon" aria-hidden="true">'
+      + '<svg viewBox="0 0 24 24" aria-hidden="true">'
+      + '<circle cx="12" cy="8" r="3.2"></circle>'
+      + '<path d="M5.5 19.2c1.9-3.5 4.5-5.2 6.5-5.2s4.6 1.7 6.5 5.2"></path>'
+      + '</svg>'
+      + '</span>';
+  }
+
+  function perfilAtivo(){
+    var bodyAtivo = document.body.classList.contains("cmfin-perfil-ativo");
+    var page = document.getElementById("cmfinPerfilUsuarioPage");
+    var pageAtiva = !!(page && page.style.display !== "none" && page.classList.contains("active"));
+    var titulo = document.getElementById("tituloModulo") || document.querySelector(".topbar h1") || document.querySelector("h1");
+    var tituloOk = titulo && ["perfil", "perfil pessoal", "perfil empresarial"].includes(norm(titulo.textContent));
+    return bodyAtivo || pageAtiva || tituloOk;
+  }
+
+  function fixPerfilBtn(){
+    var btn = document.getElementById("cmfinPerfilNavBtn");
+    if(!btn) return;
+
+    btn.classList.add("cmfin-profile-nav-btn");
+    btn.innerHTML = perfilIconHTML() + '<span class="cmfin-profile-label">Perfil</span>';
+
+    if(perfilAtivo()){
+      btn.classList.add("active");
+    }else{
+      btn.classList.remove("active");
+    }
+  }
+
+  function apply(){
+    fixPerfilBtn();
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(apply, 120);
+    setTimeout(apply, 500);
+    setTimeout(apply, 1200);
+  });
+
+  window.addEventListener("load", function(){
+    apply();
+    setTimeout(apply, 350);
+    setTimeout(apply, 1000);
+  });
+
+  var originalAbrir = window.cmfinAbrirPerfilUsuario;
+  if(typeof originalAbrir === "function" && !originalAbrir.__cmfinPerfilFixV51){
+    window.cmfinAbrirPerfilUsuario = function(){
+      var r = originalAbrir.apply(this, arguments);
+      setTimeout(apply, 50);
+      setTimeout(apply, 250);
+      return r;
+    };
+    window.cmfinAbrirPerfilUsuario.__cmfinPerfilFixV51 = true;
+  }
+
+  var originalMudar = window.mudarModulo;
+  if(typeof originalMudar === "function" && !originalMudar.__cmfinPerfilFixV51){
+    window.mudarModulo = function(){
+      var r = originalMudar.apply(this, arguments);
+      setTimeout(apply, 60);
+      setTimeout(apply, 250);
+      return r;
+    };
+    window.mudarModulo.__cmfinPerfilFixV51 = true;
+    try{ mudarModulo = window.mudarModulo; }catch(e){}
+  }
+
+  setInterval(apply, 1200);
+})();
+</script>
+
 </body>
 </html>
 
