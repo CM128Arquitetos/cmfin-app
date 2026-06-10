@@ -32005,6 +32005,51 @@ Total: ${moeda(total)}`;
   }
 </style>
 
+
+<style id="cmfin-perfil-icone-padrao-analise-v55">
+  /* Força o ícone do Perfil ativo a seguir o mesmo padrão visual dos demais, como Análise Financeira */
+  #cmfinPerfilNavBtn.active .icon,
+  .cmfin-profile-nav-btn.active .icon{
+    background:#eef2f1 !important;
+    border:1px solid #d7e0dd !important;
+    color:#115246 !important;
+    opacity:1 !important;
+    filter:none !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.90), 0 8px 18px rgba(15,23,42,.06) !important;
+  }
+
+  #cmfinPerfilNavBtn.active .icon svg,
+  .cmfin-profile-nav-btn.active .icon svg{
+    stroke:#115246 !important;
+    color:#115246 !important;
+    opacity:1 !important;
+    filter:none !important;
+  }
+
+  #cmfinPerfilNavBtn .icon,
+  .cmfin-profile-nav-btn .icon{
+    opacity:1 !important;
+  }
+
+  #cmfinPerfilNavBtn.cmfin-profile-icon-only-white .icon,
+  #cmfinPerfilNavBtn.cmfin-profile-icon-only-white .icon svg,
+  #cmfinPerfilNavBtn .cmfin-profile-user-icon-white,
+  #cmfinPerfilNavBtn .cmfin-profile-user-icon-white svg{
+    color:inherit !important;
+    stroke:currentColor !important;
+    opacity:1 !important;
+    filter:none !important;
+  }
+
+  #cmfinPerfilNavBtn.active.cmfin-profile-icon-only-white .icon,
+  #cmfinPerfilNavBtn.active .cmfin-profile-user-icon-white{
+    color:#115246 !important;
+    stroke:#115246 !important;
+    opacity:1 !important;
+    filter:none !important;
+  }
+</style>
+
 </body>
 </html>
 
