@@ -31756,6 +31756,72 @@ Total: ${moeda(total)}`;
 })();
 </script>
 
+
+<style id="cmfin-dividas-icon-style-v43">
+  .nav button[data-module="dividasTerceiros"] .icon,
+  #navDividasTerceiros .icon{
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    border-radius: 10px !important;
+    background: rgba(255,255,255,.08) !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.12) !important;
+    color: rgba(255,255,255,.92) !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    flex: 0 0 30px !important;
+  }
+
+  .nav button.active[data-module="dividasTerceiros"] .icon,
+  #navDividasTerceiros.active .icon{
+    background: rgba(17,82,70,.08) !important;
+    border: 1px solid rgba(17,82,70,.14) !important;
+    color: var(--brand-green) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(17,82,70,.10) !important;
+  }
+</style>
+
+
+<script id="cmfin-dividas-icon-fix-v43">
+(function(){
+  function padronizarBotaoDividas(){
+    var btn = document.getElementById("navDividasTerceiros") ||
+              document.querySelector('.nav button[data-module="dividasTerceiros"]');
+    if(!btn) return;
+    btn.id = "navDividasTerceiros";
+    btn.setAttribute("data-module", "dividasTerceiros");
+    btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
+    btn.innerHTML = '<span class="icon">↺</span>Dívidas com Terceiros';
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    padronizarBotaoDividas();
+    setTimeout(padronizarBotaoDividas, 150);
+    setTimeout(padronizarBotaoDividas, 600);
+  });
+
+  window.addEventListener("load", function(){
+    padronizarBotaoDividas();
+    setTimeout(padronizarBotaoDividas, 400);
+  });
+
+  var mudarOriginal = window.mudarModulo;
+  if(typeof mudarOriginal === "function" && !mudarOriginal.__cmfinDividasIconV43){
+    window.mudarModulo = function(){
+      var r = mudarOriginal.apply(this, arguments);
+      setTimeout(padronizarBotaoDividas, 60);
+      return r;
+    };
+    window.mudarModulo.__cmfinDividasIconV43 = true;
+    try { mudarModulo = window.mudarModulo; } catch(e) {}
+  }
+})();
+</script>
+
 </body>
 </html>
 
