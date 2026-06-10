@@ -8799,7 +8799,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <button id="navPagamentosArquitetos" data-module="pagamentosArquitetos" onclick="mudarModulo('pagamentosArquitetos')"><span class="icon">▧</span>Sócios e Pró-Labore</button>
         <button data-module="recebimentos" onclick="mudarModulo('recebimentos')"><span class="icon">↓</span>Recebimentos</button>
         <button id="navTerceiros" data-module="terceiros" onclick="mudarModulo('terceiros')"><span class="icon">☷</span>Gastos por Terceiros</button>
-        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">↘</span>Dívidas com Terceiros</button>
+        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">$↗</span>Dívidas com Terceiros</button>
         <button data-module="bancos" onclick="mudarModulo('bancos')"><span class="icon">⌂</span>Bancos e Cartões</button>
         <button data-module="analiseFinanceira" onclick="mudarModulo('analiseFinanceira')"><span class="icon">!</span>Análise Financeira</button>
         <button data-module="configuracoes" onclick="mudarModulo('configuracoes')"><span class="icon">⚙</span>Configurações</button>
@@ -30901,7 +30901,7 @@ Total: ${moeda(total)}`;
     { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰" },
     { id:"recebimentos", label:"Recebimentos", icon:"↓" },
     { id:"terceiros", label:"Gastos por Terceiros", icon:"☷" },
-    { id:"dividasTerceiros", label:"Dívidas com Terceiros", icon:"↘" },
+    { id:"dividasTerceiros", label:"Dívidas com Terceiros", icon:"$↗" },
     { id:"bancos", label:"Bancos e Cartões", icon:"▣" },
     { id:"objetivos", label:"Objetivos", icon:"◎" },
     { id:"analiseFinanceira", label:"Análise Financeira", icon:"▥" }
@@ -31037,7 +31037,7 @@ Total: ${moeda(total)}`;
     }
 
     corrigirItemNavModulo("terceiros", "Gastos por Terceiros", "☷");
-    corrigirItemNavModulo("dividasTerceiros", "Dívidas com Terceiros", "↘");
+    corrigirItemNavModulo("dividasTerceiros", "Dívidas com Terceiros", "$↗");
 
     var modTerceirosTitulo = document.querySelector('#terceiros .module-header h2, #terceiros h2');
     if(modTerceirosTitulo && /terceiros/i.test(modTerceirosTitulo.textContent || "")){
@@ -31747,11 +31747,11 @@ Total: ${moeda(total)}`;
 
   document.addEventListener("DOMContentLoaded", function(){
     var btnNav = document.getElementById("navDividasTerceiros");
-    if(btnNav) btnNav.innerHTML = '<span class="icon">↘</span>Dívidas com Terceiros';
+    if(btnNav) btnNav.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
     setTimeout(dtcRenderizar,120);
   });
   var btnNavInit = document.getElementById("navDividasTerceiros");
-  if(btnNavInit) btnNavInit.innerHTML = '<span class="icon">↘</span>Dívidas com Terceiros';
+  if(btnNavInit) btnNavInit.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
   setTimeout(dtcRenderizar,250);
 })();
 </script>
@@ -31795,7 +31795,7 @@ Total: ${moeda(total)}`;
     btn.id = "navDividasTerceiros";
     btn.setAttribute("data-module", "dividasTerceiros");
     btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
-    btn.innerHTML = '<span class="icon">↘</span>Dívidas com Terceiros';
+    btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
   }
 
   document.addEventListener("DOMContentLoaded", function(){
@@ -31821,6 +31821,15 @@ Total: ${moeda(total)}`;
   }
 })();
 </script>
+
+
+<style id="cmfin-icon-dividas-v47">
+  .nav button[data-module="dividasTerceiros"] .icon,
+  #navDividasTerceiros .icon{
+    font-size: 13px !important;
+    letter-spacing: -0.02em !important;
+  }
+</style>
 
 </body>
 </html>
@@ -38411,7 +38420,7 @@ Total: ${moeda(total)}`;
         btn.id = 'navDividasTerceiros';
         btn.setAttribute('data-module', 'dividasTerceiros');
         btn.setAttribute('onclick', "mudarModulo('dividasTerceiros')");
-        btn.innerHTML = '<span class="icon">↘</span>Dívidas com Terceiros';
+        btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
         btn.title = 'Dívidas com Terceiros';
         btn.setAttribute('aria-label', 'Dívidas com Terceiros');
       }
@@ -38456,7 +38465,7 @@ Total: ${moeda(total)}`;
     btn.id = "navDividasTerceiros";
     btn.setAttribute("data-module", "dividasTerceiros");
     btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
-    btn.innerHTML = '<span class="icon">↘</span>Dívidas com Terceiros';
+    btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
   }
 
   document.addEventListener("DOMContentLoaded", function(){
