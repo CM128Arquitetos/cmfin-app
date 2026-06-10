@@ -5095,7 +5095,7 @@
       min-height: 38px !important;
       padding: 7px 6px !important;
       border-radius: 12px !important;
-      font-size: 13px !important;
+      font-size: 14px !important;
       text-align: center !important;
       width: 100% !important;
       min-width: 0 !important;
@@ -5168,11 +5168,11 @@
       overflow: hidden !important;
     }
     #dashboard .dashboard-compact-grid > .panel:first-child .allocation-item strong{
-      font-size: 13px !important;
+      font-size: 14px !important;
       line-height: 1.15 !important;
     }
     #dashboard .dashboard-compact-grid > .panel:first-child .allocation-item > strong:last-child{
-      font-size: 13px !important;
+      font-size: 14px !important;
       white-space: nowrap !important;
       text-align: right !important;
     }
@@ -5269,7 +5269,7 @@
     #pagamentosTerceirizados th,
     #pagamentosTerceirizados td{
       padding: 12px 10px !important;
-      font-size: 13px !important;
+      font-size: 14px !important;
       line-height: 1.25 !important;
       word-break: normal !important;
       overflow-wrap: normal !important;
@@ -6323,7 +6323,7 @@ html, body{
 .filtros label,
 .filtros-row label,
 [data-filter-group] label {
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.15 !important;
   font-weight: 800 !important;
 }
@@ -6907,7 +6907,7 @@ button[data-clear-filters],
   min-height: 44px !important;
   padding: 0 18px !important;
   border-radius: 13px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 900 !important;
   white-space: nowrap !important;
   box-shadow: 0 12px 24px rgba(219, 37, 45, .23) !important;
@@ -6922,7 +6922,7 @@ button[data-clear-filters],
   min-height: 44px !important;
   padding: 0 16px !important;
   border-radius: 13px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 900 !important;
   white-space: nowrap !important;
 }
@@ -6989,7 +6989,7 @@ button[data-clear-filters],
   border-radius: 12px !important;
   background-color: #ffffff !important;
   color: #0f172a !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 43px !important;
   font-weight: 700 !important;
   box-shadow: none !important;
@@ -8799,7 +8799,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <button id="navPagamentosArquitetos" data-module="pagamentosArquitetos" onclick="mudarModulo('pagamentosArquitetos')"><span class="icon">▧</span>Sócios e Pró-Labore</button>
         <button data-module="recebimentos" onclick="mudarModulo('recebimentos')"><span class="icon">↓</span>Recebimentos</button>
         <button id="navTerceiros" data-module="terceiros" onclick="mudarModulo('terceiros')"><span class="icon">☷</span>Gastos por Terceiros</button>
-        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">$↗</span>Dívidas com Terceiros</button>
+        <button id="navDividasTerceiros" data-module="dividasTerceiros" onclick="mudarModulo('dividasTerceiros')"><span class="icon">⚠</span>Dívidas com Terceiros</button>
         <button data-module="bancos" onclick="mudarModulo('bancos')"><span class="icon">⌂</span>Bancos e Cartões</button>
         <button data-module="analiseFinanceira" onclick="mudarModulo('analiseFinanceira')"><span class="icon">!</span>Análise Financeira</button>
         <button data-module="configuracoes" onclick="mudarModulo('configuracoes')"><span class="icon">⚙</span>Configurações</button>
@@ -30901,7 +30901,7 @@ Total: ${moeda(total)}`;
     { id:"gastosVariaveis", label:"Gastos Variáveis", icon:"☰" },
     { id:"recebimentos", label:"Recebimentos", icon:"↓" },
     { id:"terceiros", label:"Gastos por Terceiros", icon:"☷" },
-    { id:"dividasTerceiros", label:"Dívidas com Terceiros", icon:"$↗" },
+    { id:"dividasTerceiros", label:"Dívidas com Terceiros", icon:"⚠" },
     { id:"bancos", label:"Bancos e Cartões", icon:"▣" },
     { id:"objetivos", label:"Objetivos", icon:"◎" },
     { id:"analiseFinanceira", label:"Análise Financeira", icon:"▥" }
@@ -31037,7 +31037,7 @@ Total: ${moeda(total)}`;
     }
 
     corrigirItemNavModulo("terceiros", "Gastos por Terceiros", "☷");
-    corrigirItemNavModulo("dividasTerceiros", "Dívidas com Terceiros", "$↗");
+    corrigirItemNavModulo("dividasTerceiros", "Dívidas com Terceiros", "⚠");
 
     var modTerceirosTitulo = document.querySelector('#terceiros .module-header h2, #terceiros h2');
     if(modTerceirosTitulo && /terceiros/i.test(modTerceirosTitulo.textContent || "")){
@@ -31747,11 +31747,11 @@ Total: ${moeda(total)}`;
 
   document.addEventListener("DOMContentLoaded", function(){
     var btnNav = document.getElementById("navDividasTerceiros");
-    if(btnNav) btnNav.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
+    if(btnNav) btnNav.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
     setTimeout(dtcRenderizar,120);
   });
   var btnNavInit = document.getElementById("navDividasTerceiros");
-  if(btnNavInit) btnNavInit.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
+  if(btnNavInit) btnNavInit.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
   setTimeout(dtcRenderizar,250);
 })();
 </script>
@@ -31770,7 +31770,7 @@ Total: ${moeda(total)}`;
     border: 1px solid rgba(255,255,255,.10) !important;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.12) !important;
     color: rgba(255,255,255,.92) !important;
-    font-size: 15px !important;
+    font-size: 14px !important;
     line-height: 1 !important;
     text-align: center !important;
     flex: 0 0 30px !important;
@@ -31795,7 +31795,7 @@ Total: ${moeda(total)}`;
     btn.id = "navDividasTerceiros";
     btn.setAttribute("data-module", "dividasTerceiros");
     btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
-    btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
+    btn.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
   }
 
   document.addEventListener("DOMContentLoaded", function(){
@@ -31826,7 +31826,7 @@ Total: ${moeda(total)}`;
 <style id="cmfin-icon-dividas-v47">
   .nav button[data-module="dividasTerceiros"] .icon,
   #navDividasTerceiros .icon{
-    font-size: 13px !important;
+    font-size: 14px !important;
     letter-spacing: -0.02em !important;
   }
 </style>
@@ -37906,7 +37906,7 @@ Total: ${moeda(total)}`;
 #terceiros .terc-main-launch .month-trigger{
   height: 39px !important;
   min-height: 39px !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 #terceiros .terc-table-panel{
@@ -38420,7 +38420,7 @@ Total: ${moeda(total)}`;
         btn.id = 'navDividasTerceiros';
         btn.setAttribute('data-module', 'dividasTerceiros');
         btn.setAttribute('onclick', "mudarModulo('dividasTerceiros')");
-        btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
+        btn.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
         btn.title = 'Dívidas com Terceiros';
         btn.setAttribute('aria-label', 'Dívidas com Terceiros');
       }
@@ -38465,7 +38465,7 @@ Total: ${moeda(total)}`;
     btn.id = "navDividasTerceiros";
     btn.setAttribute("data-module", "dividasTerceiros");
     btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
-    btn.innerHTML = '<span class="icon">$↗</span>Dívidas com Terceiros';
+    btn.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
   }
 
   document.addEventListener("DOMContentLoaded", function(){
