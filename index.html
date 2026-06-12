@@ -29855,7 +29855,7 @@ Total: ${moeda(total)}`;
     var hoje = hojeISO();
 
     var query = client
-      .from("licencas")
+      .from("cmfin_licencas")
       .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,dispositivos_autorizados,senha_temporaria,senha_alterada_em")
       .eq("usuario", normalizar(usuario))
       .eq("senha", normalizar(senha))
@@ -29864,7 +29864,7 @@ Total: ${moeda(total)}`;
 
     var { data: row, error } = await query;
     if(error){
-      console.warn("Falha no fallback direto da tabela licencas:", error);
+      console.warn("Falha no fallback direto da tabela cmfin_licencas:", error);
       return { ok:false, mensagem: mensagemOriginal || "Não foi possível validar a licença no servidor." };
     }
     if(!row) return { ok:false, mensagem:"Usuário, senha ou licença inválidos." };
@@ -29919,7 +29919,7 @@ Total: ${moeda(total)}`;
     };
     if(!row.ativada_em) updatePayload.ativada_em = new Date().toISOString();
 
-    var { error: upErr } = await client.from("licencas").update(updatePayload).eq("id", row.id);
+    var { error: upErr } = await client.from("cmfin_licencas").update(updatePayload).eq("id", row.id);
     if(upErr){
       console.warn("Licença validada, mas não foi possível atualizar dispositivos:", upErr);
     }
@@ -29948,19 +29948,19 @@ Total: ${moeda(total)}`;
     var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
     var q = null;
     try{
-      q = await client.from("licencas").select(selects)
+      q = await client.from("cmfin_licencas").select(selects)
         .eq("usuario", normalizar(usuario))
         .eq("licenca", normalizarLicenca(licenca))
         .maybeSingle();
       if((!q || !q.data) && senha){
-        q = await client.from("licencas").select(selects)
+        q = await client.from("cmfin_licencas").select(selects)
           .eq("usuario", normalizar(usuario))
           .eq("senha", normalizar(senha))
           .eq("licenca", normalizarLicenca(licenca))
           .maybeSingle();
       }
       if((!q || !q.data) && normalizarLicenca(licenca)){
-        q = await client.from("licencas").select(selects)
+        q = await client.from("cmfin_licencas").select(selects)
           .eq("licenca", normalizarLicenca(licenca))
           .maybeSingle();
       }
@@ -30166,7 +30166,7 @@ Total: ${moeda(total)}`;
           var data = null;
           if(res.error){
             console.warn("Erro RPC primeiro acesso, tentando update direto:", res.error);
-            var up = await client.from("licencas").update({
+            var up = await client.from("cmfin_licencas").update({
               senha: novaSenha,
               senha_temporaria: false,
               senha_alterada_em: new Date().toISOString()
@@ -31162,10 +31162,10 @@ Total: ${moeda(total)}`;
       var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
       var q = null;
       if(s.usuario && s.licenca){
-        q = await c.from("licencas").select(selects).eq("usuario", norm(s.usuario)).eq("licenca", normLic(s.licenca)).maybeSingle();
+        q = await c.from("cmfin_licencas").select(selects).eq("usuario", norm(s.usuario)).eq("licenca", normLic(s.licenca)).maybeSingle();
       }
       if((!q || !q.data) && s.licenca){
-        q = await c.from("licencas").select(selects).eq("licenca", normLic(s.licenca)).maybeSingle();
+        q = await c.from("cmfin_licencas").select(selects).eq("licenca", normLic(s.licenca)).maybeSingle();
       }
       if(q && q.data) salvar(pair, q.data);
     }catch(e){ console.warn("V23: falha ao sincronizar sessão/licença no Supabase", e); }
@@ -31271,14 +31271,14 @@ Total: ${moeda(total)}`;
     // 2) Fallback direto na tabela, caso a policy permita.
     try{
       var q = await client
-        .from("licencas")
+        .from("cmfin_licencas")
         .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
         .eq("usuario", norm(sessao.usuario))
         .eq("licenca", normLic(sessao.licenca))
         .maybeSingle();
       if((!q || !q.data) && normLic(sessao.licenca)){
         q = await client
-          .from("licencas")
+          .from("cmfin_licencas")
           .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
           .eq("licenca", normLic(sessao.licenca))
           .maybeSingle();
@@ -31377,7 +31377,7 @@ Total: ${moeda(total)}`;
         var d = null;
         if(res.error){
           console.warn('V19 RPC primeiro acesso falhou, tentando update direto:', res.error);
-          var up = await client.from('licencas').update({
+          var up = await client.from('cmfin_licencas').update({
             senha: nova,
             senha_temporaria: false,
             senha_alterada_em: new Date().toISOString()
