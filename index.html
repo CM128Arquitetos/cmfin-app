@@ -39269,3 +39269,550 @@ Total: ${moeda(total)}`;
   });
 })();
 </script>
+
+<style id="cmfin-dashboard-categorias-dividas-style-v1">
+  #dashboard .cmfin-pessoal-extra-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr);
+    gap:18px;
+    margin-top:18px;
+  }
+  #dashboard .cmfin-cat-panel,
+  #dashboard .cmfin-dividas-alert-panel{
+    min-width:0;
+    overflow:hidden;
+  }
+  #dashboard .cmfin-cat-summary{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:13px 15px;
+    margin-bottom:14px;
+    border:1px solid #dbe8e2;
+    border-radius:16px;
+    background:#f8fbfa;
+  }
+  #dashboard .cmfin-cat-summary span{
+    color:#667784;
+    font-size:12px;
+    font-weight:800;
+  }
+  #dashboard .cmfin-cat-summary strong{
+    color:#0f1720;
+    font-size:20px;
+    white-space:nowrap;
+  }
+  #dashboard .cmfin-cat-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:11px;
+  }
+  #dashboard .cmfin-cat-item{
+    min-width:0;
+    padding:13px;
+    border:1px solid #e0e9e5;
+    border-radius:17px;
+    background:linear-gradient(180deg,#fff 0%,#f9fcfb 100%);
+  }
+  #dashboard .cmfin-cat-item.cmfin-cat-zero{opacity:.62}
+  #dashboard .cmfin-cat-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+  }
+  #dashboard .cmfin-cat-name{
+    min-width:0;
+    color:#263a36;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+  #dashboard .cmfin-cat-percent{
+    flex:0 0 auto;
+    padding:4px 7px;
+    border-radius:999px;
+    background:#eef8f3;
+    color:#0f766e;
+    font-size:10px;
+    font-weight:950;
+  }
+  #dashboard .cmfin-cat-value{
+    display:block;
+    margin-top:10px;
+    color:#0f1720;
+    font-size:19px;
+    letter-spacing:-.03em;
+  }
+  #dashboard .cmfin-cat-meta{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:8px;
+    color:#73827f;
+    font-size:10px;
+    line-height:1.35;
+  }
+  #dashboard .cmfin-cat-bar{
+    height:6px;
+    margin-top:10px;
+    border-radius:999px;
+    overflow:hidden;
+    background:#e7eeeb;
+  }
+  #dashboard .cmfin-cat-bar i{
+    display:block;
+    height:100%;
+    min-width:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg,#0f766e,#2fb69e);
+  }
+  #dashboard .cmfin-dividas-hero{
+    padding:16px;
+    border-radius:19px;
+    border:1px solid #fed7aa;
+    background:linear-gradient(135deg,#fff7ed,#fffaf5);
+  }
+  #dashboard .cmfin-dividas-hero.cmfin-dividas-danger{
+    border-color:#fecdd3;
+    background:linear-gradient(135deg,#fff1f2,#fff8f8);
+  }
+  #dashboard .cmfin-dividas-hero.cmfin-dividas-ok{
+    border-color:#bbf7d0;
+    background:linear-gradient(135deg,#ecfdf5,#f6fffa);
+  }
+  #dashboard .cmfin-dividas-status-line{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  #dashboard .cmfin-dividas-status-line span{
+    color:#9a3412;
+    font-size:11px;
+    font-weight:950;
+    text-transform:uppercase;
+    letter-spacing:.055em;
+  }
+  #dashboard .cmfin-dividas-danger .cmfin-dividas-status-line span{color:#be123c}
+  #dashboard .cmfin-dividas-ok .cmfin-dividas-status-line span{color:#047857}
+  #dashboard .cmfin-dividas-status-line b{
+    padding:5px 8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.72);
+    color:#7c2d12;
+    font-size:10px;
+  }
+  #dashboard .cmfin-dividas-danger .cmfin-dividas-status-line b{color:#9f1239}
+  #dashboard .cmfin-dividas-ok .cmfin-dividas-status-line b{color:#047857}
+  #dashboard .cmfin-dividas-total{
+    display:block;
+    margin-top:9px;
+    color:#7c2d12;
+    font-size:27px;
+    letter-spacing:-.045em;
+  }
+  #dashboard .cmfin-dividas-danger .cmfin-dividas-total{color:#9f1239}
+  #dashboard .cmfin-dividas-ok .cmfin-dividas-total{color:#047857}
+  #dashboard .cmfin-dividas-caption{
+    margin:5px 0 0;
+    color:#7c6259;
+    font-size:12px;
+    line-height:1.4;
+  }
+  #dashboard .cmfin-dividas-stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+    margin-top:12px;
+  }
+  #dashboard .cmfin-dividas-stat{
+    padding:11px;
+    border:1px solid #e4ebe8;
+    border-radius:14px;
+    background:#fff;
+  }
+  #dashboard .cmfin-dividas-stat span{
+    display:block;
+    color:#71817d;
+    font-size:10px;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.045em;
+  }
+  #dashboard .cmfin-dividas-stat strong{
+    display:block;
+    margin-top:5px;
+    color:#17211f;
+    font-size:16px;
+  }
+  #dashboard .cmfin-dividas-list{
+    display:grid;
+    gap:8px;
+    margin-top:13px;
+  }
+  #dashboard .cmfin-divida-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    padding:11px 0;
+    border-bottom:1px solid #e8efec;
+  }
+  #dashboard .cmfin-divida-row:last-child{border-bottom:0}
+  #dashboard .cmfin-divida-row > div{min-width:0}
+  #dashboard .cmfin-divida-row strong{
+    display:block;
+    color:#263a36;
+    font-size:12px;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+  #dashboard .cmfin-divida-row small{
+    display:block;
+    margin-top:4px;
+    color:#71817d;
+    font-size:10px;
+    line-height:1.3;
+  }
+  #dashboard .cmfin-divida-row b{
+    flex:0 0 auto;
+    color:#b45309;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  #dashboard .cmfin-divida-row.cmfin-vencida b{color:#be123c}
+  #dashboard .cmfin-dividas-empty{
+    padding:15px;
+    margin-top:12px;
+    border:1px dashed #cfe0da;
+    border-radius:15px;
+    color:#667784;
+    background:#f8fbfa;
+    text-align:center;
+    font-size:12px;
+  }
+  #dashboard .cmfin-dividas-footer{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:13px;
+  }
+  @media(max-width:1180px){
+    #dashboard .cmfin-pessoal-extra-grid{grid-template-columns:1fr}
+    #dashboard .cmfin-cat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media(max-width:680px){
+    #dashboard .cmfin-cat-grid{grid-template-columns:1fr}
+    #dashboard .cmfin-cat-summary{align-items:flex-start;flex-direction:column}
+  }
+</style>
+
+<script id="cmfin-dashboard-categorias-dividas-script-v1">
+(function(){
+  "use strict";
+
+  var MAIN_KEY = "cmfin_gestao_financeira_inteligente_dados";
+  var DTC_KEY = "cmfin_dividas_terceiros";
+
+  function id(nome){ return document.getElementById(nome); }
+
+  function esc(valor){
+    return String(valor == null ? "" : valor).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"}[c];
+    });
+  }
+
+  function brl(valor){
+    return Number(valor || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+  }
+
+  function lerJson(chave, fallback){
+    try{
+      var raw = localStorage.getItem(chave);
+      if(raw == null) return fallback;
+      var parsed = JSON.parse(raw);
+      return parsed == null ? fallback : parsed;
+    }catch(e){
+      return fallback;
+    }
+  }
+
+  function obterModo(){
+    try{
+      if(typeof modoAtual !== "undefined" && modoAtual) return String(modoAtual);
+    }catch(e){}
+    var base = lerJson(MAIN_KEY, {});
+    return String(base.modoAtual || "pessoal");
+  }
+
+  function obterPessoal(){
+    var base = lerJson(MAIN_KEY, {});
+    if(base && base.modos && base.modos.pessoal) return base.modos.pessoal;
+    return {};
+  }
+
+  function mesSelecionado(){
+    var campo = id("dashboardMes");
+    if(campo && /^\d{4}-\d{2}$/.test(campo.value || "")) return campo.value;
+    return new Date().toISOString().slice(0,7);
+  }
+
+  function nomeMes(valor){
+    var nomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var p = String(valor || "").split("-");
+    return p.length === 2 ? ((nomes[Number(p[1])-1] || p[1]) + " de " + p[0]) : String(valor || "");
+  }
+
+  function mesDoFixo(item){
+    return item && (item.mesReferencia || item.mesInicial || "");
+  }
+
+  function fixoExisteNoMes(item, mes){
+    if(!item) return false;
+    var tipo = item.tipo || "Recorrente";
+    var inicio = item.mesInicial || item.mesReferencia || "";
+    if(tipo !== "Parcelado") return !inicio || inicio <= mes;
+    var total = Math.max(Number(item.totalParcelas || 1), 1);
+    if(!/^\d{4}-\d{2}$/.test(inicio)) return mesDoFixo(item) === mes;
+    var inicioData = new Date(Number(inicio.slice(0,4)), Number(inicio.slice(5,7))-1, 1);
+    var fimData = new Date(inicioData.getFullYear(), inicioData.getMonth() + total - 1, 1);
+    var fim = fimData.getFullYear() + "-" + String(fimData.getMonth()+1).padStart(2,"0");
+    return mes >= inicio && mes <= fim;
+  }
+
+  function mesDoVariavel(item){
+    if(!item) return "";
+    return item.mesReferencia || item.primeiraFatura || (item.data ? String(item.data).slice(0,7) : "");
+  }
+
+  function obterCategoriasMes(){
+    var pessoal = obterPessoal();
+    var mes = mesSelecionado();
+    var fixos = Array.isArray(pessoal.gastosFixos) ? pessoal.gastosFixos : [];
+    var variaveis = Array.isArray(pessoal.gastosVariaveis) ? pessoal.gastosVariaveis : [];
+    var categoriasBase = Array.isArray(pessoal.categorias) ? pessoal.categorias.slice() : [];
+
+    // Quando o Modo Pessoal está aberto, reutiliza exatamente as regras de competência
+    // já existentes no CMFin, inclusive ajustes manuais de parcelas dos Gastos Fixos.
+    try{
+      if(obterModo() === "pessoal" && typeof gastosFixosDoMes === "function") fixos = gastosFixosDoMes(mes);
+      if(obterModo() === "pessoal" && typeof gastosVariaveisDoMes === "function") variaveis = gastosVariaveisDoMes(mes);
+      if(obterModo() === "pessoal" && typeof categorias !== "undefined" && Array.isArray(categorias)) categoriasBase = categorias.slice();
+    }catch(e){}
+
+    var mapa = {};
+
+    function garantir(nome){
+      nome = String(nome || "Sem categoria").trim() || "Sem categoria";
+      if(!mapa[nome]) mapa[nome] = {nome:nome, fixos:0, variaveis:0, total:0};
+      return mapa[nome];
+    }
+
+    categoriasBase.forEach(garantir);
+
+    fixos.forEach(function(item){
+      if(!fixoExisteNoMes(item, mes)) return;
+      var reg = garantir(item.categoria);
+      reg.fixos += Number(item.valor || 0);
+      reg.total += Number(item.valor || 0);
+    });
+
+    variaveis.forEach(function(item){
+      if(mesDoVariavel(item) !== mes) return;
+      var reg = garantir(item.categoria);
+      reg.variaveis += Number(item.valor || 0);
+      reg.total += Number(item.valor || 0);
+    });
+
+    return Object.keys(mapa).map(function(k){ return mapa[k]; }).sort(function(a,b){
+      if(b.total !== a.total) return b.total - a.total;
+      return a.nome.localeCompare(b.nome, "pt-BR");
+    });
+  }
+
+  function lerDividas(){
+    var dedicadas = lerJson(DTC_KEY, null);
+    if(Array.isArray(dedicadas)) return dedicadas;
+    var pessoal = obterPessoal();
+    return Array.isArray(pessoal.dividasTerceiros) ? pessoal.dividasTerceiros : [];
+  }
+
+  function pendencia(item){
+    return Math.max(0, Number(item && item.valorTotal || 0) - Number(item && item.valorPago || 0));
+  }
+
+  function criarEstrutura(){
+    var dashboard = id("dashboard");
+    if(!dashboard) return null;
+    var existente = id("cmfinPessoalCategoriasDividas");
+    if(existente) return existente;
+
+    var alvo = dashboard.querySelector(".dashboard-lower-grid") || dashboard.querySelector(".panel:last-of-type");
+    if(!alvo) return null;
+
+    var bloco = document.createElement("div");
+    bloco.id = "cmfinPessoalCategoriasDividas";
+    bloco.className = "cmfin-pessoal-extra-grid";
+    bloco.innerHTML =
+      '<div class="panel cmfin-cat-panel">' +
+        '<div class="panel-header"><div><h2 id="cmfinCatTitulo">Gastos por Categoria</h2><p>Totais do mês selecionado, somando Gastos Fixos e Gastos Variáveis.</p></div></div>' +
+        '<div class="cmfin-cat-summary"><span>Total categorizado no mês</span><strong id="cmfinCatTotal">R$ 0,00</strong></div>' +
+        '<div class="cmfin-cat-grid" id="cmfinCatGrid"></div>' +
+      '</div>' +
+      '<div class="panel cmfin-dividas-alert-panel">' +
+        '<div class="panel-header"><div><h2>Dívidas com Terceiros</h2><p>Aviso automático das obrigações pessoais pendentes.</p></div></div>' +
+        '<div id="cmfinDividasHero" class="cmfin-dividas-hero">' +
+          '<div class="cmfin-dividas-status-line"><span id="cmfinDividasStatus">Atenção</span><b id="cmfinDividasQtd">0 dívida(s)</b></div>' +
+          '<strong class="cmfin-dividas-total" id="cmfinDividasTotal">R$ 0,00</strong>' +
+          '<p class="cmfin-dividas-caption" id="cmfinDividasCaption">Total ainda devido a terceiros.</p>' +
+        '</div>' +
+        '<div class="cmfin-dividas-stats">' +
+          '<div class="cmfin-dividas-stat"><span>Vencidas</span><strong id="cmfinDividasVencidas">0</strong></div>' +
+          '<div class="cmfin-dividas-stat"><span>Vencem no mês</span><strong id="cmfinDividasMes">0</strong></div>' +
+        '</div>' +
+        '<div class="cmfin-dividas-list" id="cmfinDividasLista"></div>' +
+        '<div class="cmfin-dividas-footer"><button class="btn btn-primary btn-small" type="button" id="cmfinAbrirDividas">Abrir Dívidas</button></div>' +
+      '</div>';
+
+    alvo.parentNode.insertBefore(bloco, alvo);
+    var abrir = id("cmfinAbrirDividas");
+    if(abrir){
+      abrir.addEventListener("click", function(){
+        if(typeof window.mudarModulo === "function") window.mudarModulo("dividasTerceiros");
+      });
+    }
+    return bloco;
+  }
+
+  function renderCategorias(){
+    var categoriasMes = obterCategoriasMes();
+    var total = categoriasMes.reduce(function(s,i){ return s + Number(i.total || 0); }, 0);
+    var grid = id("cmfinCatGrid");
+    var titulo = id("cmfinCatTitulo");
+    if(titulo) titulo.textContent = "Gastos por Categoria — " + nomeMes(mesSelecionado());
+    if(id("cmfinCatTotal")) id("cmfinCatTotal").textContent = brl(total);
+    if(!grid) return;
+
+    if(!categoriasMes.length){
+      grid.innerHTML = '<div class="cmfin-dividas-empty" style="grid-column:1/-1">Nenhuma categoria cadastrada.</div>';
+      return;
+    }
+
+    grid.innerHTML = categoriasMes.map(function(item){
+      var pct = total > 0 ? (item.total / total) * 100 : 0;
+      return '<article class="cmfin-cat-item' + (item.total <= 0 ? ' cmfin-cat-zero' : '') + '">' +
+        '<div class="cmfin-cat-head"><div class="cmfin-cat-name">' + esc(item.nome) + '</div><span class="cmfin-cat-percent">' + pct.toFixed(1).replace(".",",") + '%</span></div>' +
+        '<strong class="cmfin-cat-value">' + brl(item.total) + '</strong>' +
+        '<div class="cmfin-cat-meta"><span>Fixos: ' + brl(item.fixos) + '</span><span>Variáveis: ' + brl(item.variaveis) + '</span></div>' +
+        '<div class="cmfin-cat-bar"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div>' +
+      '</article>';
+    }).join("");
+  }
+
+  function renderDividas(){
+    var mes = mesSelecionado();
+    var hoje = new Date().toISOString().slice(0,7);
+    var lista = lerDividas().map(function(item){
+      return {item:item, pendente:pendencia(item)};
+    }).filter(function(reg){ return reg.pendente > 0 && String(reg.item.status || "Pendente") !== "Pago"; });
+
+    lista.sort(function(a,b){
+      return String(a.item.vencimento || "9999-99").localeCompare(String(b.item.vencimento || "9999-99"));
+    });
+
+    var total = lista.reduce(function(s,r){ return s + r.pendente; }, 0);
+    var vencidas = lista.filter(function(r){ return r.item.vencimento && r.item.vencimento < hoje; }).length;
+    var vencemMes = lista.filter(function(r){ return r.item.vencimento === mes; }).length;
+    var hero = id("cmfinDividasHero");
+
+    if(id("cmfinDividasTotal")) id("cmfinDividasTotal").textContent = brl(total);
+    if(id("cmfinDividasQtd")) id("cmfinDividasQtd").textContent = lista.length + " dívida(s)";
+    if(id("cmfinDividasVencidas")) id("cmfinDividasVencidas").textContent = String(vencidas);
+    if(id("cmfinDividasMes")) id("cmfinDividasMes").textContent = String(vencemMes);
+
+    if(hero){
+      hero.classList.remove("cmfin-dividas-danger", "cmfin-dividas-ok");
+      if(!lista.length) hero.classList.add("cmfin-dividas-ok");
+      else if(vencidas) hero.classList.add("cmfin-dividas-danger");
+    }
+
+    if(id("cmfinDividasStatus")){
+      id("cmfinDividasStatus").textContent = !lista.length ? "Tudo em dia" : (vencidas ? "Existem dívidas vencidas" : "Dívidas pendentes");
+    }
+    if(id("cmfinDividasCaption")){
+      id("cmfinDividasCaption").textContent = !lista.length
+        ? "Nenhuma dívida com terceiros está pendente."
+        : (vencidas ? "Regularize primeiro as dívidas vencidas." : "Total ainda devido a terceiros.");
+    }
+
+    var area = id("cmfinDividasLista");
+    if(!area) return;
+    if(!lista.length){
+      area.innerHTML = '<div class="cmfin-dividas-empty">Nenhuma dívida pendente cadastrada.</div>';
+      return;
+    }
+
+    area.innerHTML = lista.slice(0,5).map(function(reg){
+      var item = reg.item;
+      var vencida = item.vencimento && item.vencimento < hoje;
+      var vencimento = item.vencimento ? nomeMes(item.vencimento) : "Sem vencimento";
+      return '<div class="cmfin-divida-row' + (vencida ? ' cmfin-vencida' : '') + '">' +
+        '<div><strong>' + esc(item.credor || "Sem credor") + '</strong><small>' + esc(item.descricao || "Dívida") + ' · ' + esc(vencimento) + (vencida ? ' · Vencida' : '') + '</small></div>' +
+        '<b>' + brl(reg.pendente) + '</b>' +
+      '</div>';
+    }).join("");
+  }
+
+  function render(){
+    var bloco = criarEstrutura();
+    if(!bloco) return;
+    var pessoal = obterModo() === "pessoal";
+    bloco.style.display = pessoal ? "grid" : "none";
+    if(!pessoal) return;
+    renderCategorias();
+    renderDividas();
+  }
+
+  function instalarGanchos(){
+    if(typeof window.renderizarTudo === "function" && !window.renderizarTudo.__cmfinCategoriasDividasV1){
+      var renderOriginal = window.renderizarTudo;
+      window.renderizarTudo = function(){
+        var retorno = renderOriginal.apply(this, arguments);
+        setTimeout(render, 0);
+        return retorno;
+      };
+      window.renderizarTudo.__cmfinCategoriasDividasV1 = true;
+    }
+
+    if(typeof window.dtcRenderizar === "function" && !window.dtcRenderizar.__cmfinCategoriasDividasV1){
+      var dtcOriginal = window.dtcRenderizar;
+      window.dtcRenderizar = function(){
+        var retorno = dtcOriginal.apply(this, arguments);
+        setTimeout(render, 0);
+        return retorno;
+      };
+      window.dtcRenderizar.__cmfinCategoriasDividasV1 = true;
+    }
+  }
+
+  function iniciar(){
+    instalarGanchos();
+    render();
+    setTimeout(function(){ instalarGanchos(); render(); }, 120);
+    setTimeout(function(){ instalarGanchos(); render(); }, 700);
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+
+  document.addEventListener("change", function(evento){
+    if(evento.target && (evento.target.id === "dashboardMes" || evento.target.id === "dashboardAno")) setTimeout(render, 60);
+  }, true);
+
+  window.addEventListener("storage", function(evento){
+    if(evento.key === MAIN_KEY || evento.key === DTC_KEY) setTimeout(render, 40);
+  });
+})();
+</script>
