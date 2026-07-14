@@ -38856,3 +38856,416 @@ Total: ${moeda(total)}`;
 })();
 </script>
 
+
+
+<script id="cmfin-dividas-terceiros-correcao-definitiva-v3">
+(function(){
+  "use strict";
+
+  var DTC_KEY = "cmfin_dividas_terceiros";
+  var MAIN_KEY = "cmfin_gestao_financeira_inteligente_dados";
+
+  function el(id){ return document.getElementById(id); }
+
+  function moeda(valor){
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  function parseMoney(valor){
+    var texto = String(valor == null ? "" : valor).trim();
+    if(!texto) return 0;
+    texto = texto.replace(/R\$/gi, "").replace(/\s/g, "");
+    if(texto.indexOf(",") >= 0){
+      texto = texto.replace(/\./g, "").replace(",", ".");
+    }else{
+      texto = texto.replace(/[^0-9.\-]/g, "");
+    }
+    var numero = Number(texto);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+
+  function hojeMes(){
+    return new Date().toISOString().slice(0, 7);
+  }
+
+  function mesLegivel(valor){
+    if(!valor) return "-";
+    var partes = String(valor).split("-");
+    if(partes.length !== 2) return String(valor);
+    var nomes = {
+      "01":"Janeiro", "02":"Fevereiro", "03":"Março", "04":"Abril",
+      "05":"Maio", "06":"Junho", "07":"Julho", "08":"Agosto",
+      "09":"Setembro", "10":"Outubro", "11":"Novembro", "12":"Dezembro"
+    };
+    return (nomes[partes[1]] || partes[1]) + " de " + partes[0];
+  }
+
+  function esc(valor){
+    return String(valor == null ? "" : valor).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"}[c];
+    });
+  }
+
+  function lerBasePrincipal(){
+    try{
+      var raw = localStorage.getItem(MAIN_KEY);
+      return raw ? (JSON.parse(raw) || {}) : {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function lerDividas(){
+    try{
+      var raw = localStorage.getItem(DTC_KEY);
+      if(raw !== null){
+        var dedicado = JSON.parse(raw || "[]");
+        return Array.isArray(dedicado) ? dedicado : [];
+      }
+    }catch(e){}
+
+    try{
+      var base = lerBasePrincipal();
+      var migradas = base && base.modos && base.modos.pessoal && base.modos.pessoal.dividasTerceiros;
+      if(Array.isArray(migradas)){
+        localStorage.setItem(DTC_KEY, JSON.stringify(migradas));
+        return migradas;
+      }
+    }catch(e){}
+
+    return [];
+  }
+
+  function gravarDividas(lista){
+    if(!Array.isArray(lista)) throw new Error("Lista de dívidas inválida.");
+
+    localStorage.setItem(DTC_KEY, JSON.stringify(lista));
+
+    // Espelha somente este módulo na base principal, sem alterar os demais dados.
+    try{
+      var base = lerBasePrincipal();
+      if(base && base.modos && typeof base.modos === "object"){
+        if(!base.modos.pessoal || typeof base.modos.pessoal !== "object"){
+          base.modos.pessoal = {};
+        }
+        base.modos.pessoal.dividasTerceiros = lista;
+        localStorage.setItem(MAIN_KEY, JSON.stringify(base));
+      }
+    }catch(e){
+      console.warn("CMFin: não foi possível espelhar as dívidas na base principal.", e);
+    }
+  }
+
+  function definirMes(id, valor){
+    var input = el(id);
+    if(input) input.value = valor || "";
+
+    var texto = el(id + "DisplayText");
+    if(texto) texto.textContent = valor ? mesLegivel(valor) : "Selecionar mês";
+
+    var botao = el(id + "Display");
+    if(botao) botao.classList.toggle("empty", !valor);
+  }
+
+  function lerArquivo(input){
+    return new Promise(function(resolve){
+      var arquivo = input && input.files && input.files[0];
+      if(!arquivo){ resolve(null); return; }
+
+      var reader = new FileReader();
+      reader.onload = function(){
+        resolve({
+          nome: arquivo.name,
+          tipo: arquivo.type || "application/octet-stream",
+          tamanho: arquivo.size,
+          conteudo: reader.result
+        });
+      };
+      reader.onerror = function(){ resolve(null); };
+      reader.readAsDataURL(arquivo);
+    });
+  }
+
+  function estaVencida(item){
+    var pendente = Math.max(0, Number(item.valorTotal || 0) - Number(item.valorPago || 0));
+    return pendente > 0 && item.vencimento && item.vencimento < hojeMes() && item.status !== "Pago";
+  }
+
+  function statusReal(item){
+    if(estaVencida(item)) return "Vencido";
+    var total = Number(item.valorTotal || 0);
+    var pago = Number(item.valorPago || 0);
+    if(total > 0 && pago >= total) return "Pago";
+    if(pago > 0) return "Parcial";
+    return item.status || "Pendente";
+  }
+
+  window.dtcLimparFormulario = function(){
+    ["dtcIdEdicao", "dtcCredor", "dtcCategoria", "dtcDescricao", "dtcValorTotal", "dtcValorPago", "dtcObs"].forEach(function(id){
+      var campo = el(id);
+      if(campo) campo.value = "";
+    });
+
+    definirMes("dtcData", "");
+    definirMes("dtcVencimento", "");
+
+    if(el("dtcForma")) el("dtcForma").value = "Pix";
+    if(el("dtcStatus")) el("dtcStatus").value = "Pendente";
+    if(el("dtcAnexo")) el("dtcAnexo").value = "";
+    if(el("dtcAnexoAtual")) el("dtcAnexoAtual").textContent = "Você pode anexar boleto, comprovante, contrato, print ou acordo.";
+    if(el("dtcFormTitulo")) el("dtcFormTitulo").textContent = "Nova dívida";
+  };
+
+  window.dtcSalvarDivida = async function(){
+    try{
+      var credor = el("dtcCredor") ? el("dtcCredor").value.trim() : "";
+      var descricao = el("dtcDescricao") ? el("dtcDescricao").value.trim() : "";
+      var valorTotal = parseMoney(el("dtcValorTotal") ? el("dtcValorTotal").value : "");
+      var valorPago = parseMoney(el("dtcValorPago") ? el("dtcValorPago").value : "");
+
+      if(!credor){ alert("Informe o credor / pessoa."); return false; }
+      if(!descricao){ alert("Informe a descrição da dívida."); return false; }
+      if(!(valorTotal > 0)){ alert("Informe o valor total da dívida."); return false; }
+
+      if(valorPago < 0) valorPago = 0;
+      if(valorPago > valorTotal) valorPago = valorTotal;
+
+      var lista = lerDividas();
+      var idEdicao = el("dtcIdEdicao") ? el("dtcIdEdicao").value : "";
+      var indice = lista.findIndex(function(item){ return String(item.id) === String(idEdicao); });
+      var existente = indice >= 0 ? lista[indice] : null;
+      var novoAnexo = await lerArquivo(el("dtcAnexo"));
+
+      var item = {
+        id: existente ? existente.id : ("dtc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)),
+        credor: credor,
+        categoria: el("dtcCategoria") && el("dtcCategoria").value.trim() ? el("dtcCategoria").value.trim() : "Sem categoria",
+        descricao: descricao,
+        valorTotal: valorTotal,
+        valorPago: valorPago,
+        data: el("dtcData") && el("dtcData").value ? el("dtcData").value : hojeMes(),
+        vencimento: el("dtcVencimento") ? (el("dtcVencimento").value || "") : "",
+        forma: el("dtcForma") ? (el("dtcForma").value || "Pix") : "Pix",
+        status: el("dtcStatus") ? (el("dtcStatus").value || "Pendente") : "Pendente",
+        obs: el("dtcObs") ? (el("dtcObs").value || "") : "",
+        anexo: novoAnexo || (existente && existente.anexo ? existente.anexo : null),
+        atualizadoEm: new Date().toISOString()
+      };
+
+      if(item.valorPago >= item.valorTotal){
+        item.status = "Pago";
+      }else if(item.valorPago > 0){
+        item.status = "Parcial";
+      }
+
+      if(indice >= 0) lista[indice] = item;
+      else lista.unshift(item);
+
+      gravarDividas(lista);
+      window.dtcRenderizar();
+      window.dtcLimparFormulario();
+      alert("Dívida salva com sucesso.");
+      return true;
+    }catch(erro){
+      console.error("CMFin — erro ao salvar dívida:", erro);
+      alert("Não foi possível salvar a dívida. Detalhe: " + (erro && erro.message ? erro.message : String(erro)));
+      return false;
+    }
+  };
+
+  window.dtcEditar = function(id){
+    var item = lerDividas().find(function(registro){ return String(registro.id) === String(id); });
+    if(!item) return;
+
+    if(el("dtcIdEdicao")) el("dtcIdEdicao").value = item.id;
+    if(el("dtcCredor")) el("dtcCredor").value = item.credor || "";
+    if(el("dtcCategoria")) el("dtcCategoria").value = item.categoria || "";
+    if(el("dtcDescricao")) el("dtcDescricao").value = item.descricao || "";
+    if(el("dtcValorTotal")) el("dtcValorTotal").value = moeda(item.valorTotal || 0);
+    if(el("dtcValorPago")) el("dtcValorPago").value = moeda(item.valorPago || 0);
+    definirMes("dtcData", item.data || "");
+    definirMes("dtcVencimento", item.vencimento || "");
+    if(el("dtcForma")) el("dtcForma").value = item.forma || "Pix";
+    if(el("dtcStatus")) el("dtcStatus").value = item.status || "Pendente";
+    if(el("dtcObs")) el("dtcObs").value = item.obs || "";
+    if(el("dtcFormTitulo")) el("dtcFormTitulo").textContent = "Editar dívida";
+    if(el("dtcAnexoAtual")){
+      el("dtcAnexoAtual").textContent = item.anexo
+        ? ("Anexo atual: " + item.anexo.nome + " — selecione outro arquivo para substituir.")
+        : "Nenhum anexo salvo.";
+    }
+    window.scrollTo({top:0, behavior:"smooth"});
+  };
+
+  window.dtcExcluir = function(id){
+    if(!confirm("Deseja excluir esta dívida?")) return;
+    var lista = lerDividas().filter(function(item){ return String(item.id) !== String(id); });
+    gravarDividas(lista);
+    window.dtcRenderizar();
+  };
+
+  window.dtcMarcarPago = function(id){
+    var lista = lerDividas();
+    lista.forEach(function(item){
+      if(String(item.id) === String(id)){
+        item.valorPago = Number(item.valorTotal || 0);
+        item.status = "Pago";
+        item.atualizadoEm = new Date().toISOString();
+      }
+    });
+    gravarDividas(lista);
+    window.dtcRenderizar();
+  };
+
+  window.dtcAbrirAnexo = function(id){
+    var item = lerDividas().find(function(registro){ return String(registro.id) === String(id); });
+    if(!item || !item.anexo || !item.anexo.conteudo){
+      alert("Nenhum anexo disponível.");
+      return;
+    }
+    var janela = window.open("");
+    if(!janela){
+      alert("O navegador bloqueou a abertura do anexo.");
+      return;
+    }
+    janela.document.write('<iframe src="' + item.anexo.conteudo + '" style="border:0;width:100%;height:100vh"></iframe>');
+  };
+
+  window.dtcRenderizar = function(){
+    var lista = lerDividas();
+    var filtro = el("dtcFiltroStatus") ? (el("dtcFiltroStatus").value || "todos") : "todos";
+    var total = 0;
+    var pago = 0;
+    var pendente = 0;
+    var vencidas = 0;
+
+    lista.forEach(function(item){
+      var valorTotal = Number(item.valorTotal || 0);
+      var valorPago = Number(item.valorPago || 0);
+      var valorPendente = Math.max(0, valorTotal - valorPago);
+      total += valorTotal;
+      pago += valorPago;
+      pendente += valorPendente;
+      if(estaVencida(item)) vencidas++;
+    });
+
+    [["dtcHeroPendente", pendente], ["dtcTotalDevido", total], ["dtcTotalPago", pago], ["dtcTotalPendente", pendente]].forEach(function(par){
+      if(el(par[0])) el(par[0]).textContent = moeda(par[1]);
+    });
+    if(el("dtcTotalVencidas")) el("dtcTotalVencidas").textContent = String(vencidas);
+
+    var porCredor = {};
+    lista.forEach(function(item){
+      var valorPendente = Math.max(0, Number(item.valorTotal || 0) - Number(item.valorPago || 0));
+      if(valorPendente <= 0) return;
+      var nome = item.credor || "Sem credor";
+      if(!porCredor[nome]) porCredor[nome] = {total:0, qtd:0};
+      porCredor[nome].total += valorPendente;
+      porCredor[nome].qtd++;
+    });
+
+    var resumo = el("dtcResumoCredores");
+    if(resumo){
+      var pessoas = Object.keys(porCredor).map(function(nome){ return [nome, porCredor[nome]]; });
+      pessoas.sort(function(a,b){ return b[1].total - a[1].total; });
+      resumo.innerHTML = pessoas.length
+        ? pessoas.map(function(pessoa){
+            return '<div class="dtc-person"><div class="dtc-person-top"><strong>' + esc(pessoa[0]) + '</strong><b>' + moeda(pessoa[1].total) + '</b></div><small>' + pessoa[1].qtd + ' dívida(s) pendente(s)</small></div>';
+          }).join("")
+        : '<div class="dtc-empty">Nenhuma dívida pendente por pessoa.</div>';
+    }
+
+    var linhas = lista.filter(function(item){
+      var status = statusReal(item);
+      return filtro === "todos" || status === filtro;
+    });
+    linhas.sort(function(a,b){
+      return String(a.vencimento || "9999-99").localeCompare(String(b.vencimento || "9999-99"));
+    });
+
+    var tbody = el("dtcTabela");
+    if(!tbody) return;
+
+    if(!linhas.length){
+      tbody.innerHTML = '<tr><td colspan="9"><div class="dtc-empty">Nenhuma dívida encontrada para o filtro selecionado.</div></td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = linhas.map(function(item){
+      var status = statusReal(item);
+      var valorPendente = Math.max(0, Number(item.valorTotal || 0) - Number(item.valorPago || 0));
+      var idSeguro = esc(item.id);
+      var anexo = item.anexo
+        ? '<button type="button" data-dtc-action="anexo" data-dtc-id="' + idSeguro + '">Abrir</button>'
+        : '-';
+
+      return '<tr>' +
+        '<td><strong>' + esc(item.credor) + '</strong><br><small>' + esc(item.categoria || "") + '</small></td>' +
+        '<td>' + esc(item.descricao) + '</td>' +
+        '<td>' + mesLegivel(item.vencimento) + '</td>' +
+        '<td><span class="dtc-status ' + esc(status) + '">' + esc(status) + '</span></td>' +
+        '<td class="right">' + moeda(item.valorTotal || 0) + '</td>' +
+        '<td class="right">' + moeda(item.valorPago || 0) + '</td>' +
+        '<td class="right"><strong>' + moeda(valorPendente) + '</strong></td>' +
+        '<td><div class="dtc-row-actions">' + anexo + '</div></td>' +
+        '<td><div class="dtc-row-actions">' +
+          '<button type="button" data-dtc-action="editar" data-dtc-id="' + idSeguro + '">Editar</button>' +
+          '<button type="button" data-dtc-action="pago" data-dtc-id="' + idSeguro + '">Pago</button>' +
+          '<button type="button" data-dtc-action="excluir" data-dtc-id="' + idSeguro + '">Excluir</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join("");
+  };
+
+  function instalarEventos(){
+    var secao = el("dividasTerceiros");
+    if(!secao) return;
+
+    var botaoSalvar = secao.querySelector('button[onclick*="dtcSalvarDivida"], #dtcSalvarBtn');
+    if(botaoSalvar && !botaoSalvar.dataset.dtcSaveBound){
+      botaoSalvar.id = "dtcSalvarBtn";
+      botaoSalvar.removeAttribute("onclick");
+      botaoSalvar.dataset.dtcSaveBound = "1";
+      botaoSalvar.addEventListener("click", function(evento){
+        evento.preventDefault();
+        window.dtcSalvarDivida();
+      });
+    }
+
+    if(!secao.dataset.dtcActionsBound){
+      secao.dataset.dtcActionsBound = "1";
+      secao.addEventListener("click", function(evento){
+        var botao = evento.target.closest("[data-dtc-action]");
+        if(!botao) return;
+        var acao = botao.getAttribute("data-dtc-action");
+        var id = botao.getAttribute("data-dtc-id");
+        if(acao === "editar") window.dtcEditar(id);
+        if(acao === "pago") window.dtcMarcarPago(id);
+        if(acao === "excluir") window.dtcExcluir(id);
+        if(acao === "anexo") window.dtcAbrirAnexo(id);
+      });
+    }
+  }
+
+  function iniciar(){
+    instalarEventos();
+    window.dtcRenderizar();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", iniciar);
+  }else{
+    iniciar();
+  }
+
+  window.addEventListener("load", function(){ setTimeout(iniciar, 100); });
+  document.addEventListener("click", function(evento){
+    if(evento.target && evento.target.closest('[data-module="dividasTerceiros"], #navDividasTerceiros')){
+      setTimeout(iniciar, 50);
+    }
+  });
+})();
+</script>
