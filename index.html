@@ -39816,3 +39816,295 @@ Total: ${moeda(total)}`;
   });
 })();
 </script>
+
+
+<!-- ELLO PATCH — Seleção e soma de Gastos Fixos e Variáveis (Modo Pessoal) -->
+<style id="ello-selecao-soma-gastos-v1-css">
+  .cmfin-selection-bar{
+    display:none;
+    margin:2px 0 16px;
+    padding:14px 16px;
+    border:1px solid rgba(15,118,110,.22);
+    border-radius:16px;
+    background:linear-gradient(135deg,rgba(240,253,250,.98),rgba(236,253,245,.92));
+    box-shadow:0 8px 22px rgba(15,118,110,.08);
+  }
+  .cmfin-selection-bar.is-visible{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .cmfin-selection-copy{display:flex;align-items:center;gap:12px;min-width:260px;flex:1}
+  .cmfin-selection-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#0f766e;color:#fff;font-size:20px;font-weight:800;box-shadow:0 6px 14px rgba(15,118,110,.22)}
+  .cmfin-selection-copy strong{display:block;color:#0f3f3a;font-size:15px;margin-bottom:3px}
+  .cmfin-selection-copy small{display:block;color:#52716d;line-height:1.35}
+  .cmfin-selection-totals{display:flex;align-items:stretch;gap:9px;flex-wrap:wrap}
+  .cmfin-selection-stat{min-width:122px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.86);border:1px solid rgba(15,118,110,.13)}
+  .cmfin-selection-stat span{display:block;color:#68817e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .cmfin-selection-stat b{display:block;margin-top:3px;color:#153f3a;font-size:15px;white-space:nowrap}
+  .cmfin-selection-stat.total{background:#0f766e;border-color:#0f766e}
+  .cmfin-selection-stat.total span,.cmfin-selection-stat.total b{color:#fff}
+  .cmfin-selection-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .cmfin-select-col{width:46px;min-width:46px;text-align:center!important;padding-left:8px!important;padding-right:8px!important}
+  .cmfin-pay-checkbox,.cmfin-select-all-checkbox{width:18px;height:18px;accent-color:#0f766e;cursor:pointer;vertical-align:middle}
+  .cmfin-pay-checkbox:disabled{cursor:not-allowed;opacity:.35}
+  tr.cmfin-row-selected>td{background:rgba(20,184,166,.075)!important}
+  tr.cmfin-row-selected>td:first-child{box-shadow:inset 3px 0 0 #0f766e}
+  @media(max-width:900px){
+    .cmfin-selection-bar.is-visible{align-items:stretch}
+    .cmfin-selection-totals{width:100%}
+    .cmfin-selection-stat{flex:1;min-width:110px}
+    .cmfin-selection-actions{width:100%}
+    .cmfin-selection-actions .btn{flex:1;justify-content:center}
+  }
+</style>
+<script id="ello-selecao-soma-gastos-v1">
+(function(){
+  'use strict';
+  var selecoes = new Map();
+
+  function modoAtualSeguro(){
+    try { return (typeof modoAtual !== 'undefined' && modoAtual === 'empresarial') ? 'empresarial' : 'pessoal'; }
+    catch(e){ return 'pessoal'; }
+  }
+  function dinheiro(valor){
+    var n=Number(valor)||0;
+    try { if(typeof moeda==='function') return moeda(n); } catch(e){}
+    return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function esc(txt){
+    return String(txt==null?'':txt).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
+  }
+  function chave(tipo,id,mes){
+    return [modoAtualSeguro(),tipo,String(id),tipo==='fixos'?String(mes||''):''].join('|');
+  }
+  function itemPorId(tipo,id){
+    try {
+      var lista = tipo==='fixos' ? gastosFixos : gastosVariaveis;
+      return Array.isArray(lista) ? lista.find(function(x){return Number(x.id)===Number(id);}) : null;
+    } catch(e){ return null; }
+  }
+  function nomeItem(tipo,item){
+    if(!item) return tipo==='fixos'?'Gasto fixo':'Gasto variável';
+    return String(tipo==='fixos' ? (item.nome||'Gasto fixo') : (item.descricao||item.nome||'Gasto variável'));
+  }
+  function podeSelecionarLinha(linha){
+    var status=linha && linha.querySelector('select.status-select');
+    var valor=String(status?status.value:'Pendente').toLowerCase().replace(/\s+/g,'');
+    return valor!=='pago' && valor!=='naoincluir' && valor!=='naoincluso' && valor!=='desconsiderado';
+  }
+  function criarBarra(tipo){
+    var modulo=document.getElementById(tipo==='fixos'?'gastosFixos':'gastosVariaveis');
+    if(!modulo) return null;
+    var id='cmfinSelectionBar-'+tipo;
+    var existente=document.getElementById(id);
+    if(existente) return existente;
+    var painel=modulo.querySelector('.panel');
+    var tabela=modulo.querySelector('.finance-table-wrap');
+    if(!painel||!tabela) return null;
+    var barra=document.createElement('div');
+    barra.id=id;
+    barra.className='cmfin-selection-bar';
+    barra.innerHTML=''
+      +'<div class="cmfin-selection-copy">'
+      +'<div class="cmfin-selection-icon">✓</div>'
+      +'<div><strong>Somar despesas selecionadas</strong><small>Marque os gastos que pretende pagar. A seleção permanece ao trocar de mês e entre Gastos Fixos e Variáveis.</small></div>'
+      +'</div>'
+      +'<div class="cmfin-selection-totals">'
+      +'<div class="cmfin-selection-stat"><span>Selecionados</span><b data-cmfin-sel="qtd">0 itens</b></div>'
+      +'<div class="cmfin-selection-stat"><span>Gastos Fixos</span><b data-cmfin-sel="fixos">R$ 0,00</b></div>'
+      +'<div class="cmfin-selection-stat"><span>Gastos Variáveis</span><b data-cmfin-sel="variaveis">R$ 0,00</b></div>'
+      +'<div class="cmfin-selection-stat total"><span>Total a pagar</span><b data-cmfin-sel="total">R$ 0,00</b></div>'
+      +'</div>'
+      +'<div class="cmfin-selection-actions">'
+      +'<button type="button" class="btn btn-secondary btn-small" data-cmfin-action="selecionar">Selecionar pendentes visíveis</button>'
+      +'<button type="button" class="btn btn-secondary btn-small" data-cmfin-action="limpar">Limpar seleção</button>'
+      +'</div>';
+    barra.querySelector('[data-cmfin-action="selecionar"]').addEventListener('click',function(){selecionarVisiveis(tipo);});
+    barra.querySelector('[data-cmfin-action="limpar"]').addEventListener('click',limparSelecao);
+    painel.insertBefore(barra,tabela);
+    return barra;
+  }
+  function garantirCabecalho(tipo){
+    var tabela=document.querySelector('#'+(tipo==='fixos'?'gastosFixos':'gastosVariaveis')+' table');
+    var tr=tabela&&tabela.querySelector('thead tr');
+    if(!tr) return;
+    var th=tr.querySelector('th.cmfin-select-col');
+    if(!th){
+      th=document.createElement('th');
+      th.className='cmfin-select-col';
+      th.title='Selecionar todos os gastos pendentes visíveis';
+      var input=document.createElement('input');
+      input.type='checkbox';
+      input.className='cmfin-select-all-checkbox';
+      input.setAttribute('aria-label','Selecionar todos os gastos pendentes visíveis');
+      input.addEventListener('change',function(){alternarTodosVisiveis(tipo,input.checked);});
+      th.appendChild(input);
+      tr.insertBefore(th,tr.firstElementChild);
+    }
+  }
+  function dadosLinha(tipo,linha){
+    var botao=linha.querySelector(tipo==='fixos'?'button[onclick*="editarGastoFixo"]':'button[onclick*="editarGastoVariavel"]');
+    var codigo=botao?String(botao.getAttribute('onclick')||''):'';
+    var id=0,mes='';
+    if(tipo==='fixos'){
+      var m=codigo.match(/editarGastoFixo\(\s*(\d+)\s*,\s*['\"]([^'\"]+)['\"]\s*\)/);
+      if(m){id=Number(m[1]);mes=m[2];}
+    }else{
+      var mv=codigo.match(/editarGastoVariavel\(\s*(\d+)\s*\)/);
+      if(mv) id=Number(mv[1]);
+    }
+    if(!id) return null;
+    var item=itemPorId(tipo,id);
+    if(!item) return null;
+    return {tipo:tipo,id:id,mes:mes,item:item,valor:Number(item.valor)||0,nome:nomeItem(tipo,item)};
+  }
+  function configurarLinha(tipo,linha){
+    if(linha.querySelector('td.empty')){
+      var vazio=linha.querySelector('td.empty');
+      if(vazio&&!vazio.dataset.cmfinColspanAjustado){
+        vazio.colSpan=Number(vazio.colSpan||0)+1;
+        vazio.dataset.cmfinColspanAjustado='1';
+      }
+      return;
+    }
+    var dados=dadosLinha(tipo,linha);
+    if(!dados) return;
+    var td=linha.querySelector('td.cmfin-select-col');
+    if(!td){
+      td=document.createElement('td');
+      td.className='cmfin-select-col';
+      linha.insertBefore(td,linha.firstElementChild);
+    }
+    td.innerHTML='';
+    var input=document.createElement('input');
+    input.type='checkbox';
+    input.className='cmfin-pay-checkbox';
+    input.setAttribute('aria-label','Selecionar '+dados.nome+' para somar');
+    var key=chave(tipo,dados.id,dados.mes);
+    var habilitado=podeSelecionarLinha(linha);
+    input.disabled=!habilitado;
+    input.title=habilitado?'Incluir no total a pagar':'Este gasto já está pago ou não deve ser incluído';
+    if(!habilitado) selecoes.delete(key);
+    if(selecoes.has(key)){
+      selecoes.set(key,{modo:modoAtualSeguro(),tipo:tipo,id:dados.id,mes:dados.mes,valor:dados.valor,nome:dados.nome});
+      input.checked=true;
+      linha.classList.add('cmfin-row-selected');
+    }else{
+      input.checked=false;
+      linha.classList.remove('cmfin-row-selected');
+    }
+    input.addEventListener('change',function(){
+      if(input.checked){
+        selecoes.set(key,{modo:modoAtualSeguro(),tipo:tipo,id:dados.id,mes:dados.mes,valor:dados.valor,nome:dados.nome});
+        linha.classList.add('cmfin-row-selected');
+      }else{
+        selecoes.delete(key);
+        linha.classList.remove('cmfin-row-selected');
+      }
+      atualizarResumo();
+      atualizarSelecionarTodos(tipo);
+    });
+    td.appendChild(input);
+  }
+  function aprimorarTabela(tipo){
+    criarBarra(tipo);
+    garantirCabecalho(tipo);
+    var corpo=document.getElementById(tipo==='fixos'?'tabelaGastosFixos':'tabelaGastosVariaveis');
+    if(!corpo) return;
+    Array.prototype.forEach.call(corpo.querySelectorAll(':scope > tr'),function(linha){configurarLinha(tipo,linha);});
+    atualizarResumo();
+    atualizarSelecionarTodos(tipo);
+  }
+  function linhasSelecionaveis(tipo){
+    var corpo=document.getElementById(tipo==='fixos'?'tabelaGastosFixos':'tabelaGastosVariaveis');
+    return corpo?Array.prototype.slice.call(corpo.querySelectorAll('input.cmfin-pay-checkbox:not(:disabled)')):[];
+  }
+  function alternarTodosVisiveis(tipo,marcar){
+    linhasSelecionaveis(tipo).forEach(function(input){
+      if(input.checked!==marcar){input.checked=marcar;input.dispatchEvent(new Event('change',{bubbles:true}));}
+    });
+    atualizarSelecionarTodos(tipo);
+  }
+  function selecionarVisiveis(tipo){ alternarTodosVisiveis(tipo,true); }
+  function atualizarSelecionarTodos(tipo){
+    var modulo=document.getElementById(tipo==='fixos'?'gastosFixos':'gastosVariaveis');
+    var geral=modulo&&modulo.querySelector('input.cmfin-select-all-checkbox');
+    if(!geral) return;
+    var lista=linhasSelecionaveis(tipo);
+    var marcados=lista.filter(function(x){return x.checked;}).length;
+    geral.checked=lista.length>0&&marcados===lista.length;
+    geral.indeterminate=marcados>0&&marcados<lista.length;
+    geral.disabled=!lista.length||modoAtualSeguro()!=='pessoal';
+  }
+  function limparSelecao(){
+    var modo=modoAtualSeguro();
+    Array.from(selecoes.keys()).forEach(function(k){if(k.indexOf(modo+'|')===0) selecoes.delete(k);});
+    document.querySelectorAll('input.cmfin-pay-checkbox').forEach(function(x){x.checked=false;});
+    document.querySelectorAll('tr.cmfin-row-selected').forEach(function(x){x.classList.remove('cmfin-row-selected');});
+    atualizarResumo();
+    atualizarSelecionarTodos('fixos');
+    atualizarSelecionarTodos('variaveis');
+  }
+  function limparRegistrosInexistentes(){
+    var modo=modoAtualSeguro();
+    Array.from(selecoes.entries()).forEach(function(par){
+      var key=par[0],reg=par[1];
+      if(reg.modo!==modo) return;
+      var item=itemPorId(reg.tipo,reg.id);
+      if(!item) selecoes.delete(key);
+      else {reg.valor=Number(item.valor)||0;reg.nome=nomeItem(reg.tipo,item);selecoes.set(key,reg);}
+    });
+  }
+  function atualizarResumo(){
+    limparRegistrosInexistentes();
+    var pessoal=modoAtualSeguro()==='pessoal';
+    ['fixos','variaveis'].forEach(function(tipo){
+      var barra=criarBarra(tipo);
+      if(barra) barra.classList.toggle('is-visible',pessoal);
+    });
+    if(!pessoal) return;
+    var regs=Array.from(selecoes.values()).filter(function(r){return r.modo==='pessoal';});
+    var fixos=regs.filter(function(r){return r.tipo==='fixos';}).reduce(function(s,r){return s+(Number(r.valor)||0);},0);
+    var variaveis=regs.filter(function(r){return r.tipo==='variaveis';}).reduce(function(s,r){return s+(Number(r.valor)||0);},0);
+    document.querySelectorAll('.cmfin-selection-bar').forEach(function(barra){
+      var q=barra.querySelector('[data-cmfin-sel="qtd"]');
+      var f=barra.querySelector('[data-cmfin-sel="fixos"]');
+      var v=barra.querySelector('[data-cmfin-sel="variaveis"]');
+      var t=barra.querySelector('[data-cmfin-sel="total"]');
+      if(q) q.textContent=regs.length+' '+(regs.length===1?'item':'itens');
+      if(f) f.textContent=dinheiro(fixos);
+      if(v) v.textContent=dinheiro(variaveis);
+      if(t) t.textContent=dinheiro(fixos+variaveis);
+    });
+  }
+  function envolverRender(nome,tipo){
+    var original=window[nome];
+    if(typeof original!=='function'||original.__cmfinSelecaoSomaV1) return;
+    var novo=function(){
+      var retorno=original.apply(this,arguments);
+      aprimorarTabela(tipo);
+      return retorno;
+    };
+    novo.__cmfinSelecaoSomaV1=true;
+    window[nome]=novo;
+  }
+  function instalar(){
+    envolverRender('renderizarFixos','fixos');
+    envolverRender('renderizarVariaveis','variaveis');
+    criarBarra('fixos');criarBarra('variaveis');
+    aprimorarTabela('fixos');aprimorarTabela('variaveis');
+    atualizarResumo();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',instalar);
+  else instalar();
+  setTimeout(instalar,120);
+  setTimeout(instalar,700);
+
+  document.addEventListener('change',function(ev){
+    var alvo=ev.target;
+    if(!alvo) return;
+    if(alvo.matches && (alvo.matches('#gastosFixos select')||alvo.matches('#gastosVariaveis select'))){
+      setTimeout(function(){aprimorarTabela(alvo.closest('#gastosFixos')?'fixos':'variaveis');},30);
+    }
+  },true);
+
+  window.cmfinLimparSelecaoPagamentos=limparSelecao;
+})();
+</script>
