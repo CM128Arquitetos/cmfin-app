@@ -31516,6 +31516,23 @@ Total: ${moeda(total)}`;
     return isNaN(n)?0:n;
   }
   function hojeISO(){ return new Date().toISOString().slice(0,10); }
+  function hojeMes(){
+    try{ if(typeof mesAtual === "function") return mesAtual(); }catch(e){}
+    return new Date().toISOString().slice(0,7);
+  }
+  function mesLegivel(v){
+    if(!v) return "-";
+    try{ if(typeof nomeMes === "function" && /^\d{4}-\d{2}$/.test(String(v))) return nomeMes(v); }catch(e){}
+    return String(v);
+  }
+  function definirMes(id, valor){
+    try{
+      if(typeof setValorMes === "function"){ setValorMes(id, valor || ""); return; }
+    }catch(e){}
+    var el=document.getElementById(id); if(el) el.value=valor || "";
+    var text=document.getElementById(id+"DisplayText"); if(text) text.textContent=valor ? mesLegivel(valor) : "Selecionar mês";
+    var trigger=document.getElementById(id+"Display"); if(trigger) trigger.classList.toggle("empty", !valor);
+  }
   function vencida(item){
     var pend=Math.max(0,Number(item.valorTotal||0)-Number(item.valorPago||0));
     return pend>0 && item.vencimento && item.vencimento < hojeMes() && item.status !== "Pago";
