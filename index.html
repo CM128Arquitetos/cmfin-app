@@ -9213,6 +9213,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
                 <button class="btn btn-secondary" onclick="abrirModalCartaoPagoTotal('fixos')">Baixa de Fatura</button>
+                <button class="btn btn-secondary cmfin-sum-toggle" id="cmfinSumToggle-fixos" type="button" onclick="cmfinAlternarSomaDespesas('fixos')" aria-pressed="false">Somar Despesas</button>
                 <button class="btn btn-primary" onclick="abrirModalGastoFixo()">+ Gasto Fixo</button>
               </div>
             </div>
@@ -9291,6 +9292,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
               <button class="btn btn-secondary" onclick="abrirModalCartaoPagoTotal('variaveis')">Baixa de Fatura</button>
+              <button class="btn btn-secondary cmfin-sum-toggle" id="cmfinSumToggle-variaveis" type="button" onclick="cmfinAlternarSomaDespesas('variaveis')" aria-pressed="false">Somar Despesas</button>
               <button class="btn btn-primary" onclick="abrirModalGastoVariavel()">+ Gasto Variável</button>
             </div>
           </div>
@@ -39841,11 +39843,14 @@ Total: ${moeda(total)}`;
   .cmfin-selection-stat.total{background:#0f766e;border-color:#0f766e}
   .cmfin-selection-stat.total span,.cmfin-selection-stat.total b{color:#fff}
   .cmfin-selection-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .cmfin-sum-toggle.is-active{background:rgba(15,118,110,.10)!important;border-color:rgba(15,118,110,.45)!important;color:#0f766e!important;box-shadow:0 0 0 3px rgba(15,118,110,.08)}
   .cmfin-select-col{width:46px;min-width:46px;text-align:center!important;padding-left:8px!important;padding-right:8px!important}
+  .module:not(.cmfin-selection-mode) .cmfin-select-col{display:none!important}
+  .module:not(.cmfin-selection-mode) .cmfin-selection-bar{display:none!important}
   .cmfin-pay-checkbox,.cmfin-select-all-checkbox{width:18px;height:18px;accent-color:#0f766e;cursor:pointer;vertical-align:middle}
   .cmfin-pay-checkbox:disabled{cursor:not-allowed;opacity:.35}
-  tr.cmfin-row-selected>td{background:rgba(20,184,166,.075)!important}
-  tr.cmfin-row-selected>td:first-child{box-shadow:inset 3px 0 0 #0f766e}
+  .module.cmfin-selection-mode tr.cmfin-row-selected>td{background:rgba(20,184,166,.075)!important}
+  .module.cmfin-selection-mode tr.cmfin-row-selected>td:first-child{box-shadow:inset 3px 0 0 #0f766e}
   @media(max-width:900px){
     .cmfin-selection-bar.is-visible{align-items:stretch}
     .cmfin-selection-totals{width:100%}
@@ -39858,6 +39863,7 @@ Total: ${moeda(total)}`;
 (function(){
   'use strict';
   var selecoes = new Map();
+  var modosSelecao = { fixos:false, variaveis:false };
 
   function modoAtualSeguro(){
     try { return (typeof modoAtual !== 'undefined' && modoAtual === 'empresarial') ? 'empresarial' : 'pessoal'; }
@@ -39889,6 +39895,30 @@ Total: ${moeda(total)}`;
     var valor=String(status?status.value:'Pendente').toLowerCase().replace(/\s+/g,'');
     return valor!=='pago' && valor!=='naoincluir' && valor!=='naoincluso' && valor!=='desconsiderado';
   }
+  function aplicarEstadoModoSelecao(tipo){
+    var pessoal=modoAtualSeguro()==='pessoal';
+    var ativo=pessoal && !!modosSelecao[tipo];
+    var modulo=document.getElementById(tipo==='fixos'?'gastosFixos':'gastosVariaveis');
+    var botao=document.getElementById('cmfinSumToggle-'+tipo);
+    if(modulo) modulo.classList.toggle('cmfin-selection-mode',ativo);
+    if(botao){
+      botao.hidden=!pessoal;
+      botao.classList.toggle('is-active',ativo);
+      botao.setAttribute('aria-pressed',ativo?'true':'false');
+      botao.title=ativo?'Ocultar seleção e total das despesas':'Selecionar despesas para calcular o total';
+    }
+    var barra=criarBarra(tipo);
+    if(barra) barra.classList.toggle('is-visible',ativo);
+  }
+  function alternarModoSelecao(tipo){
+    if(tipo!=='fixos' && tipo!=='variaveis') return;
+    if(modoAtualSeguro()!=='pessoal') return;
+    modosSelecao[tipo]=!modosSelecao[tipo];
+    aplicarEstadoModoSelecao(tipo);
+    if(modosSelecao[tipo]) aprimorarTabela(tipo);
+    else atualizarResumo();
+  }
+
   function criarBarra(tipo){
     var modulo=document.getElementById(tipo==='fixos'?'gastosFixos':'gastosVariaveis');
     if(!modulo) return null;
@@ -40056,8 +40086,7 @@ Total: ${moeda(total)}`;
     limparRegistrosInexistentes();
     var pessoal=modoAtualSeguro()==='pessoal';
     ['fixos','variaveis'].forEach(function(tipo){
-      var barra=criarBarra(tipo);
-      if(barra) barra.classList.toggle('is-visible',pessoal);
+      aplicarEstadoModoSelecao(tipo);
     });
     if(!pessoal) return;
     var regs=Array.from(selecoes.values()).filter(function(r){return r.modo==='pessoal';});
@@ -40106,5 +40135,6 @@ Total: ${moeda(total)}`;
   },true);
 
   window.cmfinLimparSelecaoPagamentos=limparSelecao;
+  window.cmfinAlternarSomaDespesas=alternarModoSelecao;
 })();
 </script>
