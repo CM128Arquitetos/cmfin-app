@@ -39845,6 +39845,31 @@ Total: ${moeda(total)}`;
   .cmfin-selection-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .cmfin-sum-toggle.is-active{background:rgba(15,118,110,.10)!important;border-color:rgba(15,118,110,.45)!important;color:#0f766e!important;box-shadow:0 0 0 3px rgba(15,118,110,.08)}
   .cmfin-select-col{width:46px;min-width:46px;text-align:center!important;padding-left:8px!important;padding-right:8px!important}
+  /* Mantém a coluna de seleção compacta e preserva as larguras originais das demais colunas */
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th.cmfin-select-col,
+  #gastosFixos.cmfin-selection-ready .finance-standard-table td.cmfin-select-col,
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th.cmfin-select-col,
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table td.cmfin-select-col{
+    width:42px!important;min-width:42px!important;max-width:42px!important;
+    padding-left:5px!important;padding-right:5px!important;
+  }
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(2), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(2){width:22%!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(3), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(3){width:18%!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(4), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(4){width:17%!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(5), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(5){width:9%!important;white-space:nowrap!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(6), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(6){width:12%!important;white-space:nowrap!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(7), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(7){width:14%!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(8), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(8){width:12%!important;}
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th:nth-child(9), #gastosFixos.cmfin-selection-ready .finance-standard-table td:nth-child(9){width:10%!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(2), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(2){width:25%!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(3), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(3){width:17%!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(4), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(4){width:12%!important;white-space:nowrap!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(5), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(5){width:8%!important;white-space:nowrap!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(6), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(6){width:13%!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(7), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(7){width:8%!important;white-space:nowrap!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(8), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(8){width:11%!important;white-space:nowrap!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(9), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(9){width:12%!important;}
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th:nth-child(10), #gastosVariaveis.cmfin-selection-ready .finance-standard-table td:nth-child(10){width:10%!important;}
   .module:not(.cmfin-selection-mode) .cmfin-select-col{display:none!important}
   .module:not(.cmfin-selection-mode) .cmfin-selection-bar{display:none!important}
   .cmfin-pay-checkbox,.cmfin-select-all-checkbox{width:18px;height:18px;accent-color:#0f766e;cursor:pointer;vertical-align:middle}
@@ -39934,7 +39959,7 @@ Total: ${moeda(total)}`;
     barra.innerHTML=''
       +'<div class="cmfin-selection-copy">'
       +'<div class="cmfin-selection-icon">✓</div>'
-      +'<div><strong>Somar despesas selecionadas</strong><small>Marque os gastos que pretende pagar. A seleção permanece ao trocar de mês e entre Gastos Fixos e Variáveis.</small></div>'
+      +'<div><strong>Somar despesas selecionadas</strong><small>Marque os gastos que pretende pagar.</small></div>'
       +'</div>'
       +'<div class="cmfin-selection-totals">'
       +'<div class="cmfin-selection-stat"><span>Selecionados</span><b data-cmfin-sel="qtd">0 itens</b></div>'
@@ -39955,6 +39980,8 @@ Total: ${moeda(total)}`;
     var tabela=document.querySelector('#'+(tipo==='fixos'?'gastosFixos':'gastosVariaveis')+' table');
     var tr=tabela&&tabela.querySelector('thead tr');
     if(!tr) return;
+    var modulo=tabela.closest('.module');
+    if(modulo) modulo.classList.add('cmfin-selection-ready');
     var th=tr.querySelector('th.cmfin-select-col');
     if(!th){
       th=document.createElement('th');
