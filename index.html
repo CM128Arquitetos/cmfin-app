@@ -16379,6 +16379,7 @@ Total: ${moeda(total)}`;
                 <div class="terc-row-actions terc-row-actions-v13">
                   <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId})">Editar</button>
                   <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}')">${proximoStatus}</button>
+                  ${tipoLancamento === "Parcelado" ? `<button class="btn btn-secondary btn-small terc-btn-saldo-restante" onclick="cmfinAbrirSaldoParceladoTerceiro(${t.compraId}, '${mes}')">Saldo restante</button>` : ""}
                   <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroMes(decodeURIComponent('${encodeURIComponent(t.pessoa || "")}'), decodeURIComponent('${encodeURIComponent(formaCartao || "")}'), '${mes}')">Baixar total</button>
                   <button class="btn btn-danger btn-small" onclick="excluirTerceiro(${t.id})">Excluir</button>
                 </div>
@@ -40165,3 +40166,302 @@ Total: ${moeda(total)}`;
   window.cmfinAlternarSomaDespesas=alternarModoSelecao;
 })();
 </script>
+
+<!-- CMFin: saldo futuro das compras parceladas de terceiros -->
+<style id="cmfin-saldo-terceiros-v1">
+  #modalQuitacaoTerceiro .terc-quitacao-modal{
+    max-width: 760px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 26px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-shell{
+    padding: 22px;
+    background: linear-gradient(180deg,#ffffff 0%,#f7fbfa 100%);
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-header h2{
+    margin:0 0 5px;
+    color:#102a25;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-header p{
+    margin:0;
+    color:#64748b;
+    line-height:1.45;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-ident{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid #dbe7e4;
+    background:#fff;
+    border-radius:18px;
+    margin-bottom:14px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-avatar{
+    width:44px;
+    height:44px;
+    flex:0 0 44px;
+    border-radius:15px;
+    display:grid;
+    place-items:center;
+    background:#e8f5f2;
+    color:#087f70;
+    font-weight:1000;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-ident strong{
+    display:block;
+    color:#0f172a;
+    font-size:16px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-ident span{
+    display:block;
+    color:#64748b;
+    margin-top:3px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-resumo{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin-bottom:14px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-kpi{
+    border:1px solid #dbe7e4;
+    background:#fff;
+    border-radius:16px;
+    padding:13px 14px;
+    min-width:0;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-kpi.total{
+    background:linear-gradient(135deg,#087f70,#0f766e);
+    border-color:#087f70;
+    color:#fff;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-kpi span{
+    display:block;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-kpi strong{
+    display:block;
+    color:#0f172a;
+    font-size:18px;
+    overflow-wrap:anywhere;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-kpi.total span,
+  #modalQuitacaoTerceiro .terc-quitacao-kpi.total strong{
+    color:#fff;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-lista{
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#fff;
+    overflow:hidden;
+    max-height:330px;
+    overflow-y:auto;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-linha{
+    display:grid;
+    grid-template-columns:minmax(92px,.8fr) minmax(82px,.7fr) minmax(110px,1fr) minmax(100px,.8fr);
+    gap:12px;
+    align-items:center;
+    padding:12px 15px;
+    border-bottom:1px solid #edf2f1;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-linha:last-child{border-bottom:0;}
+  #modalQuitacaoTerceiro .terc-quitacao-linha.cabecalho{
+    background:#f5f8f7;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    position:sticky;
+    top:0;
+    z-index:1;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-linha .valor{
+    text-align:right;
+    font-weight:900;
+    color:#0f172a;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-status{
+    display:inline-flex;
+    width:max-content;
+    max-width:100%;
+    padding:5px 9px;
+    border-radius:999px;
+    background:#fff4d6;
+    color:#a15c00;
+    font-size:11px;
+    font-weight:900;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-note{
+    margin-top:12px;
+    padding:11px 13px;
+    border-radius:14px;
+    background:#edf8f5;
+    color:#375d56;
+    font-size:12px;
+    line-height:1.45;
+  }
+  #modalQuitacaoTerceiro .terc-quitacao-actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:16px;
+  }
+  #terceiros .terc-btn-saldo-restante{
+    border-color:#96d8cf;
+    color:#087f70;
+    background:#f2fbf9;
+  }
+  #terceiros .terc-btn-saldo-restante:hover{
+    background:#e3f6f2;
+  }
+  @media(max-width:680px){
+    #modalQuitacaoTerceiro .terc-quitacao-resumo{grid-template-columns:1fr;}
+    #modalQuitacaoTerceiro .terc-quitacao-linha{
+      grid-template-columns:1fr 1fr;
+      gap:7px 12px;
+    }
+    #modalQuitacaoTerceiro .terc-quitacao-linha.cabecalho{display:none;}
+    #modalQuitacaoTerceiro .terc-quitacao-linha .valor{text-align:left;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalQuitacaoTerceiro">
+  <div class="modal terc-quitacao-modal">
+    <div class="terc-quitacao-shell">
+      <div class="terc-quitacao-header">
+        <div>
+          <h2>Saldo restante do parcelamento</h2>
+          <p>Parcela do mês selecionado mais todas as parcelas futuras que ainda estão pendentes.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+      <div id="tercQuitacaoConteudo"></div>
+      <div class="terc-quitacao-actions">
+        <button class="btn btn-secondary" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-saldo-terceiros-v1-script">
+(function(){
+  function numeroSeguro(valor){
+    var n=Number(valor);
+    return Number.isFinite(n)?n:0;
+  }
+  function mesItem(item){
+    return String(item&&item.vencimento||'').slice(0,7);
+  }
+  function valorParcela(item){
+    if(!item) return 0;
+    var totalParcelas=Math.max(1,Math.trunc(numeroSeguro(item.totalParcelas)||1));
+    var parcela=Math.max(1,Math.trunc(numeroSeguro(item.numeroParcela)||1));
+    if(item.valorParcela!==undefined&&item.valorParcela!==null&&numeroSeguro(item.valorParcela)>0){
+      return numeroSeguro(item.valorParcela);
+    }
+    if(item.valorTotal!==undefined&&item.valorTotal!==null&&numeroSeguro(item.valorTotal)>=0){
+      var centavos=Math.round(numeroSeguro(item.valorTotal)*100);
+      var base=Math.floor(centavos/totalParcelas);
+      var resto=centavos%totalParcelas;
+      return (base+(parcela<=resto?1:0))/100;
+    }
+    return numeroSeguro(item.valor);
+  }
+  function formatarMes(mes){
+    if(!/^\d{4}-\d{2}$/.test(String(mes||''))) return '-';
+    try{
+      if(typeof nomeMes==='function') return nomeMes(mes);
+    }catch(_){ }
+    var partes=mes.split('-');
+    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return (nomes[Number(partes[1])-1]||partes[1])+' de '+partes[0];
+  }
+  function formatarDinheiro(valor){
+    try{if(typeof moeda==='function') return moeda(valor);}catch(_){ }
+    return numeroSeguro(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function escapar(valor){
+    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
+    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+  }
+  function statusItem(item,mes){
+    try{if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes);}catch(_){ }
+    return item&&item.status||'Pendente';
+  }
+  function iniciais(nome){
+    return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
+  }
+  window.cmfinAbrirSaldoParceladoTerceiro=function(compraId,mesBase){
+    var dados=Array.isArray(window.terceiros)?window.terceiros:(typeof terceiros!=='undefined'&&Array.isArray(terceiros)?terceiros:[]);
+    var grupo=dados.filter(function(item){
+      return item&&String(item.compraId)===String(compraId)&&(item.tipo||'Parcelado')==='Parcelado';
+    }).sort(function(a,b){
+      return mesItem(a).localeCompare(mesItem(b))||numeroSeguro(a.numeroParcela)-numeroSeguro(b.numeroParcela);
+    });
+    if(!grupo.length){alert('Não foi possível localizar este parcelamento.');return;}
+
+    var referencia=/^\d{4}-\d{2}$/.test(String(mesBase||''))?String(mesBase):mesItem(grupo[0]);
+    var pendentes=grupo.filter(function(item){
+      var mes=mesItem(item);
+      return mes&&mes>=referencia&&statusItem(item,mes)!=='Recebido';
+    });
+    var base=grupo[0];
+    var conteudo=document.getElementById('tercQuitacaoConteudo');
+    if(!conteudo) return;
+
+    if(!pendentes.length){
+      conteudo.innerHTML='<div class="terc-quitacao-ident"><div class="terc-quitacao-avatar">'+escapar(iniciais(base.pessoa))+'</div><div><strong>'+escapar(base.pessoa||'Terceiro')+'</strong><span>'+escapar(base.descricao||'Compra parcelada')+'</span></div></div><div class="terc-quitacao-note">Não existem parcelas pendentes a partir de '+escapar(formatarMes(referencia))+'.</div>';
+      if(typeof abrirModal==='function') abrirModal('modalQuitacaoTerceiro');
+      else document.getElementById('modalQuitacaoTerceiro').style.display='flex';
+      return;
+    }
+
+    var total=pendentes.reduce(function(s,item){return s+valorParcela(item);},0);
+    var primeira=pendentes[0];
+    var ultima=pendentes[pendentes.length-1];
+    var linhas=pendentes.map(function(item){
+      var mes=mesItem(item);
+      return '<div class="terc-quitacao-linha">'+
+        '<div><strong>'+escapar(formatarMes(mes))+'</strong></div>'+
+        '<div>'+escapar(item.parcela||((item.numeroParcela||'-')+'/'+(item.totalParcelas||'-')))+'</div>'+
+        '<div><span class="terc-quitacao-status">Pendente</span></div>'+
+        '<div class="valor">'+escapar(formatarDinheiro(valorParcela(item)))+'</div>'+
+      '</div>';
+    }).join('');
+
+    conteudo.innerHTML=''+
+      '<div class="terc-quitacao-ident">'+
+        '<div class="terc-quitacao-avatar">'+escapar(iniciais(base.pessoa))+'</div>'+
+        '<div><strong>'+escapar(base.pessoa||'Terceiro')+'</strong><span>'+escapar(base.descricao||'Compra parcelada')+'</span></div>'+
+      '</div>'+
+      '<div class="terc-quitacao-resumo">'+
+        '<div class="terc-quitacao-kpi"><span>Parcelas pendentes</span><strong>'+pendentes.length+'</strong></div>'+
+        '<div class="terc-quitacao-kpi"><span>Período considerado</span><strong>'+escapar(formatarMes(mesItem(primeira)))+' → '+escapar(formatarMes(mesItem(ultima)))+'</strong></div>'+
+        '<div class="terc-quitacao-kpi total"><span>Total para quitar agora</span><strong>'+escapar(formatarDinheiro(total))+'</strong></div>'+
+      '</div>'+
+      '<div class="terc-quitacao-lista">'+
+        '<div class="terc-quitacao-linha cabecalho"><div>Mês</div><div>Parcela</div><div>Status</div><div style="text-align:right">Valor</div></div>'+linhas+
+      '</div>'+
+      '<div class="terc-quitacao-note">O cálculo começa em <strong>'+escapar(formatarMes(referencia))+'</strong> e ignora parcelas já marcadas como recebidas. Nenhum lançamento é alterado ao consultar este saldo.</div>';
+
+    if(typeof abrirModal==='function') abrirModal('modalQuitacaoTerceiro');
+    else document.getElementById('modalQuitacaoTerceiro').style.display='flex';
+  };
+})();
+</script>
+
