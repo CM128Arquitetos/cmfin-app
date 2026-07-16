@@ -40369,16 +40369,17 @@ Total: ${moeda(total)}`;
   }
   function valorParcela(item){
     if(!item) return 0;
-    var totalParcelas=Math.max(1,Math.trunc(numeroSeguro(item.totalParcelas)||1));
-    var parcela=Math.max(1,Math.trunc(numeroSeguro(item.numeroParcela)||1));
+    try{
+      if(typeof valorTotalTerceiro==='function'){
+        var valorExibido=numeroSeguro(valorTotalTerceiro(item));
+        if(valorExibido>=0) return valorExibido;
+      }
+    }catch(_){ }
     if(item.valorParcela!==undefined&&item.valorParcela!==null&&numeroSeguro(item.valorParcela)>0){
       return numeroSeguro(item.valorParcela);
     }
-    if(item.valorTotal!==undefined&&item.valorTotal!==null&&numeroSeguro(item.valorTotal)>=0){
-      var centavos=Math.round(numeroSeguro(item.valorTotal)*100);
-      var base=Math.floor(centavos/totalParcelas);
-      var resto=centavos%totalParcelas;
-      return (base+(parcela<=resto?1:0))/100;
+    if(item.valorTotal!==undefined&&item.valorTotal!==null){
+      return numeroSeguro(item.valorTotal);
     }
     return numeroSeguro(item.valor);
   }
