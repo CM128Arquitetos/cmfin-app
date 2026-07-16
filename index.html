@@ -10076,7 +10076,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                 </div>
                 <div class="terc-export-actions">
                   <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar imagem</button>
-                  <span class="terc-badge v118">Gestão mensal</span>
+                  <button class="btn btn-secondary btn-small terc-btn-saldo-geral" type="button" onclick="cmfinAbrirSaldoGeralTerceiros()">Saldo restante</button>
                 </div>
               </div>
 
@@ -40466,3 +40466,459 @@ Total: ${moeda(total)}`;
 })();
 </script>
 
+
+
+<!-- CMFin: resumo geral do saldo restante de terceiros -->
+<style id="cmfin-saldo-geral-terceiros-v1">
+  .terc-btn-saldo-geral{
+    color:#087f70 !important;
+    border-color:#b8d9d3 !important;
+    background:#f4fbf9 !important;
+  }
+  .terc-btn-saldo-geral:hover{
+    background:#e8f6f3 !important;
+    border-color:#87bdb4 !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-modal{
+    width:min(1040px,calc(100vw - 34px));
+    max-width:1040px;
+    padding:0;
+    overflow:hidden;
+    border-radius:26px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-shell{
+    padding:22px;
+    background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+    margin-bottom:16px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header h2{
+    margin:0 0 5px;
+    color:#102a25;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header p{
+    margin:0;
+    color:#64748b;
+    line-height:1.45;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpis{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+    margin-bottom:15px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi{
+    min-width:0;
+    padding:13px 14px;
+    border:1px solid #dbe7e4;
+    border-radius:16px;
+    background:#fff;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi span{
+    display:block;
+    margin-bottom:6px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi strong{
+    display:block;
+    color:#0f172a;
+    font-size:19px;
+    overflow-wrap:anywhere;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi.total{
+    color:#fff;
+    border-color:#087f70;
+    background:linear-gradient(135deg,#087f70,#0f766e);
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi.total span,
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpi.total strong{color:#fff;}
+  #modalSaldoGeralTerceiros .terc-saldo-geral-filtros{
+    margin-bottom:14px;
+    padding:11px 14px;
+    border:1px solid #dbe7e4;
+    border-radius:15px;
+    background:#fff;
+    color:#52646f;
+    font-size:12px;
+    line-height:1.45;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-lista{
+    max-height:470px;
+    overflow-y:auto;
+    padding-right:3px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa{
+    margin-bottom:12px;
+    overflow:hidden;
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#fff;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa:last-child{margin-bottom:0;}
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:13px 15px;
+    border-bottom:1px solid #e8efed;
+    background:#f4f9f8;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-ident{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-avatar{
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    display:grid;
+    place-items:center;
+    border-radius:13px;
+    background:#0f766e;
+    color:#fff;
+    font-size:12px;
+    font-weight:1000;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-ident strong{
+    display:block;
+    color:#102a25;
+    font-size:15px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-ident span{
+    display:block;
+    margin-top:2px;
+    color:#64748b;
+    font-size:11px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-total{
+    flex:0 0 auto;
+    text-align:right;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-total span{
+    display:block;
+    color:#64748b;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa-total strong{
+    display:block;
+    margin-top:3px;
+    color:#087f70;
+    font-size:17px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho,
+  #modalSaldoGeralTerceiros .terc-saldo-compra{
+    display:grid;
+    grid-template-columns:minmax(180px,1.65fr) minmax(105px,.75fr) minmax(105px,.7fr) minmax(105px,.75fr) minmax(110px,.8fr);
+    gap:12px;
+    align-items:center;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho{
+    padding:10px 15px;
+    border-bottom:1px solid #edf2f1;
+    color:#64748b;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra{
+    padding:12px 15px;
+    border-bottom:1px solid #edf2f1;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra:last-child{border-bottom:0;}
+  #modalSaldoGeralTerceiros .terc-saldo-compra-desc strong{
+    display:block;
+    color:#0f172a;
+    font-size:13px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra-desc span{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:11px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-dado{
+    color:#334155;
+    font-size:12px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-dado strong{
+    color:#0f172a;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-valor{
+    text-align:right;
+    color:#087f70;
+    font-size:14px;
+    font-weight:1000;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-vazio{
+    padding:28px 18px;
+    border:1px dashed #c9dbd7;
+    border-radius:18px;
+    background:#fff;
+    color:#64748b;
+    text-align:center;
+    line-height:1.5;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-note{
+    margin-top:14px;
+    padding:11px 13px;
+    border-radius:14px;
+    background:#eef8f6;
+    color:#52646f;
+    font-size:11px;
+    line-height:1.5;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:16px;
+  }
+  @media(max-width:760px){
+    #modalSaldoGeralTerceiros .terc-saldo-geral-shell{padding:16px;}
+    #modalSaldoGeralTerceiros .terc-saldo-geral-kpis{grid-template-columns:1fr 1fr;}
+    #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho{display:none;}
+    #modalSaldoGeralTerceiros .terc-saldo-compra{
+      grid-template-columns:1fr 1fr;
+      gap:8px 12px;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:1/-1;}
+    #modalSaldoGeralTerceiros .terc-saldo-valor{text-align:left;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalSaldoGeralTerceiros">
+  <div class="modal terc-saldo-geral-modal">
+    <div class="terc-saldo-geral-shell">
+      <div class="terc-saldo-geral-header">
+        <div>
+          <h2>Saldo restante geral</h2>
+          <p>Visão conjunta dos parcelamentos do mês selecionado e de todas as parcelas futuras ainda pendentes.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+      <div id="tercSaldoGeralConteudo"></div>
+      <div class="terc-saldo-geral-actions">
+        <button class="btn btn-secondary" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-saldo-geral-terceiros-v1-script">
+(function(){
+  function dadosTerceiros(){
+    if(Array.isArray(window.terceiros)) return window.terceiros;
+    try{if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros;}catch(_){ }
+    return [];
+  }
+  function numeroSeguro(valor){
+    var n=Number(valor);
+    return Number.isFinite(n)?n:0;
+  }
+  function mesItem(item){
+    return String(item&&item.vencimento||'').slice(0,7);
+  }
+  function valorParcela(item){
+    if(!item) return 0;
+    try{
+      if(typeof valorTotalTerceiro==='function'){
+        var valor=numeroSeguro(valorTotalTerceiro(item));
+        if(valor>=0) return valor;
+      }
+    }catch(_){ }
+    if(numeroSeguro(item.valorParcela)>0) return numeroSeguro(item.valorParcela);
+    if(item.valorTotal!==undefined&&item.valorTotal!==null) return numeroSeguro(item.valorTotal);
+    return numeroSeguro(item.valor);
+  }
+  function statusItem(item,mes){
+    try{if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes);}catch(_){ }
+    return item&&item.status||'Pendente';
+  }
+  function formaItem(item){
+    try{if(typeof formaCartaoTerceiro==='function') return formaCartaoTerceiro(item);}catch(_){ }
+    return item&&item.cartao||item&&item.formaPagamento||'-';
+  }
+  function apareceNoMes(item,mes){
+    try{if(typeof terceiroApareceNoMes==='function') return terceiroApareceNoMes(item,mes);}catch(_){ }
+    return mesItem(item)===mes;
+  }
+  function referenciaAtual(){
+    try{
+      if(typeof obterMesReferenciaFiltro==='function'){
+        var ref=obterMesReferenciaFiltro('filtroTerc');
+        if(/^\d{4}-\d{2}$/.test(String(ref||''))) return ref;
+      }
+    }catch(_){ }
+    var ano=document.getElementById('filtroTercAno')?.value||'';
+    var mes=document.getElementById('filtroTercMes')?.value||'';
+    if(ano&&mes) return String(ano)+'-'+String(mes).padStart(2,'0');
+    var agora=new Date();
+    return agora.getFullYear()+'-'+String(agora.getMonth()+1).padStart(2,'0');
+  }
+  function formatarMes(mes){
+    if(!/^\d{4}-\d{2}$/.test(String(mes||''))) return '-';
+    try{if(typeof nomeMes==='function') return nomeMes(mes);}catch(_){ }
+    var partes=String(mes).split('-');
+    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return (nomes[Number(partes[1])-1]||partes[1])+' de '+partes[0];
+  }
+  function dinheiro(valor){
+    try{if(typeof moeda==='function') return moeda(valor);}catch(_){ }
+    return numeroSeguro(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function escapar(valor){
+    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
+    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+  }
+  function iniciais(nome){
+    return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
+  }
+  function filtroAtual(id,padrao){
+    var el=document.getElementById(id);
+    return el?el.value:padrao;
+  }
+  function rotuloFiltro(id,padrao){
+    var el=document.getElementById(id);
+    if(!el) return padrao;
+    var opt=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;
+    return opt?opt.textContent.trim():padrao;
+  }
+  function compraResumo(compraId,referencia,dados){
+    var grupo=dados.filter(function(item){
+      return item&&String(item.compraId)===String(compraId)&&(item.tipo||'Parcelado')==='Parcelado';
+    }).sort(function(a,b){
+      return mesItem(a).localeCompare(mesItem(b))||numeroSeguro(a.numeroParcela)-numeroSeguro(b.numeroParcela);
+    });
+    if(!grupo.length) return null;
+    var pendentes=grupo.filter(function(item){
+      var mes=mesItem(item);
+      return mes&&mes>=referencia&&statusItem(item,mes)!=='Recebido';
+    });
+    if(!pendentes.length) return null;
+    var base=grupo[0];
+    var primeira=pendentes[0];
+    var ultima=pendentes[pendentes.length-1];
+    var total=pendentes.reduce(function(s,item){return s+valorParcela(item);},0);
+    return {
+      compraId:compraId,
+      pessoa:base.pessoa||'Terceiro',
+      descricao:base.descricao||'Compra parcelada',
+      categoria:base.categoria||'Outros',
+      forma:formaItem(base),
+      parcelaInicial:primeira.parcela||((primeira.numeroParcela||'-')+'/'+(primeira.totalParcelas||'-')),
+      parcelaFinal:ultima.parcela||((ultima.numeroParcela||'-')+'/'+(ultima.totalParcelas||'-')),
+      quantidade:pendentes.length,
+      valorParcela:valorParcela(primeira),
+      total:total,
+      primeiroMes:mesItem(primeira),
+      ultimoMes:mesItem(ultima)
+    };
+  }
+  window.cmfinAbrirSaldoGeralTerceiros=function(){
+    var conteudo=document.getElementById('tercSaldoGeralConteudo');
+    if(!conteudo) return;
+    var dados=dadosTerceiros();
+    var referencia=referenciaAtual();
+    var pessoa=filtroAtual('filtroTercPessoa','todos');
+    var cartao=filtroAtual('filtroTercCartao','todos');
+    var categoria=filtroAtual('filtroTercCategoria','todos');
+
+    var bases=dados.filter(function(item){
+      if(!item||(item.tipo||'Parcelado')!=='Parcelado') return false;
+      if(!apareceNoMes(item,referencia)) return false;
+      if(pessoa!=='todos'&&String(item.pessoa||'')!==String(pessoa)) return false;
+      if(cartao!=='todos'&&String(item.cartao||'')!==String(cartao)&&String(formaItem(item)||'')!==String(cartao)) return false;
+      if(categoria!=='todos'&&String(item.categoria||'Outros')!==String(categoria)) return false;
+      return true;
+    });
+
+    var ids=[];
+    bases.forEach(function(item){
+      var id=String(item.compraId);
+      if(ids.indexOf(id)===-1) ids.push(id);
+    });
+    var compras=ids.map(function(id){return compraResumo(id,referencia,dados);}).filter(Boolean);
+    compras.sort(function(a,b){
+      return String(a.pessoa).localeCompare(String(b.pessoa),'pt-BR')||b.total-a.total||String(a.descricao).localeCompare(String(b.descricao),'pt-BR');
+    });
+
+    var pessoas={};
+    compras.forEach(function(compra){
+      if(!pessoas[compra.pessoa]) pessoas[compra.pessoa]=[];
+      pessoas[compra.pessoa].push(compra);
+    });
+    var nomes=Object.keys(pessoas).sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var totalGeral=compras.reduce(function(s,c){return s+c.total;},0);
+    var parcelas=compras.reduce(function(s,c){return s+c.quantidade;},0);
+    var filtros='Mês inicial: <strong>'+escapar(formatarMes(referencia))+'</strong> · Pessoa: <strong>'+escapar(rotuloFiltro('filtroTercPessoa','Todas'))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro('filtroTercCartao','Todos'))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro('filtroTercCategoria','Todas'))+'</strong>';
+
+    if(!compras.length){
+      conteudo.innerHTML=''+
+        '<div class="terc-saldo-geral-kpis">'+
+          '<div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong>0</strong></div>'+
+          '<div class="terc-saldo-geral-kpi"><span>Compras parceladas</span><strong>0</strong></div>'+
+          '<div class="terc-saldo-geral-kpi"><span>Parcelas pendentes</span><strong>0</strong></div>'+
+          '<div class="terc-saldo-geral-kpi total"><span>Saldo total</span><strong>'+escapar(dinheiro(0))+'</strong></div>'+
+        '</div>'+
+        '<div class="terc-saldo-geral-filtros">'+filtros+'</div>'+
+        '<div class="terc-saldo-geral-vazio">Não existem compras parceladas com saldo pendente a partir do mês selecionado para os filtros atuais.</div>';
+      if(typeof abrirModal==='function') abrirModal('modalSaldoGeralTerceiros');
+      else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
+      return;
+    }
+
+    var grupos=nomes.map(function(nome){
+      var lista=pessoas[nome];
+      var totalPessoa=lista.reduce(function(s,c){return s+c.total;},0);
+      var qtdParcelas=lista.reduce(function(s,c){return s+c.quantidade;},0);
+      var linhas=lista.map(function(c){
+        var faixa=c.parcelaInicial===c.parcelaFinal?c.parcelaInicial:(c.parcelaInicial+' → '+c.parcelaFinal);
+        return '<div class="terc-saldo-compra">'+
+          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span></div>'+
+          '<div class="terc-saldo-dado"><strong>'+escapar(faixa)+'</strong><br>'+escapar(formatarMes(c.primeiroMes))+' → '+escapar(formatarMes(c.ultimoMes))+'</div>'+
+          '<div class="terc-saldo-dado"><strong>'+c.quantidade+'</strong> parcela'+(c.quantidade===1?'':'s')+'</div>'+
+          '<div class="terc-saldo-dado"><strong>'+escapar(dinheiro(c.valorParcela))+'</strong></div>'+
+          '<div class="terc-saldo-valor">'+escapar(dinheiro(c.total))+'</div>'+
+        '</div>';
+      }).join('');
+      return '<section class="terc-saldo-pessoa">'+
+        '<div class="terc-saldo-pessoa-head">'+
+          '<div class="terc-saldo-pessoa-ident"><div class="terc-saldo-pessoa-avatar">'+escapar(iniciais(nome))+'</div><div><strong>'+escapar(nome)+'</strong><span>'+lista.length+' compra'+(lista.length===1?'':'s')+' · '+qtdParcelas+' parcela'+(qtdParcelas===1?'':'s')+' pendente'+(qtdParcelas===1?'':'s')+'</span></div></div>'+
+          '<div class="terc-saldo-pessoa-total"><span>Total da pessoa</span><strong>'+escapar(dinheiro(totalPessoa))+'</strong></div>'+
+        '</div>'+
+        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Restantes</div><div>Valor da parcela</div><div style="text-align:right">Saldo</div></div>'+
+        linhas+
+      '</section>';
+    }).join('');
+
+    conteudo.innerHTML=''+
+      '<div class="terc-saldo-geral-kpis">'+
+        '<div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong>'+nomes.length+'</strong></div>'+
+        '<div class="terc-saldo-geral-kpi"><span>Compras parceladas</span><strong>'+compras.length+'</strong></div>'+
+        '<div class="terc-saldo-geral-kpi"><span>Parcelas pendentes</span><strong>'+parcelas+'</strong></div>'+
+        '<div class="terc-saldo-geral-kpi total"><span>Saldo total</span><strong>'+escapar(dinheiro(totalGeral))+'</strong></div>'+
+      '</div>'+
+      '<div class="terc-saldo-geral-filtros">'+filtros+'</div>'+
+      '<div class="terc-saldo-geral-lista">'+grupos+'</div>'+
+      '<div class="terc-saldo-geral-note">O cálculo soma a parcela pendente do mês selecionado e todas as seguintes do mesmo parcelamento. Parcelas já marcadas como recebidas são ignoradas. A consulta não altera nenhum lançamento.</div>';
+
+    if(typeof abrirModal==='function') abrirModal('modalSaldoGeralTerceiros');
+    else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
+  };
+})();
+</script>
