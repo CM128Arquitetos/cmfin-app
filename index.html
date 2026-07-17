@@ -1,3 +1,4 @@
+<!-- CMFin atualização: exclusão de parcelas futuras e reset da divisão automática v6 - 2026-07-16 -->
 <!DOCTYPE html>
 <!-- CMFin atualização: saldo restante geral de terceiros v2 - 2026-07-16 -->
 <html lang="pt-BR">
@@ -13527,6 +13528,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const subtitulo = document.getElementById("subtituloModalFixo");
       if (titulo) titulo.innerText = "Novo Gasto Fixo";
       if (subtitulo) subtitulo.innerText = "Cadastre custos recorrentes, contas mensais e despesas parceladas.";
+
+      const previewDivisao = document.getElementById("cmfinDivisaoFixo");
+      if (previewDivisao) {
+        previewDivisao.classList.remove("is-visible", "cmfin-edit-note");
+        previewDivisao.innerHTML = "";
+      }
     }
 
     function editarGastoFixo(id, mesEdicao) {
@@ -14097,6 +14104,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const btnCancelar = document.getElementById("btnCancelarEdicaoVariavel");
       if (btnSalvar) btnSalvar.innerText = "Salvar Gasto Variável";
       if (btnCancelar) btnCancelar.style.display = "none";
+
+      const previewDivisao = document.getElementById("cmfinDivisaoVariavel");
+      if (previewDivisao) {
+        previewDivisao.classList.remove("is-visible", "cmfin-edit-note");
+        previewDivisao.innerHTML = "";
+      }
     }
 
     function editarGastoVariavel(id) {
@@ -15564,6 +15577,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const btnCancelar = document.getElementById("btnCancelarEdicaoTerceiro");
       if (btnSalvar) btnSalvar.innerText = "Salvar Lançamento";
       if (btnCancelar) btnCancelar.style.display = "none";
+
+      const previewDivisao = document.getElementById("cmfinDivisaoTerceiro");
+      if (previewDivisao) {
+        previewDivisao.classList.remove("is-visible", "cmfin-edit-note");
+        previewDivisao.innerHTML = "";
+      }
     }
 
     function editarLancamentoTerceiro(compraId) {
@@ -15854,10 +15873,61 @@ Os outros lançamentos não serão alterados.`;
     }
 
     function excluirTerceiro(id) {
-      if (!confirm("Deseja excluir esta parcela de terceiro?")) return;
-      terceiros = terceiros.filter(t => t.id !== id);
+      const itemAtual = terceiros.find(t => t && String(t.id) === String(id));
+      if (!itemAtual) {
+        alert("Lançamento não encontrado.");
+        return;
+      }
+
+      const tipo = itemAtual.tipo || "Parcelado";
+
+      if (tipo === "Parcelado") {
+        const compraId = String(itemAtual.compraId ?? itemAtual.id);
+        const numeroParcelaAtual = Number(itemAtual.numeroParcela || String(itemAtual.parcela || "1/1").split("/")[0] || 1);
+        const totalParcelas = Number(itemAtual.totalParcelas || String(itemAtual.parcela || "1/1").split("/")[1] || numeroParcelaAtual);
+
+        const parcelasParaExcluir = terceiros
+          .filter(t => {
+            if (!t || (t.tipo || "Parcelado") !== "Parcelado") return false;
+            if (String(t.compraId ?? t.id) !== compraId) return false;
+            const numero = Number(t.numeroParcela || String(t.parcela || "1/1").split("/")[0] || 1);
+            return numero >= numeroParcelaAtual;
+          })
+          .sort((a, b) => Number(a.numeroParcela || 0) - Number(b.numeroParcela || 0));
+
+        if (!parcelasParaExcluir.length) {
+          alert("Não foram encontradas parcelas para excluir.");
+          return;
+        }
+
+        const primeira = Number(parcelasParaExcluir[0].numeroParcela || numeroParcelaAtual);
+        const ultima = Number(parcelasParaExcluir[parcelasParaExcluir.length - 1].numeroParcela || totalParcelas);
+        const mensagem = `Excluir este lançamento a partir da parcela selecionada?
+
+${itemAtual.descricao || "Lançamento parcelado"}
+Pessoa: ${itemAtual.pessoa || "-"}
+Parcelas removidas: ${primeira}/${totalParcelas} até ${ultima}/${totalParcelas}
+Quantidade: ${parcelasParaExcluir.length}
+
+As parcelas anteriores serão mantidas. Os outros lançamentos não serão alterados.`;
+        if (!confirm(mensagem)) return;
+
+        const idsParaExcluir = new Set(parcelasParaExcluir.map(t => String(t.id)));
+        terceiros = terceiros.filter(t => !t || !idsParaExcluir.has(String(t.id)));
+      } else {
+        const mensagem = `Excluir este lançamento recorrente de todos os meses?
+
+${itemAtual.descricao || "Lançamento recorrente"}
+Pessoa: ${itemAtual.pessoa || "-"}
+
+Os outros lançamentos não serão alterados.`;
+        if (!confirm(mensagem)) return;
+        terceiros = terceiros.filter(t => !t || String(t.id) !== String(itemAtual.id));
+      }
+
       salvarDados();
-      renderizarTerceiros();
+      if (typeof renderizarTudo === "function") renderizarTudo();
+      else renderizarTerceiros();
     }
 
     function limparFiltrosTerceiros() {
@@ -41284,5 +41354,318 @@ Os outros lançamentos não serão alterados.`;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar);
   else iniciar();
+})();
+</script>
+
+<!-- CMFin v7 - escolha de exclusão de parcelamento -->
+<style id="cmfin-exclusao-parcelado-v7-style">
+  #modalExclusaoParcelado .cmfin-exclusao-modal{
+    max-width:620px;
+    padding:0;
+    overflow:hidden;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-shell{
+    padding:24px;
+    background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-topo{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    margin-bottom:18px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-icone{
+    width:48px;
+    height:48px;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 48px;
+    background:#fff1f1;
+    color:#dc2626;
+    font-size:23px;
+    font-weight:900;
+    border:1px solid #fecaca;
+  }
+  #modalExclusaoParcelado h2{
+    margin:0 0 5px;
+    color:#0f172a;
+    font-size:21px;
+    line-height:1.2;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-subtitulo{
+    margin:0;
+    color:#64748b;
+    font-size:13px;
+    line-height:1.5;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-identificacao{
+    padding:13px 15px;
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    background:#fff;
+    margin-bottom:14px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-identificacao strong{
+    display:block;
+    color:#0f172a;
+    font-size:15px;
+    margin-bottom:3px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-identificacao span{
+    color:#64748b;
+    font-size:12px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcoes{
+    display:grid;
+    gap:10px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:15px 16px;
+    border-radius:16px;
+    text-align:left;
+    cursor:pointer;
+    font:inherit;
+    transition:.18s ease;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao:hover{
+    transform:translateY(-1px);
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao strong{
+    display:block;
+    font-size:14px;
+    margin-bottom:3px;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao span{
+    display:block;
+    font-size:11px;
+    line-height:1.4;
+    font-weight:600;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao-tudo{
+    color:#b91c1c;
+    background:#fff5f5;
+    border:1px solid #fecaca;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao-tudo:hover{
+    background:#feecec;
+    border-color:#fca5a5;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao-futuras{
+    color:#0f766e;
+    background:#f0fdfa;
+    border:1px solid #99f6e4;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-opcao-futuras:hover{
+    background:#e6fffa;
+    border-color:#5eead4;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-seta{
+    font-size:20px;
+    font-weight:900;
+    flex:0 0 auto;
+  }
+  #modalExclusaoParcelado .cmfin-exclusao-rodape{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:16px;
+  }
+  @media(max-width:560px){
+    #modalExclusaoParcelado .cmfin-exclusao-shell{padding:18px;}
+    #modalExclusaoParcelado .cmfin-exclusao-opcao{padding:13px 14px;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalExclusaoParcelado" onclick="if(event.target===this) cmfinFecharExclusaoParcelado()">
+  <div class="modal cmfin-exclusao-modal" role="dialog" aria-modal="true" aria-labelledby="cmfinExclusaoParceladoTitulo">
+    <div class="cmfin-exclusao-shell">
+      <div class="cmfin-exclusao-topo">
+        <div class="cmfin-exclusao-icone">!</div>
+        <div>
+          <h2 id="cmfinExclusaoParceladoTitulo">Como deseja excluir?</h2>
+          <p class="cmfin-exclusao-subtitulo">Escolha se deseja apagar todo o parcelamento ou somente a parcela selecionada e as seguintes.</p>
+        </div>
+      </div>
+
+      <div class="cmfin-exclusao-identificacao">
+        <strong id="cmfinExclusaoDescricao">Lançamento parcelado</strong>
+        <span id="cmfinExclusaoPessoa">Terceiro</span>
+      </div>
+
+      <div class="cmfin-exclusao-opcoes">
+        <button type="button" class="cmfin-exclusao-opcao cmfin-exclusao-opcao-tudo" onclick="cmfinConfirmarExclusaoParcelado('tudo')">
+          <span>
+            <strong>Excluir tudo</strong>
+            <span id="cmfinExclusaoTudoDetalhe">Remove todas as parcelas deste lançamento.</span>
+          </span>
+          <span class="cmfin-exclusao-seta">→</span>
+        </button>
+
+        <button type="button" class="cmfin-exclusao-opcao cmfin-exclusao-opcao-futuras" onclick="cmfinConfirmarExclusaoParcelado('futuras')">
+          <span>
+            <strong id="cmfinExclusaoFuturasTitulo">Excluir desta parcela em diante</strong>
+            <span id="cmfinExclusaoFuturasDetalhe">As parcelas anteriores serão mantidas.</span>
+          </span>
+          <span class="cmfin-exclusao-seta">→</span>
+        </button>
+      </div>
+
+      <div class="cmfin-exclusao-rodape">
+        <button type="button" class="btn btn-secondary" onclick="cmfinFecharExclusaoParcelado()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-exclusao-parcelado-v7-script">
+(function(){
+  var excluirTerceiroAnterior=window.excluirTerceiro;
+  var estadoExclusao=null;
+
+  function dadosTerceiros(){
+    try{
+      if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros;
+    }catch(_){ }
+    if(Array.isArray(window.terceiros)) return window.terceiros;
+    return [];
+  }
+
+  function atualizarDados(novaLista){
+    var atualizado=false;
+    try{
+      if(typeof terceiros!=='undefined'){
+        terceiros=novaLista;
+        atualizado=true;
+      }
+    }catch(_){ }
+    if(Array.isArray(window.terceiros)){
+      window.terceiros=novaLista;
+      atualizado=true;
+    }
+    return atualizado;
+  }
+
+  function numeroParcela(item){
+    var numero=Number(item&&item.numeroParcela);
+    if(Number.isFinite(numero)&&numero>0) return numero;
+    var partes=String(item&&item.parcela||'1/1').split('/');
+    numero=Number(partes[0]);
+    return Number.isFinite(numero)&&numero>0?numero:1;
+  }
+
+  function totalParcelas(item){
+    var total=Number(item&&item.totalParcelas);
+    if(Number.isFinite(total)&&total>0) return total;
+    var partes=String(item&&item.parcela||'1/1').split('/');
+    total=Number(partes[1]);
+    return Number.isFinite(total)&&total>0?total:numeroParcela(item);
+  }
+
+  function fechar(){
+    var modal=document.getElementById('modalExclusaoParcelado');
+    if(modal) modal.style.display='none';
+    estadoExclusao=null;
+  }
+
+  window.cmfinFecharExclusaoParcelado=fechar;
+
+  window.excluirTerceiro=function(id){
+    var lista=dadosTerceiros();
+    var item=lista.find(function(t){return t&&String(t.id)===String(id);});
+    if(!item){
+      alert('Lançamento não encontrado.');
+      return;
+    }
+
+    if((item.tipo||'Parcelado')!=='Parcelado'){
+      if(typeof excluirTerceiroAnterior==='function') excluirTerceiroAnterior(id);
+      return;
+    }
+
+    var compraId=String(item.compraId!==undefined&&item.compraId!==null?item.compraId:item.id);
+    var grupo=lista.filter(function(t){
+      return t&&(t.tipo||'Parcelado')==='Parcelado'&&String(t.compraId!==undefined&&t.compraId!==null?t.compraId:t.id)===compraId;
+    }).sort(function(a,b){return numeroParcela(a)-numeroParcela(b);});
+
+    if(!grupo.length){
+      alert('Não foram encontradas parcelas deste lançamento.');
+      return;
+    }
+
+    var atual=numeroParcela(item);
+    var total=totalParcelas(item);
+    var futuras=grupo.filter(function(t){return numeroParcela(t)>=atual;});
+    var primeira=futuras.length?numeroParcela(futuras[0]):atual;
+    var ultima=futuras.length?numeroParcela(futuras[futuras.length-1]):total;
+
+    estadoExclusao={
+      id:String(id),
+      compraId:compraId,
+      grupoIds:grupo.map(function(t){return String(t.id);}),
+      futurasIds:futuras.map(function(t){return String(t.id);}),
+      atual:atual,
+      total:total,
+      primeira:primeira,
+      ultima:ultima,
+      descricao:item.descricao||'Lançamento parcelado',
+      pessoa:item.pessoa||'Terceiro'
+    };
+
+    var descricao=document.getElementById('cmfinExclusaoDescricao');
+    var pessoa=document.getElementById('cmfinExclusaoPessoa');
+    var tudoDetalhe=document.getElementById('cmfinExclusaoTudoDetalhe');
+    var futurasTitulo=document.getElementById('cmfinExclusaoFuturasTitulo');
+    var futurasDetalhe=document.getElementById('cmfinExclusaoFuturasDetalhe');
+
+    if(descricao) descricao.textContent=estadoExclusao.descricao;
+    if(pessoa) pessoa.textContent='Pessoa: '+estadoExclusao.pessoa+' · Parcelamento: '+total+' parcelas';
+    if(tudoDetalhe) tudoDetalhe.textContent='Remove as parcelas 1/'+total+' até '+total+'/'+total+' deste lançamento.';
+    if(futurasTitulo) futurasTitulo.textContent='Excluir somente '+primeira+'/'+total+' até '+ultima+'/'+total;
+    if(futurasDetalhe) futurasDetalhe.textContent='Mantém as parcelas anteriores a '+primeira+'/'+total+' e remove '+futuras.length+' parcela(s).';
+
+    var modal=document.getElementById('modalExclusaoParcelado');
+    if(modal) modal.style.display='flex';
+  };
+
+  window.cmfinConfirmarExclusaoParcelado=function(opcao){
+    if(!estadoExclusao) return;
+    var lista=dadosTerceiros();
+    var ids=opcao==='tudo'?estadoExclusao.grupoIds:estadoExclusao.futurasIds;
+    var conjunto=new Set(ids.map(String));
+    var novaLista=lista.filter(function(t){return !t||!conjunto.has(String(t.id));});
+
+    if(!atualizarDados(novaLista)){
+      alert('Não foi possível atualizar os lançamentos.');
+      return;
+    }
+
+    var detalhe=opcao==='tudo'
+      ? 'Todas as '+estadoExclusao.total+' parcelas foram removidas.'
+      : 'Parcelas '+estadoExclusao.primeira+'/'+estadoExclusao.total+' até '+estadoExclusao.ultima+'/'+estadoExclusao.total+' removidas.';
+
+    fechar();
+    try{if(typeof salvarDados==='function') salvarDados();}catch(_){ }
+    try{
+      if(typeof renderizarTudo==='function') renderizarTudo();
+      else if(typeof renderizarTerceiros==='function') renderizarTerceiros();
+    }catch(_){ }
+    try{
+      if(typeof mostrarToast==='function') mostrarToast('Lançamento excluído.',detalhe);
+      else alert('Lançamento excluído.\n'+detalhe);
+    }catch(_){ }
+  };
+
+  document.addEventListener('keydown',function(evento){
+    if(evento.key==='Escape'){
+      var modal=document.getElementById('modalExclusaoParcelado');
+      if(modal&&modal.style.display==='flex') fechar();
+    }
+  });
 })();
 </script>
