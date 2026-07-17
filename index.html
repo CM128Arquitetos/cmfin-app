@@ -41002,21 +41002,61 @@ Os outros lançamentos não serão alterados.`;
 <style>
   .cmfin-auto-parcela{
     display:none;
-    margin-top:10px;
-    padding:11px 13px;
+    margin-top:6px;
+    padding:8px 10px;
     border:1px solid rgba(13,128,116,.22);
-    border-radius:13px;
+    border-radius:11px;
     background:linear-gradient(135deg,rgba(236,253,250,.96),rgba(240,249,255,.96));
     color:#123b37;
+    min-width:0;
+    overflow:hidden;
   }
-  .cmfin-auto-parcela.is-visible{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  .cmfin-auto-parcela .cmfin-auto-parcela-copy{display:flex;flex-direction:column;gap:2px;min-width:210px;flex:1}
-  .cmfin-auto-parcela .cmfin-auto-parcela-copy span{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0f766e}
-  .cmfin-auto-parcela .cmfin-auto-parcela-copy small{font-size:11px;line-height:1.35;color:#5f6f70}
-  .cmfin-auto-parcela .cmfin-auto-parcela-value{font-size:17px;font-weight:900;color:#075e54;white-space:nowrap}
+  .cmfin-auto-parcela.is-visible{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    align-items:start;
+    gap:3px;
+  }
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-width:0;
+  }
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy span{
+    flex:0 0 auto;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    color:#0f766e;
+    white-space:nowrap;
+  }
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy small{
+    min-width:0;
+    font-size:10px;
+    line-height:1.25;
+    color:#5f6f70;
+    text-align:right;
+  }
+  .cmfin-auto-parcela .cmfin-auto-parcela-value{
+    font-size:15px;
+    line-height:1.2;
+    font-weight:900;
+    color:#075e54;
+    white-space:normal;
+  }
   .cmfin-auto-parcela.cmfin-edit-note{border-color:var(--line);background:var(--panel-soft);color:var(--text)}
   .cmfin-auto-parcela.cmfin-edit-note .cmfin-auto-parcela-copy span{color:var(--muted)}
-  @media (max-width:720px){.cmfin-auto-parcela.is-visible{align-items:flex-start}.cmfin-auto-parcela .cmfin-auto-parcela-value{font-size:15px}}
+  #terceiros #cmfinDivisaoTerceiro{margin-top:5px;padding:7px 9px}
+  #terceiros #cmfinDivisaoTerceiro .cmfin-auto-parcela-value{font-size:14px}
+  #terceiros #cmfinDivisaoTerceiro + .muted{margin-top:5px !important;line-height:1.3}
+  @media (max-width:720px){
+    .cmfin-auto-parcela .cmfin-auto-parcela-copy{align-items:flex-start;flex-direction:column;gap:1px}
+    .cmfin-auto-parcela .cmfin-auto-parcela-copy small{text-align:left}
+    .cmfin-auto-parcela .cmfin-auto-parcela-value{font-size:14px}
+  }
 </style>
 <script>
 (function(){
@@ -41052,7 +41092,7 @@ Os outros lançamentos não serão alterados.`;
     box.classList.remove('is-visible','cmfin-edit-note');
     if(opcoes.edicao){
       box.classList.add('is-visible','cmfin-edit-note');
-      box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Edição do lançamento</span><small>O valor exibido corresponde à parcela selecionada. A divisão automática é aplicada ao criar um novo parcelamento.</small></div>';
+      box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Edição</span><small>Valor da parcela selecionada</small></div>';
       return;
     }
     if(!(total>0)||!(parcelas>1)){
@@ -41061,7 +41101,7 @@ Os outros lançamentos não serão alterados.`;
     }
     var mensal=total/parcelas;
     box.classList.add('is-visible');
-    box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Divisão automática</span><small>'+dinheiro(total)+' ÷ '+parcelas+' parcelas. O sistema salvará o valor mensal automaticamente.</small></div><div class="cmfin-auto-parcela-value">'+parcelas+'× de aproximadamente '+dinheiro(mensal)+'</div>';
+    box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Divisão automática</span><small>Total: '+dinheiro(total)+'</small></div><div class="cmfin-auto-parcela-value">'+parcelas+'× de '+dinheiro(mensal)+' por mês</div>';
   }
   function campoParcelamentoVariavelVisivel(){
     var box=el('camposParcelamentoVariavel');
