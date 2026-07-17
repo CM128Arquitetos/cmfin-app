@@ -40997,3 +40997,252 @@ Os outros lançamentos não serão alterados.`;
   };
 })();
 </script>
+
+<!-- PATCH CMFin v4 — Divisão automática do valor total por parcelas -->
+<style>
+  .cmfin-auto-parcela{
+    display:none;
+    margin-top:10px;
+    padding:11px 13px;
+    border:1px solid rgba(13,128,116,.22);
+    border-radius:13px;
+    background:linear-gradient(135deg,rgba(236,253,250,.96),rgba(240,249,255,.96));
+    color:#123b37;
+  }
+  .cmfin-auto-parcela.is-visible{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy{display:flex;flex-direction:column;gap:2px;min-width:210px;flex:1}
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy span{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0f766e}
+  .cmfin-auto-parcela .cmfin-auto-parcela-copy small{font-size:11px;line-height:1.35;color:#5f6f70}
+  .cmfin-auto-parcela .cmfin-auto-parcela-value{font-size:17px;font-weight:900;color:#075e54;white-space:nowrap}
+  .cmfin-auto-parcela.cmfin-edit-note{border-color:var(--line);background:var(--panel-soft);color:var(--text)}
+  .cmfin-auto-parcela.cmfin-edit-note .cmfin-auto-parcela-copy span{color:var(--muted)}
+  @media (max-width:720px){.cmfin-auto-parcela.is-visible{align-items:flex-start}.cmfin-auto-parcela .cmfin-auto-parcela-value{font-size:15px}}
+</style>
+<script>
+(function(){
+  if(window.__cmfinDivisaoAutomaticaParcelasV4) return;
+  window.__cmfinDivisaoAutomaticaParcelasV4=true;
+
+  function el(id){return document.getElementById(id);}
+  function valorCampo(id){
+    var campo=el(id);
+    if(!campo) return 0;
+    try{return typeof window.limparMoeda==='function'?Number(window.limparMoeda(campo.value)||0):0;}catch(e){return 0;}
+  }
+  function qtdCampo(id){return Math.max(1,Math.floor(Number(el(id)?.value||1)));}
+  function dinheiro(v){
+    try{return typeof window.moeda==='function'?window.moeda(v):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}
+  }
+  function colocarDepois(referencia,novo){
+    if(!referencia||!referencia.parentNode||!novo) return;
+    referencia.parentNode.insertBefore(novo,referencia.nextSibling);
+  }
+  function criarPreview(id,referencia){
+    var box=el(id);
+    if(box) return box;
+    box=document.createElement('div');
+    box.id=id;
+    box.className='cmfin-auto-parcela';
+    colocarDepois(referencia,box);
+    return box;
+  }
+  function atualizarBox(box,total,parcelas,opcoes){
+    if(!box) return;
+    opcoes=opcoes||{};
+    box.classList.remove('is-visible','cmfin-edit-note');
+    if(opcoes.edicao){
+      box.classList.add('is-visible','cmfin-edit-note');
+      box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Edição do lançamento</span><small>O valor exibido corresponde à parcela selecionada. A divisão automática é aplicada ao criar um novo parcelamento.</small></div>';
+      return;
+    }
+    if(!(total>0)||!(parcelas>1)){
+      box.innerHTML='';
+      return;
+    }
+    var mensal=total/parcelas;
+    box.classList.add('is-visible');
+    box.innerHTML='<div class="cmfin-auto-parcela-copy"><span>Divisão automática</span><small>'+dinheiro(total)+' ÷ '+parcelas+' parcelas. O sistema salvará o valor mensal automaticamente.</small></div><div class="cmfin-auto-parcela-value">'+parcelas+'× de aproximadamente '+dinheiro(mensal)+'</div>';
+  }
+  function campoParcelamentoVariavelVisivel(){
+    var box=el('camposParcelamentoVariavel');
+    if(!box) return false;
+    return window.getComputedStyle(box).display!=='none';
+  }
+  function definirRotuloValor(inputId,texto){
+    var input=el(inputId);
+    var label=input&&input.parentElement?input.parentElement.querySelector('label'):null;
+    if(label) label.textContent=texto;
+  }
+
+  window.cmfinAtualizarDivisaoTerceiro=function(){
+    var box=el('cmfinDivisaoTerceiro');
+    var parcelado=(el('tercTipo')?.value||'Parcelado')==='Parcelado';
+    atualizarBox(box,parcelado?valorCampo('tercValor'):0,qtdCampo('tercParcelas'));
+  };
+  window.cmfinAtualizarDivisaoFixo=function(){
+    var box=el('cmfinDivisaoFixo');
+    var parcelado=(el('fixoTipo')?.value||'Recorrente')==='Parcelado';
+    atualizarBox(box,parcelado?valorCampo('fixoValor'):0,qtdCampo('fixoTotalParcelas'));
+  };
+  window.cmfinAtualizarDivisaoVariavel=function(){
+    var box=el('cmfinDivisaoVariavel');
+    var editando=!!el('varEditId')?.value;
+    atualizarBox(box,campoParcelamentoVariavelVisivel()?valorCampo('varValor'):0,qtdCampo('varParcelas'),{edicao:editando});
+  };
+  function atualizarTodos(){
+    window.cmfinAtualizarDivisaoTerceiro();
+    window.cmfinAtualizarDivisaoFixo();
+    window.cmfinAtualizarDivisaoVariavel();
+  }
+
+  function instalarInterface(){
+    definirRotuloValor('fixoValor','Valor Total');
+    definirRotuloValor('varValor','Valor Total');
+
+    var tercRef=el('camposParcelamentoTerceiro')?.querySelector('.grid-2');
+    criarPreview('cmfinDivisaoTerceiro',tercRef);
+    criarPreview('cmfinDivisaoFixo',el('fixoPreviewParcela'));
+    var varRef=el('camposParcelamentoVariavel')?.querySelector('.grid-2');
+    criarPreview('cmfinDivisaoVariavel',varRef);
+
+    [
+      ['tercValor','input',window.cmfinAtualizarDivisaoTerceiro],
+      ['tercParcelas','input',window.cmfinAtualizarDivisaoTerceiro],
+      ['tercParcelas','change',window.cmfinAtualizarDivisaoTerceiro],
+      ['tercTipo','change',window.cmfinAtualizarDivisaoTerceiro],
+      ['fixoValor','input',window.cmfinAtualizarDivisaoFixo],
+      ['fixoTotalParcelas','input',window.cmfinAtualizarDivisaoFixo],
+      ['fixoTotalParcelas','change',window.cmfinAtualizarDivisaoFixo],
+      ['fixoTipo','change',window.cmfinAtualizarDivisaoFixo],
+      ['varValor','input',window.cmfinAtualizarDivisaoVariavel],
+      ['varParcelas','input',window.cmfinAtualizarDivisaoVariavel],
+      ['varParcelas','change',window.cmfinAtualizarDivisaoVariavel],
+      ['varForma','change',function(){setTimeout(window.cmfinAtualizarDivisaoVariavel,0);}],
+      ['varTipoParcelamento','change',function(){setTimeout(window.cmfinAtualizarDivisaoVariavel,0);}]
+    ].forEach(function(cfg){var campo=el(cfg[0]);if(campo&&!campo.dataset.cmfinAutoParcela){campo.addEventListener(cfg[1],cfg[2]);campo.dataset.cmfinAutoParcela='1';}});
+    atualizarTodos();
+  }
+
+  function executarComValorMensal(funcao,inputId,parcelasId,deveDividir,args,ctx){
+    if(typeof funcao!=='function'||!deveDividir) return funcao&&funcao.apply(ctx,args);
+    var input=el(inputId);
+    var parcelas=qtdCampo(parcelasId);
+    var limparOriginal=window.limparMoeda;
+    if(!input||parcelas<=1||typeof limparOriginal!=='function') return funcao.apply(ctx,args);
+    var textoOriginal=input.value;
+    var total=Number(limparOriginal(textoOriginal)||0);
+    if(!(total>0)) return funcao.apply(ctx,args);
+    var mensal=total/parcelas;
+    var limparTemporario=function(v){
+      if(String(v)===String(textoOriginal)) return mensal;
+      return limparOriginal(v);
+    };
+    try{
+      window.limparMoeda=limparTemporario;
+      try{limparMoeda=limparTemporario;}catch(e){}
+      return funcao.apply(ctx,args);
+    }finally{
+      window.limparMoeda=limparOriginal;
+      try{limparMoeda=limparOriginal;}catch(e){}
+    }
+  }
+
+  function instalarControladores(){
+    if(typeof window.salvarLancamentoTerceiro==='function'&&!window.salvarLancamentoTerceiro.__cmfinAutoDivisao){
+      var salvarTerceiroOriginal=window.salvarLancamentoTerceiro;
+      var salvarTerceiroNovo=function(){
+        var dividir=(el('tercTipo')?.value||'Parcelado')==='Parcelado';
+        return executarComValorMensal(salvarTerceiroOriginal,'tercValor','tercParcelas',dividir,arguments,this);
+      };
+      salvarTerceiroNovo.__cmfinAutoDivisao=true;
+      window.salvarLancamentoTerceiro=salvarTerceiroNovo;
+      try{salvarLancamentoTerceiro=salvarTerceiroNovo;}catch(e){}
+    }
+
+    if(typeof window.salvarGastoFixo==='function'&&!window.salvarGastoFixo.__cmfinAutoDivisao){
+      var salvarFixoOriginal=window.salvarGastoFixo;
+      var salvarFixoNovo=function(){
+        var dividir=(el('fixoTipo')?.value||'Recorrente')==='Parcelado';
+        return executarComValorMensal(salvarFixoOriginal,'fixoValor','fixoTotalParcelas',dividir,arguments,this);
+      };
+      salvarFixoNovo.__cmfinAutoDivisao=true;
+      window.salvarGastoFixo=salvarFixoNovo;
+      try{salvarGastoFixo=salvarFixoNovo;}catch(e){}
+    }
+
+    if(typeof window.editarLancamentoTerceiro==='function'&&!window.editarLancamentoTerceiro.__cmfinTotalEdicao){
+      var editarTerceiroOriginal=window.editarLancamentoTerceiro;
+      var editarTerceiroNovo=function(compraId){
+        var retorno=editarTerceiroOriginal.apply(this,arguments);
+        try{
+          var grupo=(window.terceiros||terceiros||[]).filter(function(t){return String(t.compraId)===String(compraId);});
+          if(grupo.length&&(grupo[0].tipo||'Parcelado')==='Parcelado'){
+            var total=grupo.reduce(function(s,item){return s+(typeof window.valorTotalTerceiro==='function'?Number(window.valorTotalTerceiro(item)||0):Number(item.valorTotal??item.valor??0));},0);
+            if(el('tercValor')) el('tercValor').value=dinheiro(total);
+          }
+        }catch(e){}
+        window.cmfinAtualizarDivisaoTerceiro();
+        return retorno;
+      };
+      editarTerceiroNovo.__cmfinTotalEdicao=true;
+      window.editarLancamentoTerceiro=editarTerceiroNovo;
+      try{editarLancamentoTerceiro=editarTerceiroNovo;}catch(e){}
+    }
+
+    if(typeof window.editarGastoFixo==='function'&&!window.editarGastoFixo.__cmfinTotalEdicao){
+      var editarFixoOriginal=window.editarGastoFixo;
+      var editarFixoNovo=function(id){
+        var retorno=editarFixoOriginal.apply(this,arguments);
+        try{
+          var lista=window.gastosFixos||gastosFixos||[];
+          var item=lista.find(function(i){return String(i.id)===String(id);});
+          if(item&&(item.tipo||'Recorrente')==='Parcelado'){
+            var total=Number(item.valor||0)*Math.max(1,Number(item.totalParcelas||1));
+            if(el('fixoValor')) el('fixoValor').value=dinheiro(total);
+          }
+        }catch(e){}
+        window.cmfinAtualizarDivisaoFixo();
+        return retorno;
+      };
+      editarFixoNovo.__cmfinTotalEdicao=true;
+      window.editarGastoFixo=editarFixoNovo;
+      try{editarGastoFixo=editarFixoNovo;}catch(e){}
+    }
+
+    if(typeof window.editarGastoVariavel==='function'&&!window.editarGastoVariavel.__cmfinRotuloParcela){
+      var editarVarOriginal=window.editarGastoVariavel;
+      var editarVarNovo=function(){
+        var retorno=editarVarOriginal.apply(this,arguments);
+        definirRotuloValor('varValor','Valor da Parcela');
+        window.cmfinAtualizarDivisaoVariavel();
+        return retorno;
+      };
+      editarVarNovo.__cmfinRotuloParcela=true;
+      window.editarGastoVariavel=editarVarNovo;
+      try{editarGastoVariavel=editarVarNovo;}catch(e){}
+    }
+
+    ['abrirModalGastoVariavel','limparFormularioGastoVariavel','cancelarEdicaoGastoVariavel'].forEach(function(nome){
+      var original=window[nome];
+      if(typeof original!=='function'||original.__cmfinRotuloTotal) return;
+      var novo=function(){
+        var retorno=original.apply(this,arguments);
+        definirRotuloValor('varValor','Valor Total');
+        setTimeout(window.cmfinAtualizarDivisaoVariavel,0);
+        return retorno;
+      };
+      novo.__cmfinRotuloTotal=true;
+      window[nome]=novo;
+      try{eval(nome+'=novo');}catch(e){}
+    });
+  }
+
+  function iniciar(){
+    instalarInterface();
+    instalarControladores();
+    setTimeout(function(){instalarInterface();instalarControladores();atualizarTodos();},250);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar);
+  else iniciar();
+})();
+</script>
