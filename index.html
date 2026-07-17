@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- CMFin atualização: saldo restante geral de terceiros v2 - 2026-07-16 -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -15745,6 +15746,80 @@ Total: ${moeda(total)}`;
       else renderizarTerceiros();
     }
 
+    function baixarTotalTerceiroLancamento(id, mesReferencia = null) {
+      const mes = mesReferencia || obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual();
+      const itemAtual = terceiros.find(t => t && String(t.id) === String(id));
+
+      if (!itemAtual) {
+        alert("Lançamento não encontrado.");
+        return;
+      }
+
+      const tipo = itemAtual.tipo || "Parcelado";
+
+      // Contas recorrentes não possuem término definido: a baixa continua restrita ao mês exibido.
+      if (tipo !== "Parcelado") {
+        if (statusTerceiroNoMes(itemAtual, mes) === "Recebido") {
+          alert("Este lançamento já está recebido no mês selecionado.");
+          return;
+        }
+
+        const msgRecorrente = `Dar baixa somente neste lançamento de ${itemAtual.pessoa || "terceiro"} no mês selecionado?
+
+${itemAtual.descricao || "Conta recorrente"}
+Valor: ${moeda(valorTotalTerceiro(itemAtual))}`;
+        if (!confirm(msgRecorrente)) return;
+
+        terceiros = terceiros.map(t =>
+          t && String(t.id) === String(itemAtual.id)
+            ? definirStatusTerceiroNoMes(t, mes, "Recebido")
+            : t
+        );
+      } else {
+        const compraId = String(itemAtual.compraId ?? itemAtual.id);
+        const numeroParcelaAtual = Number(itemAtual.numeroParcela || String(itemAtual.parcela || "1/1").split("/")[0] || 1);
+        const totalParcelas = Number(itemAtual.totalParcelas || String(itemAtual.parcela || "1/1").split("/")[1] || numeroParcelaAtual);
+
+        const parcelasPendentes = terceiros
+          .filter(t => {
+            if (!t || String(t.compraId ?? t.id) !== compraId || (t.tipo || "Parcelado") !== "Parcelado") return false;
+            const numero = Number(t.numeroParcela || String(t.parcela || "1/1").split("/")[0] || 1);
+            return numero >= numeroParcelaAtual && statusTerceiroNoMes(t, String(t.vencimento || mes).slice(0, 7)) !== "Recebido";
+          })
+          .sort((a, b) => Number(a.numeroParcela || 0) - Number(b.numeroParcela || 0));
+
+        if (!parcelasPendentes.length) {
+          alert("Este lançamento não possui parcelas pendentes a partir da parcela atual.");
+          return;
+        }
+
+        const total = parcelasPendentes.reduce((acc, item) => acc + valorTotalTerceiro(item), 0);
+        const primeira = Number(parcelasPendentes[0].numeroParcela || numeroParcelaAtual);
+        const ultima = Number(parcelasPendentes[parcelasPendentes.length - 1].numeroParcela || totalParcelas);
+        const msg = `Quitar somente este lançamento e todas as suas parcelas futuras?
+
+${itemAtual.descricao || "Lançamento parcelado"}
+Pessoa: ${itemAtual.pessoa || "-"}
+Parcelas: ${primeira}/${totalParcelas} até ${ultima}/${totalParcelas}
+Quantidade pendente: ${parcelasPendentes.length}
+Total da quitação: ${moeda(total)}
+
+Os outros lançamentos não serão alterados.`;
+        if (!confirm(msg)) return;
+
+        const idsParaBaixa = new Set(parcelasPendentes.map(t => String(t.id)));
+        terceiros = terceiros.map(t =>
+          t && idsParaBaixa.has(String(t.id))
+            ? definirStatusTerceiroNoMes(t, String(t.vencimento || mes).slice(0, 7), "Recebido")
+            : t
+        );
+      }
+
+      salvarDados();
+      if (typeof renderizarTudo === "function") renderizarTudo();
+      else renderizarTerceiros();
+    }
+
     function encerrarRecorrenciaTerceiro(id, mesReferencia = null) {
       const mes = mesReferencia || obterMesReferenciaFiltro("filtroTerc") || document.getElementById("dashboardMes")?.value || mesAtual();
       const item = terceiros.find(t => Number(t.id) === Number(id));
@@ -16380,7 +16455,7 @@ Total: ${moeda(total)}`;
                   <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId})">Editar</button>
                   <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}')">${proximoStatus}</button>
                   ${tipoLancamento === "Parcelado" ? `<button class="btn btn-secondary btn-small terc-btn-saldo-restante" onclick="cmfinAbrirSaldoParceladoTerceiro(${t.compraId}, '${mes}')">Saldo restante</button>` : ""}
-                  <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroMes(decodeURIComponent('${encodeURIComponent(t.pessoa || "")}'), decodeURIComponent('${encodeURIComponent(formaCartao || "")}'), '${mes}')">Baixar total</button>
+                  <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroLancamento(${t.id}, '${mes}')">Baixar total</button>
                   <button class="btn btn-danger btn-small" onclick="excluirTerceiro(${t.id})">Excluir</button>
                 </div>
               </div>
