@@ -10077,8 +10077,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                   <p>Filtre por pessoa, forma/cartão, categoria e status. Acompanhe as parcelas e o total exato a receber.</p>
                 </div>
                 <div class="terc-export-actions">
-                  <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar imagem</button>
-                  <button class="btn btn-secondary btn-small terc-btn-saldo-geral" type="button" onclick="cmfinAbrirSaldoGeralTerceiros()">Saldo restante</button>
+                  <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar Imagem</button>
+                  <button class="btn btn-secondary btn-small terc-btn-saldo-geral" type="button" onclick="cmfinAbrirSaldoGeralTerceiros()">Saldo Restante</button>
                 </div>
               </div>
 
@@ -16524,7 +16524,7 @@ Os outros lançamentos não serão alterados.`;
                 <div class="terc-row-actions terc-row-actions-v13">
                   <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId})">Editar</button>
                   <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}')">${proximoStatus}</button>
-                  ${tipoLancamento === "Parcelado" ? `<button class="btn btn-secondary btn-small terc-btn-saldo-restante" onclick="cmfinAbrirSaldoParceladoTerceiro(${t.compraId}, '${mes}')">Saldo restante</button>` : ""}
+                  ${tipoLancamento === "Parcelado" ? `<button class="btn btn-secondary btn-small terc-btn-saldo-restante" onclick="cmfinAbrirSaldoParceladoTerceiro(${t.compraId}, '${mes}')">Saldo Restante</button>` : ""}
                   <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroLancamento(${t.id}, '${mes}')">Baixar total</button>
                   <button class="btn btn-danger btn-small" onclick="excluirTerceiro(${t.id})">Excluir</button>
                 </div>
@@ -41666,7 +41666,7 @@ Os outros lançamentos não serão alterados.`;
           <p>Parcela do mês selecionado mais todas as parcelas futuras que ainda estão pendentes.</p>
         </div>
         <div class="terc-saldo-geral-header-actions">
-          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar resumo</button>
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
           <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
         </div>
       </div>
@@ -42060,7 +42060,7 @@ Os outros lançamentos não serão alterados.`;
       </div>
       <div id="tercSaldoGeralConteudo"></div>
       <div class="terc-saldo-geral-actions">
-        <button class="btn btn-primary" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar resumo</button>
+        <button class="btn btn-primary" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
       </div>
     </div>
   </div>
@@ -43139,3 +43139,77 @@ Os outros lançamentos não serão alterados.`;
   };
 })();
 </script>
+
+
+<!-- PATCH CMFin v15 — Correção definitiva do rodapé do Saldo Restante Geral -->
+<style id="cmfin-saldo-geral-interface-v15">
+  #modalSaldoGeralTerceiros{
+    padding:12px !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-modal{
+    width:min(1040px,calc(100vw - 24px)) !important;
+    height:min(780px,calc(100vh - 24px)) !important;
+    max-height:calc(100vh - 24px) !important;
+    overflow:hidden !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-shell{
+    height:100% !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    padding:20px 20px 18px !important;
+    overflow:hidden !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header{
+    flex:0 0 auto !important;
+  }
+  #modalSaldoGeralTerceiros #tercSaldoGeralConteudo{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-kpis,
+  #modalSaldoGeralTerceiros .terc-saldo-geral-filtros,
+  #modalSaldoGeralTerceiros .terc-saldo-geral-note{
+    flex:0 0 auto !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-lista{
+    flex:1 1 auto !important;
+    min-height:120px !important;
+    max-height:none !important;
+    overflow-y:auto !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
+    flex:0 0 auto !important;
+    min-height:58px !important;
+    margin-top:10px !important;
+    padding:8px 0 0 !important;
+    position:relative !important;
+    z-index:5 !important;
+    background:linear-gradient(180deg,rgba(246,251,250,0),#f6fbfa 24%) !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-actions .btn{
+    min-height:42px !important;
+    margin:0 !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  @media(max-width:760px){
+    #modalSaldoGeralTerceiros{padding:8px !important;}
+    #modalSaldoGeralTerceiros .terc-saldo-geral-modal{
+      width:calc(100vw - 16px) !important;
+      height:calc(100vh - 16px) !important;
+      max-height:calc(100vh - 16px) !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-geral-shell{
+      padding:15px 14px 14px !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
+      min-height:54px !important;
+      padding-top:7px !important;
+    }
+  }
+</style>
