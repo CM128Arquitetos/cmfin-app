@@ -33088,19 +33088,19 @@ Os outros lançamentos não serão alterados.`;
         }
         var faixa=faixaSelecionada(c);
         return '<div class="terc-saldo-compra" data-cmfin-saldo-token="'+c.token+'">'+
-          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span></div>'+
+          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
           '<div class="terc-saldo-dado" id="cmfinSaldoFaixa_'+c.token+'"><strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo)+'</div>'+
           '<div class="terc-saldo-adiantar"><select id="cmfinSaldoSelect_'+c.token+'" onchange="cmfinSaldoGeralDefinirParcelas(\''+c.token+'\',this.value)">'+opcoes+'</select><small id="cmfinSaldoQtd_'+c.token+'">'+c.pendentes.length+' de '+c.pendentes.length+' parcelas</small></div>'+
           '<div class="terc-saldo-dado"><strong>'+escapar(dinheiro(c.valorParcela))+'</strong></div>'+
           '<div class="terc-saldo-valor" id="cmfinSaldoSubtotal_'+c.token+'">'+escapar(dinheiro(c.total))+'</div>'+
-          '<div><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
+          
         '</div>';
       }).join('');
       var totalPessoa=lista.reduce(function(s,c){return s+c.total;},0);
       var qtdParcelas=lista.reduce(function(s,c){return s+c.pendentes.length;},0);
       return '<section class="terc-saldo-pessoa" id="cmfinSaldoPessoa_'+pessoaToken+'">'+
         '<div class="terc-saldo-pessoa-head"><div class="terc-saldo-pessoa-ident"><div class="terc-saldo-pessoa-avatar">'+escapar(iniciais(pessoaDados.nome))+'</div><div><strong>'+escapar(pessoaDados.nome)+'</strong><span id="cmfinSaldoPessoaResumo_'+pessoaToken+'">'+lista.length+' compra'+(lista.length===1?'':'s')+' · '+qtdParcelas+' parcelas selecionadas</span></div></div><div class="terc-saldo-pessoa-total"><span>Total da pessoa</span><strong id="cmfinSaldoPessoaTotal_'+pessoaToken+'">'+escapar(dinheiro(totalPessoa))+'</strong></div></div>'+
-        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div><div>Incluir</div></div>'+linhas+
+        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div></div>'+linhas+
       '</section>';
     }).join('');
 
@@ -43114,19 +43114,19 @@ Os outros lançamentos não serão alterados.`;
         }
         var faixa=faixaSelecionada(c);
         return '<div class="terc-saldo-compra" data-cmfin-saldo-token="'+c.token+'">'+
-          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span></div>'+
+          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
           '<div class="terc-saldo-dado" id="cmfinSaldoFaixa_'+c.token+'"><strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo)+'</div>'+
           '<div class="terc-saldo-adiantar"><select id="cmfinSaldoSelect_'+c.token+'" onchange="cmfinSaldoGeralDefinirParcelas(\''+c.token+'\',this.value)">'+opcoes+'</select><small id="cmfinSaldoQtd_'+c.token+'">'+c.pendentes.length+' de '+c.pendentes.length+' parcelas</small></div>'+
           '<div class="terc-saldo-dado"><strong>'+escapar(dinheiro(c.valorParcela))+'</strong></div>'+
           '<div class="terc-saldo-valor" id="cmfinSaldoSubtotal_'+c.token+'">'+escapar(dinheiro(c.total))+'</div>'+
-          '<div><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
+          
         '</div>';
       }).join('');
       var totalPessoa=lista.reduce(function(s,c){return s+c.total;},0);
       var qtdParcelas=lista.reduce(function(s,c){return s+c.pendentes.length;},0);
       return '<section class="terc-saldo-pessoa" id="cmfinSaldoPessoa_'+pessoaToken+'">'+
         '<div class="terc-saldo-pessoa-head"><div class="terc-saldo-pessoa-ident"><div class="terc-saldo-pessoa-avatar">'+escapar(iniciais(pessoaDados.nome))+'</div><div><strong>'+escapar(pessoaDados.nome)+'</strong><span id="cmfinSaldoPessoaResumo_'+pessoaToken+'">'+lista.length+' compra'+(lista.length===1?'':'s')+' · '+qtdParcelas+' parcelas selecionadas</span></div></div><div class="terc-saldo-pessoa-total"><span>Total da pessoa</span><strong id="cmfinSaldoPessoaTotal_'+pessoaToken+'">'+escapar(dinheiro(totalPessoa))+'</strong></div></div>'+
-        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div><div>Incluir</div></div>'+linhas+
+        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div></div>'+linhas+
       '</section>';
     }).join('');
 
@@ -43261,6 +43261,44 @@ Os outros lançamentos não serão alterados.`;
     }
     #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions .btn{
       flex:1 1 auto !important;
+    }
+  }
+</style>
+
+
+<!-- PATCH CMFin v17 — Organização da coluna Compra no Saldo Restante Geral -->
+<style id="cmfin-saldo-geral-compra-v17">
+  #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho,
+  #modalSaldoGeralTerceiros .terc-saldo-compra{
+    grid-template-columns:minmax(220px,1.65fr) minmax(145px,.82fr) minmax(132px,.72fr) minmax(115px,.68fr) minmax(115px,.72fr) !important;
+    gap:12px !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra-desc{
+    min-width:0;
+    align-self:stretch;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra-desc .terc-saldo-incluir-btn{
+    width:100%;
+    min-height:34px;
+    margin-top:10px;
+  }
+  @media(max-width:900px){
+    #modalSaldoGeralTerceiros .terc-saldo-compra{
+      grid-template-columns:1fr 1fr !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{
+      grid-column:1/-1 !important;
+    }
+  }
+  @media(max-width:560px){
+    #modalSaldoGeralTerceiros .terc-saldo-compra{
+      grid-template-columns:1fr !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{
+      grid-column:auto !important;
     }
   }
 </style>
