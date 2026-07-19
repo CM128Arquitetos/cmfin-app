@@ -42056,12 +42056,12 @@ Os outros lançamentos não serão alterados.`;
           <h2>Saldo restante geral</h2>
           <p>Visão conjunta dos parcelamentos do mês selecionado e de todas as parcelas futuras ainda pendentes.</p>
         </div>
-        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        <div class="terc-saldo-geral-header-actions">
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        </div>
       </div>
       <div id="tercSaldoGeralConteudo"></div>
-      <div class="terc-saldo-geral-actions">
-        <button class="btn btn-primary" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
-      </div>
     </div>
   </div>
 </div>
@@ -43132,7 +43132,7 @@ Os outros lançamentos não serão alterados.`;
 
     var totalGeral=compras.reduce(function(s,c){return s+c.total;},0);
     var parcelas=compras.reduce(function(s,c){return s+c.pendentes.length;},0);
-    conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong id="cmfinSaldoKpiPessoas">'+nomes.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoKpiCompras">'+compras.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoKpiParcelas">'+parcelas+'</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoKpiTotal">'+escapar(dinheiro(totalGeral))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'<span class="terc-saldo-simulacao-tag">Simulação</span></div><div class="terc-saldo-geral-lista">'+grupos+'</div><div class="terc-saldo-geral-note"><strong>Como usar:</strong> escolha quantas parcelas deseja adiantar em cada compra. Use <strong>Não incluir</strong> para retirar um lançamento do cálculo. O total é atualizado automaticamente e nenhuma baixa ou alteração é feita nos registros.</div>';
+    conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong id="cmfinSaldoKpiPessoas">'+nomes.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoKpiCompras">'+compras.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoKpiParcelas">'+parcelas+'</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoKpiTotal">'+escapar(dinheiro(totalGeral))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'<span class="terc-saldo-simulacao-tag">Simulação</span></div><div class="terc-saldo-geral-note"><strong>Como usar:</strong> escolha quantas parcelas deseja adiantar em cada compra. Use <strong>Não incluir</strong> para retirar um lançamento do cálculo. O total é atualizado automaticamente e nenhuma baixa ou alteração é feita nos registros.</div><div class="terc-saldo-geral-lista">'+grupos+'</div>';
 
     recalcular();
     if(typeof abrirModal==='function')abrirModal('modalSaldoGeralTerceiros');else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
@@ -43210,6 +43210,57 @@ Os outros lançamentos não serão alterados.`;
     #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
       min-height:54px !important;
       padding-top:7px !important;
+    }
+  }
+</style>
+
+
+<!-- PATCH CMFin v16 — Cabeçalho otimizado do Saldo Restante Geral -->
+<style id="cmfin-saldo-geral-cabecalho-v16">
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header{
+    display:flex !important;
+    align-items:flex-start !important;
+    justify-content:space-between !important;
+    gap:16px !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:8px !important;
+    flex:0 0 auto !important;
+    flex-wrap:nowrap !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions .btn{
+    min-height:38px !important;
+    white-space:nowrap !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
+    display:none !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-filtros{
+    margin-bottom:0 !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-note{
+    margin:8px 0 12px !important;
+    padding:9px 12px !important;
+    font-size:10.5px !important;
+    line-height:1.45 !important;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-lista{
+    min-height:180px !important;
+  }
+  @media(max-width:680px){
+    #modalSaldoGeralTerceiros .terc-saldo-geral-header{
+      align-items:stretch !important;
+      flex-direction:column !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions{
+      width:100% !important;
+      justify-content:flex-end !important;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions .btn{
+      flex:1 1 auto !important;
     }
   }
 </style>
