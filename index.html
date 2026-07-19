@@ -33457,18 +33457,75 @@ Os outros lançamentos não serão alterados.`;
     }
   };
 
-  window.cmfinConfirmarExportacaoSaldoGeralTerceiros = function(){
+  function obterPreviaSaldoGeral(){
     var dados = window.__cmfinSaldoGeralPreviaDados || estadoExportacao();
     if(!dados || !dados.pessoas.length || dados.total <= 0){
       alert("Inclua ao menos um lançamento e selecione as parcelas antes de exportar.");
-      return;
+      return null;
     }
+    var canvas = window.__cmfinSaldoGeralPreviaCanvas || criarCanvas(dados);
+    window.__cmfinSaldoGeralPreviaCanvas = canvas;
+    window.__cmfinSaldoGeralPreviaDados = dados;
+    return { dados:dados, canvas:canvas };
+  }
+
+  window.cmfinConfirmarExportacaoSaldoGeralTerceiros = async function(){
     try{
-      var canvas = window.__cmfinSaldoGeralPreviaCanvas || criarCanvas(dados);
-      baixarCanvasSaldoGeral(canvas, dados);
+      var previa = obterPreviaSaldoGeral();
+      if(!previa) return;
+      if(navigator.share && window.File){
+        var blob = await new Promise(function(resolve){ previa.canvas.toBlob(resolve, "image/png"); });
+        if(blob){
+          var pessoaNome = previa.dados.pessoas.length === 1 ? previa.dados.pessoas[0].nome : "geral";
+          var nome = "saldo-restante-" + slug(pessoaNome) + "-" + previa.dados.referencia + ".png";
+          var arquivo = new File([blob], nome, { type:"image/png" });
+          if(!navigator.canShare || navigator.canShare({ files:[arquivo] })){
+            await navigator.share({
+              title:"Saldo restante geral",
+              text:"Resumo do saldo restante geral exportado pelo CMFin.",
+              files:[arquivo]
+            });
+            return;
+          }
+        }
+      }
+      baixarCanvasSaldoGeral(previa.canvas, previa.dados);
     }catch(erro){
+      if(erro && erro.name === 'AbortError') return;
       console.error("Falha ao exportar saldo restante geral:", erro);
-      alert("Não foi possível gerar a imagem. Tente novamente após atualizar a página.");
+      alert("Não foi possível exportar a imagem. Tente novamente após atualizar a página.");
+    }
+  };
+
+  window.cmfinBaixarPngSaldoGeralTerceiros = function(){
+    try{
+      var previa = obterPreviaSaldoGeral();
+      if(!previa) return;
+      baixarCanvasSaldoGeral(previa.canvas, previa.dados);
+    }catch(erro){
+      console.error("Falha ao baixar PNG do saldo restante geral:", erro);
+      alert("Não foi possível baixar o PNG. Tente novamente após atualizar a página.");
+    }
+  };
+
+  window.cmfinCopiarImagemSaldoGeralTerceiros = async function(){
+    try{
+      var previa = obterPreviaSaldoGeral();
+      if(!previa) return;
+      if(!navigator.clipboard || typeof window.ClipboardItem === 'undefined'){
+        alert("Seu navegador não permite copiar imagem diretamente. Use o botão Baixar PNG.");
+        return;
+      }
+      var blob = await new Promise(function(resolve){ previa.canvas.toBlob(resolve, "image/png"); });
+      if(!blob){
+        alert("Não foi possível copiar a imagem no momento.");
+        return;
+      }
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      alert("Imagem copiada para a área de transferência.");
+    }catch(erro){
+      console.error("Falha ao copiar imagem do saldo restante geral:", erro);
+      alert("Não foi possível copiar a imagem. Se preferir, use o botão Baixar PNG.");
     }
   };
 
@@ -42127,43 +42184,58 @@ Os outros lançamentos não serão alterados.`;
   </div>
 </div>
 
-<style id="cmfin-previa-exportacao-saldo-v20">
+<style id="cmfin-previa-exportacao-saldo-v21">
   #modalPreviaSaldoGeralExportacao .cmfin-previa-modal{
-    width:min(1120px,calc(100vw - 28px));
-    max-width:1120px;
+    width:min(960px,calc(100vw - 34px));
+    max-width:960px;
     padding:0;
     border-radius:24px;
     overflow:hidden;
   }
   #modalPreviaSaldoGeralExportacao .cmfin-previa-shell{
     background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
-    padding:18px;
+    padding:22px;
   }
   #modalPreviaSaldoGeralExportacao .cmfin-previa-header{
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
     gap:16px;
-    margin-bottom:14px;
+    margin-bottom:16px;
   }
   #modalPreviaSaldoGeralExportacao .cmfin-previa-header h3{margin:0 0 4px;color:#102a25;}
   #modalPreviaSaldoGeralExportacao .cmfin-previa-header p{margin:0;color:#64748b;line-height:1.45;}
   #modalPreviaSaldoGeralExportacao .cmfin-previa-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-actions .btn{min-width:132px;}
   #modalPreviaSaldoGeralExportacao .cmfin-previa-body{
-    max-height:calc(100vh - 190px);
+    max-height:420px;
     overflow:auto;
     border:1px solid #dbe7e4;
-    border-radius:18px;
+    border-radius:20px;
     background:#eef4f3;
-    padding:16px;
+    padding:18px;
   }
-  #modalPreviaSaldoGeralExportacao .cmfin-previa-body img{display:block;width:100%;height:auto;border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.08);background:#fff;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-body img{
+    display:block;
+    width:100%;
+    max-width:780px;
+    margin:0 auto;
+    height:auto;
+    border-radius:18px;
+    box-shadow:0 8px 24px rgba(15,23,42,.08);
+    background:#fff;
+  }
   #modalPreviaSaldoGeralExportacao .cmfin-previa-note{margin-top:12px;color:#64748b;font-size:12px;line-height:1.5;}
+  @media(max-width:900px){
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-modal{width:min(860px,calc(100vw - 24px));}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-body{max-height:360px;padding:14px;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-body img{max-width:100%;}
+  }
   @media(max-width:760px){
     #modalPreviaSaldoGeralExportacao .cmfin-previa-header{flex-direction:column;}
     #modalPreviaSaldoGeralExportacao .cmfin-previa-actions{width:100%;justify-content:stretch;}
-    #modalPreviaSaldoGeralExportacao .cmfin-previa-actions .btn{flex:1 1 100%;width:100%;}
-    #modalPreviaSaldoGeralExportacao .cmfin-previa-body{max-height:calc(100vh - 230px);padding:10px;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-actions .btn{flex:1 1 100%;width:100%;min-width:0;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-body{max-height:calc(100vh - 290px);padding:10px;}
   }
 </style>
 
@@ -42177,6 +42249,8 @@ Os outros lançamentos não serão alterados.`;
         </div>
         <div class="cmfin-previa-actions">
           <button class="btn btn-primary btn-small" type="button" onclick="cmfinConfirmarExportacaoSaldoGeralTerceiros()">Exportar Imagem</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinBaixarPngSaldoGeralTerceiros()">Baixar PNG</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinCopiarImagemSaldoGeralTerceiros()">Copiar Imagem</button>
           <button class="btn btn-secondary btn-small" type="button" onclick="cmfinFecharPreviaSaldoGeralTerceiros()">Fechar</button>
         </div>
       </div>
