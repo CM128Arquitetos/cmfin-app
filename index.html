@@ -41807,7 +41807,7 @@ Os outros lançamentos não serão alterados.`;
     border-radius:26px;
   }
   #modalSaldoGeralTerceiros .terc-saldo-geral-shell{
-    padding:22px;
+    padding:22px 22px 26px;
     background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
   }
   #modalSaldoGeralTerceiros .terc-saldo-geral-header{
@@ -42005,11 +42005,14 @@ Os outros lançamentos não serão alterados.`;
   }
   #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
     display:flex;
-    justify-content:flex-end;
-    margin-top:16px;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    margin-top:12px;
+    padding:14px 0 2px;
   }
   @media(max-width:760px){
-    #modalSaldoGeralTerceiros .terc-saldo-geral-shell{padding:16px;}
+    #modalSaldoGeralTerceiros .terc-saldo-geral-shell{padding:16px 16px 20px;}
     #modalSaldoGeralTerceiros .terc-saldo-geral-kpis{grid-template-columns:1fr 1fr;}
     #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho{display:none;}
     #modalSaldoGeralTerceiros .terc-saldo-compra{
@@ -42037,7 +42040,9 @@ Os outros lançamentos não serão alterados.`;
       justify-content:flex-start;
     }
     #modalSaldoGeralTerceiros .terc-saldo-geral-actions .btn{
-      flex:1 1 150px;
+      flex:0 1 100%;
+      width:100%;
+      max-width:320px;
     }
   }
 
@@ -42056,7 +42061,6 @@ Os outros lançamentos não serão alterados.`;
       <div id="tercSaldoGeralConteudo"></div>
       <div class="terc-saldo-geral-actions">
         <button class="btn btn-primary" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar resumo</button>
-        <button class="btn btn-secondary" type="button" onclick="fecharModais()">Fechar</button>
       </div>
     </div>
   </div>
