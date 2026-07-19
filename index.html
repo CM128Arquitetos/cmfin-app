@@ -32745,6 +32745,375 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+<!-- PATCH CMFin v11 — Simulador de parcelas no Saldo Restante Geral -->
+<style id="cmfin-saldo-geral-simulador-v11-style">
+  #modalSaldoGeralTerceiros .terc-saldo-geral-modal{
+    width:min(1160px,calc(100vw - 28px));
+    max-width:1160px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho,
+  #modalSaldoGeralTerceiros .terc-saldo-compra{
+    grid-template-columns:minmax(190px,1.55fr) minmax(130px,.9fr) minmax(132px,.78fr) minmax(105px,.68fr) minmax(110px,.72fr) minmax(108px,.68fr);
+    gap:10px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra{
+    transition:opacity .18s ease,background .18s ease;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra.is-excluida{
+    opacity:.55;
+    background:#f8fafc;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-compra.is-excluida .terc-saldo-valor{
+    color:#94a3b8;
+    text-decoration:line-through;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-pessoa.is-sem-itens{
+    opacity:.72;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-adiantar{
+    display:grid;
+    gap:4px;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-adiantar select{
+    width:100%;
+    height:36px;
+    padding:0 30px 0 10px;
+    border:1px solid #cadbd7;
+    border-radius:11px;
+    background:#fff;
+    color:#16332d;
+    font-size:12px;
+    font-weight:850;
+    outline:none;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-adiantar select:focus{
+    border-color:#0f766e;
+    box-shadow:0 0 0 3px rgba(15,118,110,.11);
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-adiantar small{
+    color:#64748b;
+    font-size:9.5px;
+    line-height:1.25;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn{
+    width:100%;
+    min-height:36px;
+    padding:7px 9px;
+    border:1px solid #b9d8d2;
+    border-radius:11px;
+    background:#effaf7;
+    color:#087f70;
+    font-size:10.5px;
+    font-weight:900;
+    line-height:1.15;
+    cursor:pointer;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn:hover{
+    background:#e3f5f1;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn.is-excluido{
+    border-color:#dbe2e8;
+    background:#f8fafc;
+    color:#64748b;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-simulacao-tag{
+    display:inline-flex;
+    align-items:center;
+    margin-left:7px;
+    padding:4px 7px;
+    border-radius:999px;
+    background:#e8f6f3;
+    color:#087f70;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    vertical-align:middle;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-note strong{
+    color:#16332d;
+  }
+  @media(max-width:900px){
+    #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho{display:none;}
+    #modalSaldoGeralTerceiros .terc-saldo-compra{
+      grid-template-columns:1fr 1fr;
+      gap:10px 12px;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:1/-1;}
+    #modalSaldoGeralTerceiros .terc-saldo-valor{text-align:left;}
+  }
+  @media(max-width:560px){
+    #modalSaldoGeralTerceiros .terc-saldo-compra{grid-template-columns:1fr;}
+    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:auto;}
+  }
+</style>
+<script id="cmfin-saldo-geral-simulador-v11-script">
+(function(){
+  if(window.__cmfinSaldoGeralSimuladorV11) return;
+  window.__cmfinSaldoGeralSimuladorV11=true;
+
+  function dadosTerceiros(){
+    if(Array.isArray(window.terceiros)) return window.terceiros;
+    try{if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros;}catch(_){ }
+    return [];
+  }
+  function n(valor){var numero=Number(valor);return Number.isFinite(numero)?numero:0;}
+  function mesItem(item){return String(item&&item.vencimento||'').slice(0,7);}
+  function valorParcela(item){
+    if(!item) return 0;
+    try{if(typeof valorTotalTerceiro==='function'){var v=n(valorTotalTerceiro(item));if(v>=0)return v;}}catch(_){ }
+    if(n(item.valorParcela)>0) return n(item.valorParcela);
+    if(item.valorTotal!==undefined&&item.valorTotal!==null) return n(item.valorTotal);
+    return n(item.valor);
+  }
+  function statusItem(item,mes){
+    try{if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes);}catch(_){ }
+    return item&&item.status||'Pendente';
+  }
+  function formaItem(item){
+    try{if(typeof formaCartaoTerceiro==='function') return formaCartaoTerceiro(item);}catch(_){ }
+    return item&&item.cartao||item&&item.formaPagamento||'-';
+  }
+  function apareceNoMes(item,mes){
+    try{if(typeof terceiroApareceNoMes==='function') return terceiroApareceNoMes(item,mes);}catch(_){ }
+    return mesItem(item)===mes;
+  }
+  function referenciaAtual(){
+    try{
+      if(typeof obterMesReferenciaFiltro==='function'){
+        var ref=obterMesReferenciaFiltro('filtroTerc');
+        if(/^\d{4}-\d{2}$/.test(String(ref||''))) return ref;
+      }
+    }catch(_){ }
+    var ano=document.getElementById('filtroTercAno')?.value||'';
+    var mes=document.getElementById('filtroTercMes')?.value||'';
+    if(ano&&mes) return String(ano)+'-'+String(mes).padStart(2,'0');
+    var agora=new Date();
+    return agora.getFullYear()+'-'+String(agora.getMonth()+1).padStart(2,'0');
+  }
+  function formatarMes(mes){
+    if(!/^\d{4}-\d{2}$/.test(String(mes||''))) return '-';
+    try{if(typeof nomeMes==='function') return nomeMes(mes);}catch(_){ }
+    var partes=String(mes).split('-');
+    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return (nomes[Number(partes[1])-1]||partes[1])+' de '+partes[0];
+  }
+  function dinheiro(valor){
+    try{if(typeof moeda==='function') return moeda(valor);}catch(_){ }
+    return n(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function escapar(valor){
+    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
+    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+  }
+  function iniciais(nome){
+    return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
+  }
+  function filtroAtual(id,padrao){var el=document.getElementById(id);return el?el.value:padrao;}
+  function rotuloFiltro(id,padrao){
+    var el=document.getElementById(id);if(!el)return padrao;
+    var opt=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;
+    return opt?opt.textContent.trim():padrao;
+  }
+  function rotuloParcela(item){
+    return item.parcela||((item.numeroParcela||'-')+'/'+(item.totalParcelas||'-'));
+  }
+  function somarPrimeiras(lista,qtd){
+    return lista.slice(0,Math.max(0,qtd)).reduce(function(s,item){return s+n(item.valor);},0);
+  }
+  function compraResumo(compraId,referencia,dados){
+    var grupo=dados.filter(function(item){
+      return item&&String(item.compraId)===String(compraId)&&(item.tipo||'Parcelado')==='Parcelado';
+    }).sort(function(a,b){
+      return mesItem(a).localeCompare(mesItem(b))||n(a.numeroParcela)-n(b.numeroParcela);
+    });
+    if(!grupo.length) return null;
+    var pendentes=grupo.filter(function(item){
+      var mes=mesItem(item);
+      return mes&&mes>=referencia&&statusItem(item,mes)!=='Recebido';
+    }).map(function(item){
+      return {mes:mesItem(item),parcela:rotuloParcela(item),valor:valorParcela(item)};
+    });
+    if(!pendentes.length) return null;
+    var base=grupo[0];
+    return {
+      compraId:String(compraId),
+      pessoa:base.pessoa||'Terceiro',
+      descricao:base.descricao||'Compra parcelada',
+      categoria:base.categoria||'Outros',
+      forma:formaItem(base),
+      pendentes:pendentes,
+      quantidade:pendentes.length,
+      selecionadas:pendentes.length,
+      incluir:true,
+      valorParcela:pendentes[0].valor,
+      total:somarPrimeiras(pendentes,pendentes.length)
+    };
+  }
+  function estado(){return window.__cmfinSaldoGeralEstadoV11||null;}
+  function itemPorToken(token){var e=estado();return e&&e.itens?e.itens[token]:null;}
+  function faixaSelecionada(item){
+    if(!item||!item.pendentes.length) return {faixa:'-',periodo:'-'};
+    var qtd=Math.max(1,Math.min(item.selecionadas,item.pendentes.length));
+    var primeira=item.pendentes[0];
+    var ultima=item.pendentes[qtd-1];
+    return {
+      faixa:primeira.parcela===ultima.parcela?primeira.parcela:(primeira.parcela+' → '+ultima.parcela),
+      periodo:formatarMes(primeira.mes)+(primeira.mes===ultima.mes?'':(' → '+formatarMes(ultima.mes)))
+    };
+  }
+  function recalcular(){
+    var e=estado();if(!e)return;
+    var totalGeral=0,parcelas=0,comprasIncluidas=0;
+    var pessoasAtivas={};
+    Object.keys(e.itens).forEach(function(token){
+      var item=e.itens[token];
+      item.selecionadas=Math.max(1,Math.min(n(item.selecionadas)||1,item.pendentes.length));
+      item.totalSimulado=item.incluir?somarPrimeiras(item.pendentes,item.selecionadas):0;
+      if(item.incluir){
+        totalGeral+=item.totalSimulado;
+        parcelas+=item.selecionadas;
+        comprasIncluidas++;
+        pessoasAtivas[item.pessoa]=true;
+      }
+      var linha=document.querySelector('[data-cmfin-saldo-token="'+token+'"]');
+      if(linha) linha.classList.toggle('is-excluida',!item.incluir);
+      var faixa=faixaSelecionada(item);
+      var faixaEl=document.getElementById('cmfinSaldoFaixa_'+token);
+      if(faixaEl) faixaEl.innerHTML='<strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo);
+      var qtdEl=document.getElementById('cmfinSaldoQtd_'+token);
+      if(qtdEl) qtdEl.textContent=item.selecionadas+' de '+item.pendentes.length+' parcela'+(item.pendentes.length===1?'':'s');
+      var totalEl=document.getElementById('cmfinSaldoSubtotal_'+token);
+      if(totalEl) totalEl.textContent=dinheiro(item.totalSimulado);
+      var botao=document.getElementById('cmfinSaldoIncluir_'+token);
+      if(botao){
+        botao.classList.toggle('is-excluido',!item.incluir);
+        botao.textContent=item.incluir?'Não incluir':'Incluir novamente';
+      }
+      var seletor=document.getElementById('cmfinSaldoSelect_'+token);
+      if(seletor) seletor.disabled=!item.incluir;
+    });
+
+    Object.keys(e.pessoas).forEach(function(pessoaToken){
+      var pessoa=e.pessoas[pessoaToken];
+      var lista=pessoa.tokens.map(function(token){return e.itens[token];});
+      var ativas=lista.filter(function(item){return item.incluir;});
+      var total=ativas.reduce(function(s,item){return s+item.totalSimulado;},0);
+      var qtd=ativas.reduce(function(s,item){return s+item.selecionadas;},0);
+      var secao=document.getElementById('cmfinSaldoPessoa_'+pessoaToken);
+      if(secao) secao.classList.toggle('is-sem-itens',!ativas.length);
+      var resumo=document.getElementById('cmfinSaldoPessoaResumo_'+pessoaToken);
+      if(resumo) resumo.textContent=ativas.length+' compra'+(ativas.length===1?'':'s')+' · '+qtd+' parcela'+(qtd===1?'':'s')+' selecionada'+(qtd===1?'':'s');
+      var totalEl=document.getElementById('cmfinSaldoPessoaTotal_'+pessoaToken);
+      if(totalEl) totalEl.textContent=dinheiro(total);
+    });
+
+    var pessoasEl=document.getElementById('cmfinSaldoKpiPessoas');
+    var comprasEl=document.getElementById('cmfinSaldoKpiCompras');
+    var parcelasEl=document.getElementById('cmfinSaldoKpiParcelas');
+    var totalEl=document.getElementById('cmfinSaldoKpiTotal');
+    if(pessoasEl)pessoasEl.textContent=Object.keys(pessoasAtivas).length;
+    if(comprasEl)comprasEl.textContent=comprasIncluidas;
+    if(parcelasEl)parcelasEl.textContent=parcelas;
+    if(totalEl)totalEl.textContent=dinheiro(totalGeral);
+  }
+
+  window.cmfinSaldoGeralDefinirParcelas=function(token,valor){
+    var item=itemPorToken(token);if(!item)return;
+    item.selecionadas=Math.max(1,Math.min(n(valor)||1,item.pendentes.length));
+    recalcular();
+  };
+  window.cmfinSaldoGeralAlternarInclusao=function(token){
+    var item=itemPorToken(token);if(!item)return;
+    item.incluir=!item.incluir;
+    recalcular();
+  };
+
+  window.cmfinAbrirSaldoGeralTerceiros=function(){
+    var conteudo=document.getElementById('tercSaldoGeralConteudo');
+    if(!conteudo)return;
+    var dados=dadosTerceiros();
+    var referencia=referenciaAtual();
+    var pessoa=filtroAtual('filtroTercPessoa','todos');
+    var cartao=filtroAtual('filtroTercCartao','todos');
+    var categoria=filtroAtual('filtroTercCategoria','todos');
+
+    var bases=dados.filter(function(item){
+      if(!item||(item.tipo||'Parcelado')!=='Parcelado')return false;
+      if(!apareceNoMes(item,referencia))return false;
+      if(pessoa!=='todos'&&String(item.pessoa||'')!==String(pessoa))return false;
+      if(cartao!=='todos'&&String(item.cartao||'')!==String(cartao)&&String(formaItem(item)||'')!==String(cartao))return false;
+      if(categoria!=='todos'&&String(item.categoria||'Outros')!==String(categoria))return false;
+      return true;
+    });
+    var ids=[];
+    bases.forEach(function(item){var id=String(item.compraId);if(ids.indexOf(id)===-1)ids.push(id);});
+    var compras=ids.map(function(id){return compraResumo(id,referencia,dados);}).filter(Boolean);
+    compras.sort(function(a,b){
+      return String(a.pessoa).localeCompare(String(b.pessoa),'pt-BR')||b.total-a.total||String(a.descricao).localeCompare(String(b.descricao),'pt-BR');
+    });
+
+    var filtros='Mês inicial: <strong>'+escapar(formatarMes(referencia))+'</strong> · Pessoa: <strong>'+escapar(rotuloFiltro('filtroTercPessoa','Todas'))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro('filtroTercCartao','Todos'))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro('filtroTercCategoria','Todas'))+'</strong>';
+
+    if(!compras.length){
+      window.__cmfinSaldoGeralEstadoV11=null;
+      conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi"><span>Compras parceladas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong>'+escapar(dinheiro(0))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'</div><div class="terc-saldo-geral-vazio">Não existem compras parceladas com saldo pendente a partir do mês selecionado para os filtros atuais.</div>';
+      if(typeof abrirModal==='function')abrirModal('modalSaldoGeralTerceiros');else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
+      return;
+    }
+
+    var e={itens:{},pessoas:{}};
+    compras.forEach(function(compra,indice){
+      var token='c'+indice;
+      compra.token=token;
+      e.itens[token]=compra;
+    });
+    var nomes=[];
+    compras.forEach(function(compra){if(nomes.indexOf(compra.pessoa)===-1)nomes.push(compra.pessoa);});
+    nomes.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    nomes.forEach(function(nome,indice){
+      var pessoaToken='p'+indice;
+      e.pessoas[pessoaToken]={nome:nome,tokens:compras.filter(function(c){return c.pessoa===nome;}).map(function(c){return c.token;})};
+    });
+    window.__cmfinSaldoGeralEstadoV11=e;
+
+    var grupos=Object.keys(e.pessoas).map(function(pessoaToken){
+      var pessoaDados=e.pessoas[pessoaToken];
+      var lista=pessoaDados.tokens.map(function(token){return e.itens[token];});
+      var linhas=lista.map(function(c){
+        var opcoes='';
+        for(var i=1;i<=c.pendentes.length;i++){
+          opcoes+='<option value="'+i+'"'+(i===c.pendentes.length?' selected':'')+'>'+i+' parcela'+(i===1?'':'s')+'</option>';
+        }
+        var faixa=faixaSelecionada(c);
+        return '<div class="terc-saldo-compra" data-cmfin-saldo-token="'+c.token+'">'+
+          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span></div>'+
+          '<div class="terc-saldo-dado" id="cmfinSaldoFaixa_'+c.token+'"><strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo)+'</div>'+
+          '<div class="terc-saldo-adiantar"><select id="cmfinSaldoSelect_'+c.token+'" onchange="cmfinSaldoGeralDefinirParcelas(\''+c.token+'\',this.value)">'+opcoes+'</select><small id="cmfinSaldoQtd_'+c.token+'">'+c.pendentes.length+' de '+c.pendentes.length+' parcelas</small></div>'+
+          '<div class="terc-saldo-dado"><strong>'+escapar(dinheiro(c.valorParcela))+'</strong></div>'+
+          '<div class="terc-saldo-valor" id="cmfinSaldoSubtotal_'+c.token+'">'+escapar(dinheiro(c.total))+'</div>'+
+          '<div><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
+        '</div>';
+      }).join('');
+      var totalPessoa=lista.reduce(function(s,c){return s+c.total;},0);
+      var qtdParcelas=lista.reduce(function(s,c){return s+c.pendentes.length;},0);
+      return '<section class="terc-saldo-pessoa" id="cmfinSaldoPessoa_'+pessoaToken+'">'+
+        '<div class="terc-saldo-pessoa-head"><div class="terc-saldo-pessoa-ident"><div class="terc-saldo-pessoa-avatar">'+escapar(iniciais(pessoaDados.nome))+'</div><div><strong>'+escapar(pessoaDados.nome)+'</strong><span id="cmfinSaldoPessoaResumo_'+pessoaToken+'">'+lista.length+' compra'+(lista.length===1?'':'s')+' · '+qtdParcelas+' parcelas selecionadas</span></div></div><div class="terc-saldo-pessoa-total"><span>Total da pessoa</span><strong id="cmfinSaldoPessoaTotal_'+pessoaToken+'">'+escapar(dinheiro(totalPessoa))+'</strong></div></div>'+
+        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div><div>Incluir</div></div>'+linhas+
+      '</section>';
+    }).join('');
+
+    var totalGeral=compras.reduce(function(s,c){return s+c.total;},0);
+    var parcelas=compras.reduce(function(s,c){return s+c.pendentes.length;},0);
+    conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong id="cmfinSaldoKpiPessoas">'+nomes.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoKpiCompras">'+compras.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoKpiParcelas">'+parcelas+'</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoKpiTotal">'+escapar(dinheiro(totalGeral))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'<span class="terc-saldo-simulacao-tag">Simulação</span></div><div class="terc-saldo-geral-lista">'+grupos+'</div><div class="terc-saldo-geral-note"><strong>Como usar:</strong> escolha quantas parcelas deseja adiantar em cada compra. Use <strong>Não incluir</strong> para retirar um lançamento do cálculo. O total é atualizado automaticamente e nenhuma baixa ou alteração é feita nos registros.</div>';
+
+    recalcular();
+    if(typeof abrirModal==='function')abrirModal('modalSaldoGeralTerceiros');else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
+  };
+})();
+</script>
+
 </body>
 </html>
 
