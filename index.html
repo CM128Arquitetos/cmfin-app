@@ -33273,22 +33273,22 @@ Os outros lançamentos não serão alterados.`;
 
     if(pessoaUnica){
       ctx.fillStyle = "#ffffff";
-      ctx.font = "800 22px Arial";
-      ctx.fillText("Resumo para quitação / adiantamento", textoX, margem + 66);
+      ctx.font = "800 17px Arial";
+      ctx.fillText(cortar(ctx, "Resumo para quitação / adiantamento", totalBoxX - textoX - 20), textoX, margem + 62);
       ctx.font = "900 31px Arial";
-      ctx.fillText(cortar(ctx, dados.pessoas[0].nome || "Pessoa", totalBoxX - textoX - 28), textoX, margem + 103);
-      ctx.fillStyle = "rgba(255,255,255,.92)";
-      ctx.font = "700 19px Arial";
-      ctx.fillText(mesTexto(dados.referencia), textoX, margem + 134);
-    }else{
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "800 18px Arial";
-      ctx.fillText("Resumo para quitação / adiantamento", textoX, margem + 62);
-      ctx.font = "900 29px Arial";
-      ctx.fillText("Lançamentos selecionados", textoX, margem + 98);
+      ctx.fillText(cortar(ctx, dados.pessoas[0].nome || "Pessoa", totalBoxX - textoX - 20), textoX, margem + 98);
       ctx.fillStyle = "rgba(255,255,255,.92)";
       ctx.font = "700 18px Arial";
-      ctx.fillText("Parcelas selecionadas a partir de " + mesTexto(dados.referencia), textoX, margem + 131);
+      ctx.fillText(mesTexto(dados.referencia), textoX, margem + 131);
+    }else{
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 16px Arial";
+      ctx.fillText(cortar(ctx, "Resumo para quitação / adiantamento", totalBoxX - textoX - 20), textoX, margem + 60);
+      ctx.font = "900 28px Arial";
+      ctx.fillText("Lançamentos selecionados", textoX, margem + 95);
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+      ctx.font = "700 17px Arial";
+      ctx.fillText(cortar(ctx, "Parcelas selecionadas a partir de " + mesTexto(dados.referencia), totalBoxX - textoX - 20), textoX, margem + 127);
     }
 
     arredondar(ctx, totalBoxX, totalBoxY, totalBoxW, totalBoxH, 24);
@@ -33408,7 +33408,36 @@ Os outros lançamentos não serão alterados.`;
     return canvas;
   }
 
-  window.cmfinExportarSaldoGeralTerceiros = function(){
+  function baixarCanvasSaldoGeral(canvas, dados){
+    var pessoaNome = dados.pessoas.length === 1 ? dados.pessoas[0].nome : "geral";
+    var nome = "saldo-restante-" + slug(pessoaNome) + "-" + dados.referencia + ".png";
+    canvas.toBlob(function(blob){
+      if(!blob){
+        var aFallback = document.createElement("a");
+        aFallback.href = canvas.toDataURL("image/png");
+        aFallback.download = nome;
+        document.body.appendChild(aFallback);
+        aFallback.click();
+        aFallback.remove();
+        return;
+      }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+    }, "image/png");
+  }
+
+  window.cmfinFecharPreviaSaldoGeralTerceiros = function(){
+    var modal = document.getElementById("modalPreviaSaldoGeralExportacao");
+    if(modal) modal.style.display = "none";
+  };
+
+  window.cmfinAbrirPreviaSaldoGeralTerceiros = function(){
     var dados = estadoExportacao();
     if(!dados || !dados.pessoas.length || dados.total <= 0){
       alert("Inclua ao menos um lançamento e selecione as parcelas antes de exportar.");
@@ -33416,31 +33445,35 @@ Os outros lançamentos não serão alterados.`;
     }
     try{
       var canvas = criarCanvas(dados);
-      var pessoaNome = dados.pessoas.length === 1 ? dados.pessoas[0].nome : "geral";
-      var nome = "saldo-restante-" + slug(pessoaNome) + "-" + dados.referencia + ".png";
-      canvas.toBlob(function(blob){
-        if(!blob){
-          var aFallback = document.createElement("a");
-          aFallback.href = canvas.toDataURL("image/png");
-          aFallback.download = nome;
-          document.body.appendChild(aFallback);
-          aFallback.click();
-          aFallback.remove();
-          return;
-        }
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = nome;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
-      }, "image/png");
+      window.__cmfinSaldoGeralPreviaCanvas = canvas;
+      window.__cmfinSaldoGeralPreviaDados = dados;
+      var img = document.getElementById("cmfinPreviaSaldoGeralImagem");
+      if(img) img.src = canvas.toDataURL("image/png");
+      var modal = document.getElementById("modalPreviaSaldoGeralExportacao");
+      if(modal) modal.style.display = "flex";
+    }catch(erro){
+      console.error("Falha ao gerar prévia do saldo restante geral:", erro);
+      alert("Não foi possível gerar a prévia. Tente novamente após atualizar a página.");
+    }
+  };
+
+  window.cmfinConfirmarExportacaoSaldoGeralTerceiros = function(){
+    var dados = window.__cmfinSaldoGeralPreviaDados || estadoExportacao();
+    if(!dados || !dados.pessoas.length || dados.total <= 0){
+      alert("Inclua ao menos um lançamento e selecione as parcelas antes de exportar.");
+      return;
+    }
+    try{
+      var canvas = window.__cmfinSaldoGeralPreviaCanvas || criarCanvas(dados);
+      baixarCanvasSaldoGeral(canvas, dados);
     }catch(erro){
       console.error("Falha ao exportar saldo restante geral:", erro);
       alert("Não foi possível gerar a imagem. Tente novamente após atualizar a página.");
     }
+  };
+
+  window.cmfinExportarSaldoGeralTerceiros = function(){
+    return window.cmfinAbrirPreviaSaldoGeralTerceiros();
   };
 })();
 </script>
@@ -41694,7 +41727,7 @@ Os outros lançamentos não serão alterados.`;
           <p>Parcela do mês selecionado mais todas as parcelas futuras que ainda estão pendentes.</p>
         </div>
         <div class="terc-saldo-geral-header-actions">
-          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinAbrirPreviaSaldoGeralTerceiros()">Exportar Resumo</button>
           <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
         </div>
       </div>
@@ -42085,11 +42118,72 @@ Os outros lançamentos não serão alterados.`;
           <p>Visão conjunta dos parcelamentos do mês selecionado e de todas as parcelas futuras ainda pendentes.</p>
         </div>
         <div class="terc-saldo-geral-header-actions">
-          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar Resumo</button>
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinAbrirPreviaSaldoGeralTerceiros()">Exportar Resumo</button>
           <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
         </div>
       </div>
       <div id="tercSaldoGeralConteudo"></div>
+    </div>
+  </div>
+</div>
+
+<style id="cmfin-previa-exportacao-saldo-v20">
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-modal{
+    width:min(1120px,calc(100vw - 28px));
+    max-width:1120px;
+    padding:0;
+    border-radius:24px;
+    overflow:hidden;
+  }
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-shell{
+    background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
+    padding:18px;
+  }
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:14px;
+  }
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-header h3{margin:0 0 4px;color:#102a25;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-header p{margin:0;color:#64748b;line-height:1.45;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-body{
+    max-height:calc(100vh - 190px);
+    overflow:auto;
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#eef4f3;
+    padding:16px;
+  }
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-body img{display:block;width:100%;height:auto;border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.08);background:#fff;}
+  #modalPreviaSaldoGeralExportacao .cmfin-previa-note{margin-top:12px;color:#64748b;font-size:12px;line-height:1.5;}
+  @media(max-width:760px){
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-header{flex-direction:column;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-actions{width:100%;justify-content:stretch;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-actions .btn{flex:1 1 100%;width:100%;}
+    #modalPreviaSaldoGeralExportacao .cmfin-previa-body{max-height:calc(100vh - 230px);padding:10px;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalPreviaSaldoGeralExportacao" style="display:none;z-index:10060;">
+  <div class="modal cmfin-previa-modal">
+    <div class="cmfin-previa-shell">
+      <div class="cmfin-previa-header">
+        <div>
+          <h3>Prévia da exportação</h3>
+          <p>Confira como ficará a imagem final antes de exportar.</p>
+        </div>
+        <div class="cmfin-previa-actions">
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinConfirmarExportacaoSaldoGeralTerceiros()">Exportar Imagem</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinFecharPreviaSaldoGeralTerceiros()">Fechar</button>
+        </div>
+      </div>
+      <div class="cmfin-previa-body">
+        <img id="cmfinPreviaSaldoGeralImagem" alt="Prévia da exportação do saldo restante geral">
+      </div>
+      <div class="cmfin-previa-note">Esta prévia respeita exatamente os lançamentos incluídos e a quantidade de parcelas selecionadas na simulação atual.</div>
     </div>
   </div>
 </div>
