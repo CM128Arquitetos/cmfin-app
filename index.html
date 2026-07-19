@@ -33228,7 +33228,7 @@ Os outros lançamentos não serão alterados.`;
   function criarCanvas(dados){
     var largura = 1080;
     var margem = 48;
-    var headerH = 180;
+    var headerH = 196;
     var resumoH = 104;
     var pessoaHeadH = 72;
     var linhaH = 104;
@@ -33257,28 +33257,46 @@ Os outros lançamentos não serão alterados.`;
     ctx.fillStyle = grad;
     ctx.fill();
 
-    var logoOk = desenharLogo(ctx, margem + 26, margem + 35, 190, 84);
-    var textoX = logoOk ? margem + 238 : margem + 28;
-    ctx.fillStyle = "rgba(255,255,255,.72)";
-    ctx.font = "800 14px Arial";
-    ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE", textoX, margem + 42);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "900 34px Arial";
-    ctx.fillText("Resumo para quitação / adiantamento", textoX, margem + 82);
-    ctx.font = "700 20px Arial";
-    ctx.fillStyle = "rgba(255,255,255,.90)";
-    ctx.fillText("Parcelas selecionadas a partir de " + mesTexto(dados.referencia), textoX, margem + 116);
-    ctx.font = "600 15px Arial";
-    ctx.fillStyle = "rgba(255,255,255,.72)";
-    ctx.fillText("Somente os lançamentos incluídos na simulação aparecem neste resumo.", textoX, margem + 145);
+    var logoOk = desenharLogo(ctx, margem + 24, margem + 48, 176, 78);
+    var textoX = logoOk ? margem + 224 : margem + 28;
+    var totalBoxW = 270;
+    var totalBoxX = largura - margem - totalBoxW - 22;
+    var totalBoxY = margem + 27;
+    var totalBoxH = 142;
 
-    ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(255,255,255,.78)";
-    ctx.font = "800 15px Arial";
-    ctx.fillText("VALOR TOTAL A REPASSAR", largura - margem - 28, margem + 62);
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.font = "800 13px Arial";
+    ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE", textoX, margem + 38);
+
     ctx.fillStyle = "#ffffff";
-    ctx.font = "900 42px Arial";
-    ctx.fillText(moedaLocal(dados.total), largura - margem - 28, margem + 110);
+    ctx.font = "900 31px Arial";
+    ctx.fillText("Resumo para quitação", textoX, margem + 77);
+    ctx.fillText("/ adiantamento", textoX, margem + 111);
+
+    ctx.font = "700 17px Arial";
+    ctx.fillStyle = "rgba(255,255,255,.90)";
+    ctx.fillText(cortar(ctx, "Parcelas selecionadas a partir de " + mesTexto(dados.referencia), totalBoxX - textoX - 26), textoX, margem + 143);
+    ctx.font = "600 13px Arial";
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.fillText(cortar(ctx, "Somente os lançamentos incluídos na simulação aparecem neste resumo.", totalBoxX - textoX - 26), textoX, margem + 168);
+
+    arredondar(ctx, totalBoxX, totalBoxY, totalBoxW, totalBoxH, 22);
+    ctx.fillStyle = "rgba(255,255,255,.11)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.18)";
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,.80)";
+    ctx.font = "800 13px Arial";
+    ctx.fillText("VALOR TOTAL A REPASSAR", totalBoxX + totalBoxW / 2, totalBoxY + 36);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 38px Arial";
+    ctx.fillText(moedaLocal(dados.total), totalBoxX + totalBoxW / 2, totalBoxY + 88);
+    ctx.fillStyle = "rgba(255,255,255,.70)";
+    ctx.font = "700 12px Arial";
+    ctx.fillText("Simulação de quitação / adiantamento", totalBoxX + totalBoxW / 2, totalBoxY + 118);
     ctx.textAlign = "left";
 
     var y = margem + headerH + 18;
