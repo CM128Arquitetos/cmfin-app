@@ -33118,6 +33118,305 @@ Os outros lançamentos não serão alterados.`;
 </html>
 
 
+
+<script id="cmfin-exportar-saldo-geral-v13">
+(function(){
+  "use strict";
+  if(window.__cmfinExportarSaldoGeralV13) return;
+  window.__cmfinExportarSaldoGeralV13 = true;
+
+  function numero(valor){
+    var n = Number(valor);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function moedaLocal(valor){
+    try{ if(typeof moeda === "function") return moeda(valor); }catch(_){ }
+    return numero(valor).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+  }
+  function mesTexto(mes){
+    if(!/^\d{4}-\d{2}$/.test(String(mes || ""))) return "-";
+    try{ if(typeof nomeMes === "function") return nomeMes(mes); }catch(_){ }
+    var nomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var p = String(mes).split("-");
+    return (nomes[Number(p[1]) - 1] || p[1]) + " de " + p[0];
+  }
+  function referenciaAtual(){
+    try{
+      if(typeof obterMesReferenciaFiltro === "function"){
+        var ref = obterMesReferenciaFiltro("filtroTerc");
+        if(/^\d{4}-\d{2}$/.test(String(ref || ""))) return ref;
+      }
+    }catch(_){ }
+    var ano = document.getElementById("filtroTercAno")?.value || "";
+    var mes = document.getElementById("filtroTercMes")?.value || "";
+    if(ano && mes) return String(ano) + "-" + String(mes).padStart(2, "0");
+    var agora = new Date();
+    return agora.getFullYear() + "-" + String(agora.getMonth() + 1).padStart(2, "0");
+  }
+  function arredondar(ctx, x, y, w, h, r){
+    var raio = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + raio, y);
+    ctx.arcTo(x + w, y, x + w, y + h, raio);
+    ctx.arcTo(x + w, y + h, x, y + h, raio);
+    ctx.arcTo(x, y + h, x, y, raio);
+    ctx.arcTo(x, y, x + w, y, raio);
+    ctx.closePath();
+  }
+  function cortar(ctx, texto, max){
+    var t = String(texto || "-");
+    if(ctx.measureText(t).width <= max) return t;
+    while(t.length > 2 && ctx.measureText(t + "…").width > max) t = t.slice(0, -1);
+    return t.trim() + "…";
+  }
+  function slug(texto){
+    return String(texto || "resumo")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "resumo";
+  }
+  function faixa(item){
+    var qtd = Math.max(1, Math.min(numero(item.selecionadas) || 1, item.pendentes.length));
+    var primeira = item.pendentes[0];
+    var ultima = item.pendentes[qtd - 1];
+    return {
+      parcelas: primeira.parcela === ultima.parcela ? primeira.parcela : (primeira.parcela + " → " + ultima.parcela),
+      periodo: mesTexto(primeira.mes) + (primeira.mes === ultima.mes ? "" : (" → " + mesTexto(ultima.mes)))
+    };
+  }
+  function estadoExportacao(){
+    var estado = window.__cmfinSaldoGeralEstadoV12;
+    if(!estado || !estado.itens) return null;
+    var pessoas = [];
+    Object.keys(estado.pessoas || {}).forEach(function(tokenPessoa){
+      var p = estado.pessoas[tokenPessoa];
+      var itens = (p.tokens || []).map(function(token){ return estado.itens[token]; }).filter(function(item){ return item && item.incluir; });
+      if(!itens.length) return;
+      itens.forEach(function(item){
+        item.selecionadas = Math.max(1, Math.min(numero(item.selecionadas) || 1, item.pendentes.length));
+        item.totalSimulado = item.pendentes.slice(0, item.selecionadas).reduce(function(s, parcela){ return s + numero(parcela.valor); }, 0);
+      });
+      pessoas.push({
+        nome: p.nome || itens[0].pessoa || "Terceiro",
+        itens: itens,
+        total: itens.reduce(function(s, item){ return s + numero(item.totalSimulado); }, 0),
+        parcelas: itens.reduce(function(s, item){ return s + numero(item.selecionadas); }, 0)
+      });
+    });
+    return {
+      pessoas: pessoas,
+      total: pessoas.reduce(function(s, p){ return s + p.total; }, 0),
+      compras: pessoas.reduce(function(s, p){ return s + p.itens.length; }, 0),
+      parcelas: pessoas.reduce(function(s, p){ return s + p.parcelas; }, 0),
+      referencia: referenciaAtual()
+    };
+  }
+  function desenharLogo(ctx, x, y, maxW, maxH){
+    var logo = document.querySelector(".brand-logo img") || document.querySelector(".cmfin-login-logo") || document.querySelector("img[alt*='CMFin']");
+    if(!logo || !logo.complete || !logo.naturalWidth || !logo.naturalHeight) return false;
+    var src = String(logo.currentSrc || logo.src || "");
+    if(src && !src.startsWith("data:") && !src.startsWith(location.origin)) return false;
+    try{
+      var esc = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
+      var w = logo.naturalWidth * esc;
+      var h = logo.naturalHeight * esc;
+      ctx.drawImage(logo, x, y + (maxH - h) / 2, w, h);
+      return true;
+    }catch(_){ return false; }
+  }
+  function criarCanvas(dados){
+    var largura = 1080;
+    var margem = 48;
+    var headerH = 180;
+    var resumoH = 104;
+    var pessoaHeadH = 72;
+    var linhaH = 104;
+    var espacoPessoa = 22;
+    var footerH = 92;
+    var alturaConteudo = dados.pessoas.reduce(function(s, p){ return s + pessoaHeadH + p.itens.length * linhaH + espacoPessoa; }, 0);
+    var altura = Math.max(680, margem * 2 + headerH + resumoH + alturaConteudo + footerH);
+    var canvas = document.createElement("canvas");
+    canvas.width = largura;
+    canvas.height = altura;
+    var ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#f2f6f5";
+    ctx.fillRect(0, 0, largura, altura);
+    arredondar(ctx, 22, 22, largura - 44, altura - 44, 32);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#d9e4e0";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    arredondar(ctx, margem, margem, largura - margem * 2, headerH, 26);
+    var grad = ctx.createLinearGradient(margem, margem, largura - margem, margem + headerH);
+    grad.addColorStop(0, "#0A221A");
+    grad.addColorStop(1, "#0f6b58");
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    var logoOk = desenharLogo(ctx, margem + 26, margem + 35, 190, 84);
+    var textoX = logoOk ? margem + 238 : margem + 28;
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.font = "800 14px Arial";
+    ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE", textoX, margem + 42);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 34px Arial";
+    ctx.fillText("Resumo para quitação / adiantamento", textoX, margem + 82);
+    ctx.font = "700 20px Arial";
+    ctx.fillStyle = "rgba(255,255,255,.90)";
+    ctx.fillText("Parcelas selecionadas a partir de " + mesTexto(dados.referencia), textoX, margem + 116);
+    ctx.font = "600 15px Arial";
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.fillText("Somente os lançamentos incluídos na simulação aparecem neste resumo.", textoX, margem + 145);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "rgba(255,255,255,.78)";
+    ctx.font = "800 15px Arial";
+    ctx.fillText("VALOR TOTAL A REPASSAR", largura - margem - 28, margem + 62);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 42px Arial";
+    ctx.fillText(moedaLocal(dados.total), largura - margem - 28, margem + 110);
+    ctx.textAlign = "left";
+
+    var y = margem + headerH + 18;
+    var cardW = (largura - margem * 2 - 30) / 3;
+    [
+      ["COMPRAS INCLUÍDAS", String(dados.compras)],
+      ["PARCELAS SELECIONADAS", String(dados.parcelas)],
+      ["PESSOAS", String(dados.pessoas.length)]
+    ].forEach(function(kpi, idx){
+      var x = margem + idx * (cardW + 15);
+      arredondar(ctx, x, y, cardW, 82, 18);
+      ctx.fillStyle = "#f8fbfa";
+      ctx.fill();
+      ctx.strokeStyle = "#dce7e3";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "#64748b";
+      ctx.font = "800 12px Arial";
+      ctx.fillText(kpi[0], x + 18, y + 28);
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "900 26px Arial";
+      ctx.fillText(kpi[1], x + 18, y + 61);
+    });
+    y += resumoH;
+
+    dados.pessoas.forEach(function(pessoa){
+      arredondar(ctx, margem, y, largura - margem * 2, pessoaHeadH - 8, 18);
+      ctx.fillStyle = "#eef8f5";
+      ctx.fill();
+      ctx.fillStyle = "#0A221A";
+      ctx.font = "900 24px Arial";
+      ctx.fillText(pessoa.nome, margem + 22, y + 29);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "700 14px Arial";
+      ctx.fillText(pessoa.itens.length + " compra" + (pessoa.itens.length === 1 ? "" : "s") + " · " + pessoa.parcelas + " parcela" + (pessoa.parcelas === 1 ? "" : "s") + " selecionada" + (pessoa.parcelas === 1 ? "" : "s"), margem + 22, y + 51);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#0f766e";
+      ctx.font = "900 25px Arial";
+      ctx.fillText(moedaLocal(pessoa.total), largura - margem - 22, y + 40);
+      ctx.textAlign = "left";
+      y += pessoaHeadH;
+
+      pessoa.itens.forEach(function(item){
+        var f = faixa(item);
+        arredondar(ctx, margem, y, largura - margem * 2, linhaH - 10, 17);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = "#e2e8e6";
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+
+        var col1 = margem + 20;
+        var col2 = margem + 405;
+        var col3 = margem + 710;
+        var col4 = largura - margem - 20;
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 19px Arial";
+        ctx.fillText(cortar(ctx, item.descricao || "Compra parcelada", 350), col1, y + 29);
+        ctx.fillStyle = "#64748b";
+        ctx.font = "650 14px Arial";
+        ctx.fillText(cortar(ctx, (item.forma || "-") + " · " + (item.categoria || "Outros"), 350), col1, y + 54);
+        ctx.fillStyle = "#475569";
+        ctx.font = "800 14px Arial";
+        ctx.fillText("Faixa: " + f.parcelas, col2, y + 27);
+        ctx.font = "650 13px Arial";
+        ctx.fillText(cortar(ctx, f.periodo, 285), col2, y + 51);
+        ctx.fillStyle = "#64748b";
+        ctx.font = "700 13px Arial";
+        ctx.fillText(item.selecionadas + " de " + item.pendentes.length + " parcelas", col2, y + 74);
+        ctx.fillStyle = "#475569";
+        ctx.font = "800 13px Arial";
+        ctx.fillText("Valor da parcela", col3, y + 27);
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 18px Arial";
+        ctx.fillText(moedaLocal(item.valorParcela), col3, y + 54);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#64748b";
+        ctx.font = "800 12px Arial";
+        ctx.fillText("SUBTOTAL", col4, y + 27);
+        ctx.fillStyle = "#0f766e";
+        ctx.font = "900 22px Arial";
+        ctx.fillText(moedaLocal(item.totalSimulado), col4, y + 57);
+        ctx.textAlign = "left";
+        y += linhaH;
+      });
+      y += espacoPessoa;
+    });
+
+    var rodapeY = altura - footerH + 8;
+    ctx.fillStyle = "#64748b";
+    ctx.font = "650 14px Arial";
+    ctx.fillText("Este resumo é uma simulação e considera somente as parcelas e compras selecionadas.", margem, rodapeY);
+    ctx.fillText("Gerado pelo CMFin em " + new Date().toLocaleDateString("pt-BR") + ".", margem, rodapeY + 25);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#0A221A";
+    ctx.font = "900 16px Arial";
+    ctx.fillText("TOTAL: " + moedaLocal(dados.total), largura - margem, rodapeY + 25);
+    ctx.textAlign = "left";
+    return canvas;
+  }
+
+  window.cmfinExportarSaldoGeralTerceiros = function(){
+    var dados = estadoExportacao();
+    if(!dados || !dados.pessoas.length || dados.total <= 0){
+      alert("Inclua ao menos um lançamento e selecione as parcelas antes de exportar.");
+      return;
+    }
+    try{
+      var canvas = criarCanvas(dados);
+      var pessoaNome = dados.pessoas.length === 1 ? dados.pessoas[0].nome : "geral";
+      var nome = "saldo-restante-" + slug(pessoaNome) + "-" + dados.referencia + ".png";
+      canvas.toBlob(function(blob){
+        if(!blob){
+          var aFallback = document.createElement("a");
+          aFallback.href = canvas.toDataURL("image/png");
+          aFallback.download = nome;
+          document.body.appendChild(aFallback);
+          aFallback.click();
+          aFallback.remove();
+          return;
+        }
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = nome;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+      }, "image/png");
+    }catch(erro){
+      console.error("Falha ao exportar saldo restante geral:", erro);
+      alert("Não foi possível gerar a imagem. Tente novamente após atualizar a página.");
+    }
+  };
+})();
+</script>
+
 <script id="cmfin-cloud-sync-js">
 (function(){
   "use strict";
@@ -41366,7 +41665,10 @@ Os outros lançamentos não serão alterados.`;
           <h2>Saldo restante do parcelamento</h2>
           <p>Parcela do mês selecionado mais todas as parcelas futuras que ainda estão pendentes.</p>
         </div>
-        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        <div class="terc-saldo-geral-header-actions">
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar resumo</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        </div>
       </div>
       <div id="tercQuitacaoConteudo"></div>
       <div class="terc-quitacao-actions">
@@ -41717,6 +42019,28 @@ Os outros lançamentos não serão alterados.`;
     #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:1/-1;}
     #modalSaldoGeralTerceiros .terc-saldo-valor{text-align:left;}
   }
+
+  #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  #modalSaldoGeralTerceiros .terc-saldo-geral-actions{
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  @media(max-width:600px){
+    #modalSaldoGeralTerceiros .terc-saldo-geral-header-actions{
+      width:100%;
+      justify-content:flex-start;
+    }
+    #modalSaldoGeralTerceiros .terc-saldo-geral-actions .btn{
+      flex:1 1 150px;
+    }
+  }
+
 </style>
 
 <div class="modal-backdrop" id="modalSaldoGeralTerceiros">
@@ -41731,6 +42055,7 @@ Os outros lançamentos não serão alterados.`;
       </div>
       <div id="tercSaldoGeralConteudo"></div>
       <div class="terc-saldo-geral-actions">
+        <button class="btn btn-primary" type="button" onclick="cmfinExportarSaldoGeralTerceiros()">Exportar resumo</button>
         <button class="btn btn-secondary" type="button" onclick="fecharModais()">Fechar</button>
       </div>
     </div>
