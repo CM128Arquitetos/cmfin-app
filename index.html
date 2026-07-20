@@ -16159,10 +16159,16 @@ Os outros lançamentos não serão alterados.`;
 
       const largura = 1080;
       const margem = 54;
-      const linhaAltura = 92;
+      const espacoEntreCards = 16;
       const exibirCabecalhosGrupo = pessoa === "todos";
       const gruposQtd = exibirCabecalhosGrupo ? Math.max(Object.keys(grupos).length, 1) : 0;
-      const altura = Math.max(620, 330 + lista.length * linhaAltura + gruposQtd * 58);
+      const alturaLista = lista.reduce((acc, item) => {
+        const obs = String(item?.obs || item?.observacao || "").trim();
+        const possuiObs = !!obs;
+        const cardH = possuiObs ? 96 : 76;
+        return acc + cardH + espacoEntreCards;
+      }, 0);
+      const altura = Math.max(620, 330 + alturaLista + gruposQtd * 58);
       const canvas = document.createElement("canvas");
       canvas.width = largura;
       canvas.height = altura;
@@ -16230,7 +16236,12 @@ Os outros lançamentos não serão alterados.`;
           }
 
           itens.forEach(item => {
-            arredondarRetangulo(ctx, margem, y, largura - margem*2, 76, 18);
+            const observacao = String(item?.obs || item?.observacao || "").trim();
+            const possuiObs = !!observacao;
+            const cardH = possuiObs ? 96 : 76;
+            const baseX = margem + 24;
+
+            arredondarRetangulo(ctx, margem, y, largura - margem*2, cardH, 18);
             ctx.fillStyle = "#f8fafb";
             ctx.fill();
             ctx.strokeStyle = "#e2e8f0";
@@ -16240,11 +16251,10 @@ Os outros lançamentos não serão alterados.`;
             ctx.fillStyle = "#0f172a";
             ctx.font = "800 22px Arial";
             const linhasDesc = quebrarTextoCanvas(ctx, item.descricao || "Sem descrição", 610).slice(0, 1);
-            ctx.fillText(linhasDesc[0], margem + 24, y + 29);
+            ctx.fillText(linhasDesc[0], baseX, y + 29);
 
             const dataMeta = formatarData(item.vencimentoExibido);
             const cartaoMeta = formaCartaoTerceiro(item);
-            const baseX = margem + 24;
             const baseY = y + 55;
 
             ctx.font = "600 16px Arial";
@@ -16274,12 +16284,20 @@ Os outros lançamentos não serão alterados.`;
               ctx.fillText(cortarTextoCanvas(ctx, parcelaTxt, Math.max(90, limiteParcela)), parcelaX, baseY);
             }
 
+            if (possuiObs) {
+              ctx.fillStyle = "#64748b";
+              ctx.font = "600 14px Arial";
+              const obsLabel = "Obs.: ";
+              const obsTexto = cortarTextoCanvas(ctx, `${obsLabel}${observacao}`, 690);
+              ctx.fillText(obsTexto, baseX, y + 76);
+            }
+
             ctx.textAlign = "right";
             ctx.fillStyle = "#0f172a";
             ctx.font = "900 24px Arial";
-            ctx.fillText(moeda(valorTotalTerceiro(item)), largura - margem - 24, y + 43);
+            ctx.fillText(moeda(valorTotalTerceiro(item)), largura - margem - 24, y + (possuiObs ? 53 : 43));
             ctx.textAlign = "left";
-            y += linhaAltura;
+            y += cardH + espacoEntreCards;
           });
           if (exibirCabecalhosGrupo) y += 14;
         });
