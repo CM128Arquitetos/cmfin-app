@@ -11792,14 +11792,31 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         investimentos: [],
         rendimentosInvestimentos: [],
         pessoasTerceiros: [],
-        terceiros: []
+        terceiros: [],
+        dividasTerceiros: []
       };
     }
 
     function obterSnapshotAtual() {
+      let dividasTerceirosSnapshot = [];
+      if (modoAtual === "pessoal") {
+        try {
+          const salvoDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "null");
+          if (Array.isArray(salvoDividas)) dividasTerceirosSnapshot = salvoDividas;
+          else {
+            const baseAtual = carregarBaseStorage();
+            const salvasNoModo = baseAtual?.modos?.pessoal?.dividasTerceiros;
+            if (Array.isArray(salvasNoModo)) dividasTerceirosSnapshot = salvasNoModo;
+          }
+        } catch (e) {
+          dividasTerceirosSnapshot = [];
+        }
+      }
+
       return {
         categorias, configuracoes, bancos, gastosFixos, gastosVariaveis, pagamentosTerceirizados, pagamentosArquitetos, comprasCredito,
-        recebimentos, cofrinhos, movimentosBanco, investimentos, rendimentosInvestimentos, pessoasTerceiros, terceiros
+        recebimentos, cofrinhos, movimentosBanco, investimentos, rendimentosInvestimentos, pessoasTerceiros, terceiros,
+        dividasTerceiros: dividasTerceirosSnapshot
       };
     }
 
@@ -11822,6 +11839,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       rendimentosInvestimentos = base.rendimentosInvestimentos || [];
       pessoasTerceiros = base.pessoasTerceiros || [];
       terceiros = base.terceiros || [];
+
+      if (modoAtual === "pessoal" && Object.prototype.hasOwnProperty.call(base, "dividasTerceiros")) {
+        const listaDividas = Array.isArray(base.dividasTerceiros) ? base.dividasTerceiros : [];
+        try { localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividas)); } catch (e) {}
+      }
     }
 
     function carregarBaseStorage() {
@@ -12066,12 +12088,23 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     function montarPacoteBackupModoELLO(modo, dados) {
       const modoNormalizado = normalizarModoBackupELLO(modo);
+      const dadosPacote = Object.assign({}, dados || criarDadosVazios());
+
+      if (modoNormalizado === "pessoal") {
+        try {
+          const listaDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "[]");
+          dadosPacote.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
+        } catch (e) {
+          dadosPacote.dividasTerceiros = Array.isArray(dadosPacote.dividasTerceiros) ? dadosPacote.dividasTerceiros : [];
+        }
+      }
+
       return {
         app: "CMFin — Gestão Financeira Inteligente",
         tipo: "exportacao_modo",
         modo: modoNormalizado,
         exportadoEm: new Date().toISOString(),
-        dados: dados || criarDadosVazios()
+        dados: dadosPacote
       };
     }
 
@@ -12167,6 +12200,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         base.modos.pessoal = dadosPessoal || criarDadosVazios();
         base.modos.empresarial = dadosEmpresarial || criarDadosVazios();
         salvarBaseStorage(base);
+
+        if (Array.isArray(base.modos.pessoal.dividasTerceiros)) {
+          try { localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(base.modos.pessoal.dividasTerceiros)); } catch (e) {}
+        }
 
         aplicarSnapshot(base.modos[modoAtual] || criarDadosVazios());
         preencherCategorias();
@@ -33482,6 +33519,49 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+<script id="cmfin-backup-dividas-terceiros-v27">
+(function(){
+  "use strict";
+  var MAIN_KEY = "ello_gestao_inteligente_dados";
+  var MAIN_KEY_OLD = "ello_gestao_inteligente_dados_v1";
+  var DTC_KEY = "cmfin_dividas_terceiros";
+
+  function lerLista(){
+    try{
+      var lista = JSON.parse(localStorage.getItem(DTC_KEY) || "[]");
+      return Array.isArray(lista) ? lista : [];
+    }catch(e){ return []; }
+  }
+
+  function sincronizarNoPrincipal(){
+    try{
+      var chave = localStorage.getItem(MAIN_KEY) ? MAIN_KEY : MAIN_KEY_OLD;
+      var raw = localStorage.getItem(chave);
+      if(!raw) return;
+      var base = JSON.parse(raw);
+      if(!base || typeof base !== "object") return;
+      base.modos = base.modos || {};
+      base.modos.pessoal = base.modos.pessoal || {};
+      base.modos.pessoal.dividasTerceiros = lerLista();
+      localStorage.setItem(MAIN_KEY, JSON.stringify(base));
+    }catch(e){}
+  }
+
+  document.addEventListener("click", function(ev){
+    var alvo = ev.target && ev.target.closest && ev.target.closest("button, label");
+    if(!alvo) return;
+    var texto = String(alvo.textContent || "").trim().toLowerCase();
+    if(texto.indexOf("exportar") !== -1 || texto.indexOf("backup") !== -1 || texto.indexOf("cópia de segurança") !== -1){
+      sincronizarNoPrincipal();
+    }
+  }, true);
+
+  window.addEventListener("beforeunload", sincronizarNoPrincipal);
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", sincronizarNoPrincipal);
+  else sincronizarNoPrincipal();
+})();
+</script>
 </body>
 </html>
 
@@ -35887,7 +35967,16 @@ Os outros lançamentos não serão alterados.`;
       if(typeof window.salvarDados === "function") window.salvarDados();
 
       var base = carregarBaseStorage();
-      var dados = base.modos && base.modos[modo] ? base.modos[modo] : {};
+      var dados = base.modos && base.modos[modo] ? Object.assign({}, base.modos[modo]) : {};
+
+      if(modo === "pessoal"){
+        try{
+          var listaDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "[]");
+          dados.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
+        }catch(e){
+          dados.dividasTerceiros = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
+        }
+      }
 
       var pacote = {
         app:"CMFin — Gestão Financeira Inteligente",
@@ -35948,6 +36037,12 @@ Os outros lançamentos não serão alterados.`;
           base.modos[modo] = dados;
           base.modoAtual = modo;
           salvarBaseStorage(base);
+
+          if(modo === "pessoal" && Object.prototype.hasOwnProperty.call(dados, "dividasTerceiros")){
+            try{
+              localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : []));
+            }catch(e){}
+          }
 
           toast("Backup importado para o modo " + modoNome(modo) + ". Dados reconhecidos com sucesso.", "ok");
           try{ if(typeof preencherCategorias === "function") preencherCategorias(); if(typeof atualizarSelects === "function") atualizarSelects(); if(typeof carregarConfiguracaoDistribuicaoNaTela === "function") carregarConfiguracaoDistribuicaoNaTela(); if(typeof atualizarUIModo === "function") atualizarUIModo(); if(typeof renderizarTudo === "function") renderizarTudo(); }catch(_e){}
