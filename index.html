@@ -16522,7 +16522,7 @@ Os outros lançamentos não serão alterados.`;
                   <span class="value">${moeda(valorTotalTerceiro(t))}</span>
                 </div>
                 <div class="terc-row-actions terc-row-actions-v13">
-                  <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId})">Editar</button>
+                  <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId}, ${t.id})">Editar</button>
                   <button class="btn btn-secondary btn-small" onclick="alterarStatusTerceiro(${t.id}, '${proximoStatus}')">${proximoStatus}</button>
                   ${tipoLancamento === "Parcelado" ? `<button class="btn btn-secondary btn-small terc-btn-saldo-restante" onclick="cmfinAbrirSaldoParceladoTerceiro(${t.compraId}, '${mes}')">Saldo Restante</button>` : ""}
                   <button class="btn btn-secondary btn-small" onclick="baixarTotalTerceiroLancamento(${t.id}, '${mes}')">Baixar total</button>
@@ -43746,3 +43746,309 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 </style>
+
+
+<!-- PATCH CMFin v23 — Edição de terceiros sem reconstruir parcelamento -->
+<style id="cmfin-edicao-terceiros-definitiva-v23-style">
+  #terceiros .cmfin-edicao-v23-lock{
+    opacity:.72;
+    cursor:not-allowed;
+    background:#f5f7f7 !important;
+  }
+  #terceiros #cmfinDivisaoTerceiro.cmfin-edicao-v23-aviso{
+    display:block !important;
+    padding:10px 12px !important;
+    border:1px solid #b8ddd5 !important;
+    border-radius:12px !important;
+    background:#eef9f6 !important;
+    color:#315c53 !important;
+  }
+  #terceiros #cmfinDivisaoTerceiro .cmfin-edicao-v23-titulo{
+    display:block;
+    margin-bottom:3px;
+    color:#0f766e;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+  }
+  #terceiros #cmfinDivisaoTerceiro .cmfin-edicao-v23-texto{
+    font-size:11px;
+    line-height:1.4;
+    font-weight:700;
+  }
+</style>
+<script id="cmfin-edicao-terceiros-definitiva-v23-script">
+(function(){
+  'use strict';
+
+  var estado = null;
+  var editarBase = window.editarLancamentoTerceiro;
+  var salvarBase = window.salvarLancamentoTerceiro;
+  var limparBase = window.limparFormularioLancamentoTerceiro;
+  var cancelarBase = window.cancelarEdicaoTerceiro;
+
+  function el(id){ return document.getElementById(id); }
+  function num(v){ var n=Number(v); return Number.isFinite(n)?n:0; }
+  function lista(){
+    try{ if(typeof terceiros!=='undefined' && Array.isArray(terceiros)) return terceiros; }catch(_){ }
+    return Array.isArray(window.terceiros)?window.terceiros:[];
+  }
+  function gravarLista(nova){
+    try{ terceiros=nova; }catch(_){ }
+    try{ window.terceiros=nova; }catch(_){ }
+  }
+  function clone(obj){
+    try{ return structuredClone(obj); }catch(_){ return JSON.parse(JSON.stringify(obj)); }
+  }
+  function valorItem(item){
+    try{ if(typeof valorTotalTerceiro==='function') return num(valorTotalTerceiro(item)); }catch(_){ }
+    return num(item && (item.valorParcela ?? item.valorTotal ?? item.valor));
+  }
+  function dinheiro(v){
+    try{ if(typeof moeda==='function') return moeda(v); }catch(_){ }
+    return num(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function lerDinheiro(id){
+    var campo=el(id);
+    if(!campo) return 0;
+    try{ if(typeof limparMoeda==='function') return num(limparMoeda(campo.value)); }catch(_){ }
+    var s=String(campo.value||'').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
+    return num(s);
+  }
+  function numeroParcela(item){
+    var n=num(item&&item.numeroParcela);
+    if(n>0) return n;
+    var parte=String(item&&item.parcela||'').split('/')[0];
+    return Math.max(1,num(parte)||1);
+  }
+  function totalParcelas(item,grupo){
+    var n=num(item&&item.totalParcelas);
+    if(n>0) return n;
+    var p=String(item&&item.parcela||'').split('/')[1];
+    return Math.max(1,num(p)||grupo.length||1);
+  }
+  function mesDaData(data){
+    var s=String(data||'');
+    return /^\d{4}-\d{2}/.test(s)?s.slice(0,7):'';
+  }
+  function adicionar(mes,quantidade){
+    try{ if(typeof adicionarMeses==='function') return adicionarMeses(mes,quantidade); }catch(_){ }
+    var p=String(mes||'').split('-');
+    var d=new Date(Number(p[0]),Number(p[1])-1+Number(quantidade||0),1);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  }
+  function dataNoMes(mes,dia){
+    try{ if(typeof dataVencimento==='function') return dataVencimento(mes,dia); }catch(_){ }
+    var ultimo=new Date(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0).getDate();
+    return mes+'-'+String(Math.max(1,Math.min(ultimo,Number(dia)||1))).padStart(2,'0');
+  }
+  function mesFiltroAtual(){
+    try{ if(typeof obterMesReferenciaFiltro==='function') return obterMesReferenciaFiltro('filtroTerc'); }catch(_){ }
+    var mes=el('filtroTercMes')?.value;
+    var ano=el('filtroTercAno')?.value;
+    if(mes&&ano) return ano+'-'+mes;
+    return el('dashboardMes')?.value || '';
+  }
+  function selecionarItem(grupo,itemId){
+    var exato=grupo.find(function(i){return String(i.id)===String(itemId);});
+    if(exato) return exato;
+    var mes=mesFiltroAtual();
+    if(mes){
+      var noMes=grupo.find(function(i){
+        var m=mesDaData(i.vencimento);
+        return m===mes;
+      });
+      if(noMes) return noMes;
+    }
+    return grupo.slice().sort(function(a,b){return numeroParcela(a)-numeroParcela(b);})[0];
+  }
+  function setMes(id,valor){
+    try{ if(typeof setValorMes==='function'){ setValorMes(id,valor); return; } }catch(_){ }
+    var c=el(id); if(c) c.value=valor||'';
+  }
+  function setCampo(id,valor){ var c=el(id); if(c) c.value=valor==null?'':String(valor); }
+  function rotuloValor(texto){
+    var c=el('tercValor');
+    var label=c&&c.parentElement?c.parentElement.querySelector('label'):null;
+    if(label) label.textContent=texto;
+  }
+  function bloquearEstrutura(sim){
+    ['tercTipo','tercParcelas','tercStatus'].forEach(function(id){
+      var c=el(id); if(!c) return;
+      c.disabled=!!sim;
+      c.classList.toggle('cmfin-edicao-v23-lock',!!sim);
+    });
+    // A primeira fatura continua editável, mas somente altera datas se o usuário realmente mudar seu valor.
+  }
+  function aviso(item,grupo){
+    var box=el('cmfinDivisaoTerceiro');
+    if(!box) return;
+    var total=totalParcelas(item,grupo);
+    box.className='is-visible cmfin-edicao-v23-aviso';
+    box.innerHTML='<span class="cmfin-edicao-v23-titulo">Edição preservada</span>'+
+      '<div class="cmfin-edicao-v23-texto">Parcela '+numeroParcela(item)+'/'+total+'. Campos não alterados permanecem exatamente como estavam. A primeira fatura e os vencimentos só serão modificados se você alterar a data manualmente.</div>';
+  }
+  function limparEstado(){
+    estado=null;
+    window.__cmfinEdicaoTerceiroSnapshotV22=null;
+    bloquearEstrutura(false);
+    rotuloValor('Valor Total');
+  }
+  function preencher(compraId,itemId){
+    var grupo=lista().filter(function(i){return i&&String(i.compraId)===String(compraId);})
+      .sort(function(a,b){return numeroParcela(a)-numeroParcela(b);});
+    if(!grupo.length) return;
+    var item=selecionarItem(grupo,itemId);
+    var base=grupo[0];
+    var primeira=base.primeiraFatura || mesDaData(base.vencimento) || mesDaData(item.vencimento);
+    var total=totalParcelas(base,grupo);
+    var dia=num(item.vencimentoDia)||num(String(item.vencimento||'').slice(8,10))||10;
+
+    estado={
+      compraId:String(compraId),
+      itemId:String(item.id),
+      grupo:clone(grupo),
+      primeiraFaturaOriginal:primeira,
+      vencimentoDiaOriginal:dia,
+      valorOriginal:valorItem(item)
+    };
+
+    setCampo('tercEditCompraId',compraId);
+    setCampo('tercPessoa',item.pessoa||base.pessoa||'');
+    setCampo('tercFormaPagamento',item.formaPagamento||(item.cartao?'Cartão de Crédito':'Pix'));
+    try{ if(typeof atualizarCampoCartaoTerceiro==='function') atualizarCampoCartaoTerceiro(); }catch(_){ }
+    setCampo('tercCartao',item.cartao||base.cartao||'');
+    setCampo('tercDescricao',item.descricao||base.descricao||'');
+    setCampo('tercValor',dinheiro(valorItem(item)));
+    setCampo('tercVencimento',dia);
+    setCampo('tercCategoria',item.categoria||base.categoria||'Outros');
+    setCampo('tercTipo',base.tipo||item.tipo||'Parcelado');
+    setCampo('tercParcelas',total);
+    setMes('tercPrimeiraFatura',primeira);
+    setCampo('tercStatus',item.status||base.status||'Pendente');
+    setCampo('tercObs',item.obs||base.obs||'');
+
+    rotuloValor((base.tipo||item.tipo||'Parcelado')==='Recorrente'?'Valor Mensal':'Valor da Parcela');
+    bloquearEstrutura(true);
+    aviso(item,grupo);
+    var btn=el('btnSalvarTerceiro'); if(btn) btn.innerText='Atualizar Lançamento';
+    var cancelar=el('btnCancelarEdicaoTerceiro'); if(cancelar) cancelar.style.display='block';
+  }
+
+  function validar(){
+    var pessoa=el('tercPessoa')?.value||'';
+    var forma=el('tercFormaPagamento')?.value||'Cartão de Crédito';
+    var cartao=el('tercCartao')?.value||'';
+    var descricao=(el('tercDescricao')?.value||'').trim();
+    var categoria=el('tercCategoria')?.value||'';
+    var valor=lerDinheiro('tercValor');
+    var dia=num(el('tercVencimento')?.value);
+    if(!pessoa){alert('Selecione a pessoa do lançamento.');return null;}
+    if(forma==='Cartão de Crédito'&&!cartao){alert('Selecione o cartão utilizado.');return null;}
+    if(!descricao){alert('Informe a descrição da compra.');return null;}
+    if(!(valor>0)){alert('Informe o valor da parcela.');return null;}
+    if(!(dia>=1&&dia<=31)){alert('Informe um dia de vencimento válido.');return null;}
+    if(!categoria){alert('Selecione a categoria do lançamento.');return null;}
+    return {
+      pessoa:pessoa,
+      formaPagamento:forma,
+      cartao:forma==='Cartão de Crédito'?cartao:'',
+      descricao:descricao,
+      categoria:categoria,
+      valor:valor,
+      dia:dia,
+      primeiraFatura:el('tercPrimeiraFatura')?.value||estado.primeiraFaturaOriginal,
+      obs:(el('tercObs')?.value||'').trim()
+    };
+  }
+
+  function salvarPreservado(){
+    if(!estado) return false;
+    var editId=String(el('tercEditCompraId')?.value||'');
+    if(!editId||editId!==estado.compraId) return false;
+    var dados=validar();
+    if(!dados) return true;
+
+    var mudouPrimeira=String(dados.primeiraFatura||'')!==String(estado.primeiraFaturaOriginal||'');
+    var mudouDia=Number(dados.dia)!==Number(estado.vencimentoDiaOriginal);
+    var todos=lista();
+    var encontrou=false;
+    var nova=todos.map(function(item){
+      if(!item||String(item.compraId)!==estado.compraId) return item;
+      encontrou=true;
+      var atualizado=Object.assign({},item,{
+        pessoa:dados.pessoa,
+        formaPagamento:dados.formaPagamento,
+        cartao:dados.cartao,
+        descricao:dados.descricao,
+        categoria:dados.categoria,
+        obs:dados.obs,
+        valor:dados.valor,
+        valorTotal:dados.valor
+      });
+      if(Object.prototype.hasOwnProperty.call(item,'valorParcela')) atualizado.valorParcela=dados.valor;
+
+      // Datas e estrutura só são tocadas quando o usuário realmente altera a primeira fatura ou o dia.
+      if(mudouPrimeira){
+        var mesNovo=adicionar(dados.primeiraFatura,numeroParcela(item)-1);
+        atualizado.primeiraFatura=dados.primeiraFatura;
+        atualizado.vencimentoDia=dados.dia;
+        atualizado.vencimento=dataNoMes(mesNovo,dados.dia);
+      }else if(mudouDia){
+        var mesAtualItem=mesDaData(item.vencimento);
+        atualizado.vencimentoDia=dados.dia;
+        atualizado.vencimento=mesAtualItem?dataNoMes(mesAtualItem,dados.dia):item.vencimento;
+      }
+      return atualizado;
+    });
+    if(!encontrou){
+      alert('O lançamento original não foi localizado. Nada foi alterado.');
+      return true;
+    }
+
+    gravarLista(nova);
+    try{ if(typeof salvarDados==='function') salvarDados(); }catch(_){ }
+    limparEstado();
+    if(typeof limparBase==='function') limparBase();
+    try{
+      if(typeof renderizarTudo==='function') renderizarTudo();
+      else if(typeof renderizarTerceiros==='function') renderizarTerceiros();
+    }catch(_){ }
+    return true;
+  }
+
+  window.editarLancamentoTerceiro=function(compraId,itemId){
+    try{ if(typeof editarBase==='function') editarBase.apply(this,[compraId]); }catch(_){ }
+    preencher(compraId,itemId);
+  };
+  window.editarLancamentoTerceiro.__cmfinEdicaoPreservadaV23=true;
+  try{ editarLancamentoTerceiro=window.editarLancamentoTerceiro; }catch(_){ }
+
+  var salvarFinal=function(){
+    if(estado && el('tercEditCompraId')?.value){
+      if(salvarPreservado()) return;
+    }
+    return typeof salvarBase==='function'?salvarBase.apply(this,arguments):undefined;
+  };
+  salvarFinal.__cmfinEdicaoPreservadaV23=true;
+  salvarFinal.__cmfinAutoDivisao=true;
+  window.salvarLancamentoTerceiro=salvarFinal;
+  try{ salvarLancamentoTerceiro=salvarFinal; }catch(_){ }
+
+  var limparFinal=function(){
+    limparEstado();
+    return typeof limparBase==='function'?limparBase.apply(this,arguments):undefined;
+  };
+  window.limparFormularioLancamentoTerceiro=limparFinal;
+  try{ limparFormularioLancamentoTerceiro=limparFinal; }catch(_){ }
+
+  var cancelarFinal=function(){
+    limparEstado();
+    if(typeof cancelarBase==='function') return cancelarBase.apply(this,arguments);
+    return limparFinal();
+  };
+  window.cancelarEdicaoTerceiro=cancelarFinal;
+  try{ cancelarEdicaoTerceiro=cancelarFinal; }catch(_){ }
+})();
+</script>
