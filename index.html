@@ -33362,6 +33362,108 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+
+<!-- PATCH CMFin v25 — restaura valor mensal em novos lançamentos parcelados de terceiros -->
+<script id="cmfin-terceiros-valor-mensal-v25">
+(function(){
+  'use strict';
+
+  var salvarAtual = window.salvarLancamentoTerceiro;
+  if(typeof salvarAtual !== 'function' || salvarAtual.__cmfinValorMensalV25) return;
+
+  function el(id){ return document.getElementById(id); }
+  function numero(v){ var n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function lerMoedaTexto(texto){
+    try{
+      if(typeof window.limparMoeda === 'function') return numero(window.limparMoeda(texto));
+      if(typeof limparMoeda === 'function') return numero(limparMoeda(texto));
+    }catch(_){ }
+    var s = String(texto || '').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
+    return numero(s);
+  }
+  function lista(){
+    try{ if(typeof terceiros !== 'undefined' && Array.isArray(terceiros)) return terceiros; }catch(_){ }
+    return Array.isArray(window.terceiros) ? window.terceiros : [];
+  }
+  function gravar(nova){
+    try{ terceiros = nova; }catch(_){ }
+    try{ window.terceiros = nova; }catch(_){ }
+  }
+
+  var salvarNovo = function(){
+    var editando = !!String(el('tercEditCompraId')?.value || '');
+    var tipo = el('tercTipo')?.value || 'Parcelado';
+    var parcelas = Math.max(1, Math.floor(numero(el('tercParcelas')?.value || 1)));
+
+    // A edição preservada continua sendo tratada pela rotina atual.
+    if(editando || tipo !== 'Parcelado' || parcelas <= 1){
+      return salvarAtual.apply(this, arguments);
+    }
+
+    var inputValor = el('tercValor');
+    var textoOriginal = inputValor ? inputValor.value : '';
+    var valorCompraTotal = lerMoedaTexto(textoOriginal);
+    if(!(valorCompraTotal > 0)) return salvarAtual.apply(this, arguments);
+
+    var valorMensal = valorCompraTotal / parcelas;
+    var idsAntes = new Set(lista().map(function(item){ return String(item && item.compraId); }));
+    var limparOriginalWindow = window.limparMoeda;
+    var limparOriginalGlobal;
+    try{ limparOriginalGlobal = limparMoeda; }catch(_){ limparOriginalGlobal = null; }
+
+    function limparTemporario(valor){
+      if(String(valor) === String(textoOriginal)) return valorMensal;
+      if(typeof limparOriginalWindow === 'function') return limparOriginalWindow(valor);
+      if(typeof limparOriginalGlobal === 'function') return limparOriginalGlobal(valor);
+      return lerMoedaTexto(valor);
+    }
+
+    var retorno;
+    try{
+      window.limparMoeda = limparTemporario;
+      try{ limparMoeda = limparTemporario; }catch(_){ }
+      retorno = salvarAtual.apply(this, arguments);
+    }finally{
+      window.limparMoeda = limparOriginalWindow;
+      try{ limparMoeda = limparOriginalGlobal; }catch(_){ }
+    }
+
+    // Mantém o valor total original apenas como referência, sem afetar o valor mensal exibido.
+    var atual = lista();
+    var novosCompraIds = [];
+    atual.forEach(function(item){
+      var id = String(item && item.compraId);
+      if(id && !idsAntes.has(id) && novosCompraIds.indexOf(id) < 0) novosCompraIds.push(id);
+    });
+    if(novosCompraIds.length){
+      var compraIdNovo = novosCompraIds[novosCompraIds.length - 1];
+      var nova = atual.map(function(item){
+        if(!item || String(item.compraId) !== compraIdNovo) return item;
+        return Object.assign({}, item, {
+          valor: valorMensal,
+          valorTotal: valorMensal,
+          valorParcela: valorMensal,
+          valorCompraTotal: valorCompraTotal
+        });
+      });
+      gravar(nova);
+      try{ if(typeof salvarDados === 'function') salvarDados(); }catch(_){ }
+      try{
+        if(typeof renderizarTudo === 'function') renderizarTudo();
+        else if(typeof renderizarTerceiros === 'function') renderizarTerceiros();
+      }catch(_){ }
+    }
+    return retorno;
+  };
+
+  salvarNovo.__cmfinValorMensalV25 = true;
+  salvarNovo.__cmfinAutoDivisao = true;
+  window.salvarLancamentoTerceiro = salvarNovo;
+  try{ salvarLancamentoTerceiro = salvarNovo; }catch(_){ }
+})();
+</script>
+
 </body>
 </html>
 
@@ -43748,6 +43850,7 @@ Os outros lançamentos não serão alterados.`;
 </style>
 
 
+<!-- PATCH CMFin v24 — reset visual da divisão automática após edição -->
 <!-- PATCH CMFin v23 — Edição de terceiros sem reconstruir parcelamento -->
 <style id="cmfin-edicao-terceiros-definitiva-v23-style">
   #terceiros .cmfin-edicao-v23-lock{
@@ -43885,7 +43988,7 @@ Os outros lançamentos não serão alterados.`;
     var box=el('cmfinDivisaoTerceiro');
     if(!box) return;
     var total=totalParcelas(item,grupo);
-    box.className='is-visible cmfin-edicao-v23-aviso';
+    box.className='cmfin-auto-parcela is-visible cmfin-edicao-v23-aviso';
     box.innerHTML='<span class="cmfin-edicao-v23-titulo">Edição preservada</span>'+
       '<div class="cmfin-edicao-v23-texto">Parcela '+numeroParcela(item)+'/'+total+'. Campos não alterados permanecem exatamente como estavam. A primeira fatura e os vencimentos só serão modificados se você alterar a data manualmente.</div>';
   }
@@ -43894,6 +43997,32 @@ Os outros lançamentos não serão alterados.`;
     window.__cmfinEdicaoTerceiroSnapshotV22=null;
     bloquearEstrutura(false);
     rotuloValor('Valor Total');
+
+    var editId=el('tercEditCompraId');
+    if(editId) editId.value='';
+
+    var box=el('cmfinDivisaoTerceiro');
+    if(box){
+      box.className='cmfin-auto-parcela';
+      box.innerHTML='';
+    }
+
+    var btn=el('btnSalvarTerceiro');
+    if(btn) btn.innerText='Registrar Lançamento';
+    var cancelar=el('btnCancelarEdicaoTerceiro');
+    if(cancelar) cancelar.style.display='none';
+
+    setTimeout(function(){
+      var caixa=el('cmfinDivisaoTerceiro');
+      if(caixa && !caixa.classList.contains('cmfin-auto-parcela')){
+        caixa.className='cmfin-auto-parcela';
+      }
+      try{
+        if(typeof window.cmfinAtualizarDivisaoTerceiro==='function'){
+          window.cmfinAtualizarDivisaoTerceiro();
+        }
+      }catch(_){ }
+    },0);
   }
   function preencher(compraId,itemId){
     var grupo=lista().filter(function(i){return i&&String(i.compraId)===String(compraId);})
