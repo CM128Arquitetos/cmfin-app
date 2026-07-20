@@ -33114,6 +33114,254 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+
+<!-- CMFin v22 - edição de terceiros preservando o parcelamento original -->
+<style id="cmfin-edicao-terceiros-preservada-v22-style">
+  #terceiros .cmfin-campo-estrutura-bloqueado{
+    opacity:.78;
+    cursor:not-allowed;
+    background:#f4f7f6 !important;
+  }
+  #terceiros #cmfinDivisaoTerceiro.cmfin-edicao-preservada{
+    display:block;
+    padding:9px 11px;
+    border-color:#b8d9d3;
+    background:#f0f8f6;
+  }
+  #terceiros #cmfinDivisaoTerceiro.cmfin-edicao-preservada .cmfin-edicao-preservada-titulo{
+    display:block;
+    margin-bottom:3px;
+    color:#0f766e;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  #terceiros #cmfinDivisaoTerceiro.cmfin-edicao-preservada .cmfin-edicao-preservada-texto{
+    color:#405f59;
+    font-size:11px;
+    line-height:1.4;
+    font-weight:700;
+  }
+</style>
+<script id="cmfin-edicao-terceiros-preservada-v22-script">
+(function(){
+  'use strict';
+
+  function instalarCorrecaoEdicaoTerceiros(){
+    if(window.__cmfinEdicaoTerceirosPreservadaV22) return;
+    if(typeof window.editarLancamentoTerceiro!=='function' || typeof window.salvarLancamentoTerceiro!=='function') return;
+    window.__cmfinEdicaoTerceirosPreservadaV22=true;
+
+    var editarAnterior=window.editarLancamentoTerceiro;
+    var salvarAnterior=window.salvarLancamentoTerceiro;
+    var limparAnterior=window.limparFormularioLancamentoTerceiro;
+    var cancelarAnterior=window.cancelarEdicaoTerceiro;
+
+    function campo(id){ return document.getElementById(id); }
+    function numero(valor){ var n=Number(valor); return Number.isFinite(n)?n:0; }
+    function valorItem(item){
+      try{ if(typeof valorTotalTerceiro==='function') return numero(valorTotalTerceiro(item)); }catch(_){ }
+      return numero(item&&((item.valorParcela ?? item.valorTotal) ?? item.valor));
+    }
+    function dinheiro(valor){
+      try{ if(typeof moeda==='function') return moeda(valor); }catch(_){ }
+      return numero(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    }
+    function valorFormulario(){
+      var el=campo('tercValor');
+      if(!el) return 0;
+      try{ if(typeof limparMoeda==='function') return numero(limparMoeda(el.value)); }catch(_){ }
+      return numero(String(el.value||'').replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.'));
+    }
+    function listaTerceiros(){
+      try{ return Array.isArray(terceiros)?terceiros:[]; }catch(_){ return []; }
+    }
+    function definirLista(novaLista){
+      try{ terceiros=novaLista; }catch(_){ }
+      try{ window.terceiros=novaLista; }catch(_){ }
+    }
+    function rotuloValor(texto){
+      var input=campo('tercValor');
+      var label=input&&input.parentElement?input.parentElement.querySelector('label'):null;
+      if(label) label.textContent=texto;
+    }
+    function camposEstruturais(bloquear){
+      ['tercTipo','tercParcelas','tercPrimeiraFatura','tercStatus'].forEach(function(id){
+        var el=campo(id);
+        if(!el) return;
+        el.disabled=!!bloquear;
+        el.classList.toggle('cmfin-campo-estrutura-bloqueado',!!bloquear);
+      });
+    }
+    function limparEstadoEdicao(){
+      window.__cmfinEdicaoTerceiroSnapshotV22=null;
+      camposEstruturais(false);
+      rotuloValor('Valor Total');
+      var box=campo('cmfinDivisaoTerceiro');
+      if(box){
+        box.classList.remove('cmfin-edicao-preservada');
+      }
+    }
+    function formatarEstrutura(grupo,base){
+      var total=numero(base&&base.totalParcelas) || grupo.length || 1;
+      var numeros=grupo.map(function(item){ return numero(item.numeroParcela)||numero(String(item.parcela||'').split('/')[0]); }).filter(Boolean).sort(function(a,b){return a-b;});
+      if((base&&base.tipo||'Parcelado')==='Recorrente') return 'Lançamento recorrente';
+      if(!numeros.length) return total+' parcela'+(total===1?'':'s');
+      var primeira=numeros[0],ultima=numeros[numeros.length-1];
+      return primeira===ultima ? ('Parcela '+primeira+'/'+total) : ('Parcelamento '+primeira+'/'+total+' até '+ultima+'/'+total);
+    }
+    function mostrarAvisoEdicao(grupo,base){
+      var box=campo('cmfinDivisaoTerceiro');
+      if(!box) return;
+      box.classList.remove('cmfin-edit-note');
+      box.classList.add('is-visible','cmfin-edicao-preservada');
+      box.innerHTML='<span class="cmfin-edicao-preservada-titulo">Estrutura preservada</span>'+
+        '<div class="cmfin-edicao-preservada-texto">'+formatarEstrutura(grupo,base)+'. Ao salvar, somente os dados alterados serão atualizados; parcelas, datas originais e baixas já realizadas permanecerão intactas.</div>';
+    }
+    function validarEdicao(){
+      var pessoa=campo('tercPessoa')?.value||'';
+      var forma=campo('tercFormaPagamento')?.value||'Cartão de Crédito';
+      var cartao=campo('tercCartao')?.value||'';
+      var descricao=(campo('tercDescricao')?.value||'').trim();
+      var categoria=campo('tercCategoria')?.value||'';
+      var valor=valorFormulario();
+      var vencimentoDia=numero(campo('tercVencimento')?.value||0);
+      if(!pessoa){ alert('Selecione a pessoa do lançamento.'); campo('tercPessoa')?.focus(); return null; }
+      if(forma==='Cartão de Crédito'&&!cartao){ alert('Selecione o cartão utilizado.'); campo('tercCartao')?.focus(); return null; }
+      if(!descricao){ alert('Informe a descrição da compra.'); campo('tercDescricao')?.focus(); return null; }
+      if(!(valor>0)){ alert('Informe o valor da parcela.'); campo('tercValor')?.focus(); return null; }
+      if(!(vencimentoDia>=1&&vencimentoDia<=31)){ alert('Informe um dia de vencimento válido.'); campo('tercVencimento')?.focus(); return null; }
+      if(!categoria){ alert('Selecione a categoria do lançamento.'); campo('tercCategoria')?.focus(); return null; }
+      return {
+        pessoa:pessoa,
+        formaPagamento:forma,
+        cartao:forma==='Cartão de Crédito'?cartao:'',
+        descricao:descricao,
+        categoria:categoria,
+        valor:valor,
+        vencimentoDia:vencimentoDia,
+        obs:(campo('tercObs')?.value||'').trim()
+      };
+    }
+    function atualizarDiaVencimento(item,dia){
+      var data=String(item&&item.vencimento||'');
+      var mes=/^\d{4}-\d{2}/.test(data)?data.slice(0,7):'';
+      if(!mes) return data;
+      try{ if(typeof dataVencimento==='function') return dataVencimento(mes,dia); }catch(_){ }
+      return mes+'-'+String(Math.max(1,Math.min(28,dia))).padStart(2,'0');
+    }
+    function salvarEdicaoPreservada(){
+      var snap=window.__cmfinEdicaoTerceiroSnapshotV22;
+      var editId=String(campo('tercEditCompraId')?.value||'');
+      if(!snap||!editId||String(snap.compraId)!==editId) return false;
+      var dados=validarEdicao();
+      if(!dados) return true;
+
+      var atual=listaTerceiros();
+      var encontrou=false;
+      var nova=atual.map(function(item){
+        if(!item||String(item.compraId)!==editId) return item;
+        encontrou=true;
+        var atualizado=Object.assign({},item,{
+          pessoa:dados.pessoa,
+          formaPagamento:dados.formaPagamento,
+          cartao:dados.cartao,
+          descricao:dados.descricao,
+          categoria:dados.categoria,
+          obs:dados.obs,
+          vencimentoDia:dados.vencimentoDia,
+          vencimento:atualizarDiaVencimento(item,dados.vencimentoDia),
+          valor:dados.valor,
+          valorTotal:dados.valor
+        });
+        if(Object.prototype.hasOwnProperty.call(item,'valorParcela')) atualizado.valorParcela=dados.valor;
+        return atualizado;
+      });
+      if(!encontrou){
+        alert('Não foi possível localizar o parcelamento original. A edição foi cancelada para evitar alterações incorretas.');
+        return true;
+      }
+      definirLista(nova);
+      try{ if(typeof salvarDados==='function') salvarDados(); }catch(_){ }
+      limparEstadoEdicao();
+      if(typeof limparAnterior==='function') limparAnterior();
+      try{
+        if(typeof renderizarTudo==='function') renderizarTudo();
+        else if(typeof renderizarTerceiros==='function') renderizarTerceiros();
+      }catch(_){ }
+      return true;
+    }
+
+    var editarNovo=function(compraId){
+      var retorno=editarAnterior.apply(this,arguments);
+      try{
+        var grupo=listaTerceiros().filter(function(item){ return item&&String(item.compraId)===String(compraId); })
+          .sort(function(a,b){ return (numero(a.numeroParcela)||0)-(numero(b.numeroParcela)||0); });
+        if(!grupo.length) return retorno;
+        var base=grupo[0];
+        window.__cmfinEdicaoTerceiroSnapshotV22={
+          compraId:String(compraId),
+          grupo:grupo.map(function(item){return Object.assign({},item);})
+        };
+        var valor=valorItem(base);
+        if(campo('tercValor')) campo('tercValor').value=dinheiro(valor);
+        rotuloValor((base.tipo||'Parcelado')==='Recorrente'?'Valor Mensal':'Valor da Parcela');
+        camposEstruturais(true);
+        mostrarAvisoEdicao(grupo,base);
+      }catch(erro){
+        console.error('Falha ao preparar edição preservada de terceiro:',erro);
+      }
+      return retorno;
+    };
+    editarNovo.__cmfinTotalEdicao=true;
+    editarNovo.__cmfinEdicaoPreservadaV22=true;
+
+    var salvarNovo=function(){
+      if(campo('tercEditCompraId')?.value && window.__cmfinEdicaoTerceiroSnapshotV22){
+        if(salvarEdicaoPreservada()) return;
+      }
+      return salvarAnterior.apply(this,arguments);
+    };
+    salvarNovo.__cmfinAutoDivisao=true;
+    salvarNovo.__cmfinEdicaoPreservadaV22=true;
+
+    var limparNovo=function(){
+      limparEstadoEdicao();
+      return typeof limparAnterior==='function'?limparAnterior.apply(this,arguments):undefined;
+    };
+    limparNovo.__cmfinEdicaoPreservadaV22=true;
+
+    var cancelarNovo=function(){
+      limparEstadoEdicao();
+      if(typeof cancelarAnterior==='function') return cancelarAnterior.apply(this,arguments);
+      return limparNovo();
+    };
+    cancelarNovo.__cmfinEdicaoPreservadaV22=true;
+
+    window.editarLancamentoTerceiro=editarNovo;
+    window.salvarLancamentoTerceiro=salvarNovo;
+    window.limparFormularioLancamentoTerceiro=limparNovo;
+    window.cancelarEdicaoTerceiro=cancelarNovo;
+    try{ editarLancamentoTerceiro=editarNovo; }catch(_){ }
+    try{ salvarLancamentoTerceiro=salvarNovo; }catch(_){ }
+    try{ limparFormularioLancamentoTerceiro=limparNovo; }catch(_){ }
+    try{ cancelarEdicaoTerceiro=cancelarNovo; }catch(_){ }
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){
+      instalarCorrecaoEdicaoTerceiros();
+      setTimeout(instalarCorrecaoEdicaoTerceiros,400);
+    });
+  }else{
+    instalarCorrecaoEdicaoTerceiros();
+    setTimeout(instalarCorrecaoEdicaoTerceiros,400);
+  }
+})();
+</script>
+
 </body>
 </html>
 
