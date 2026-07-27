@@ -33748,7 +33748,10 @@ Os outros lançamentos não serão alterados.`;
           <h2 id="cmfinSaldoSaidasTitulo">Saldo Restante</h2>
           <p id="cmfinSaldoSaidasSubtitulo">Parcelas pendentes atuais e futuras.</p>
         </div>
-        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        <div class="cmfin-saldo-saidas-header-actions">
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinAbrirPreviaSaldoSaidas()">Exportar Resumo</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+        </div>
       </div>
       <div id="cmfinSaldoSaidasConteudo"></div>
     </div>
@@ -44760,6 +44763,23 @@ Os outros lançamentos não serão alterados.`;
     vertical-align:middle;
   }
   #modalSaldoRestanteSaidas .cmfin-saldo-saidas-note strong{color:#16332d;}
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header-actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  @media(max-width:760px){
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header-actions{
+      width:100%;
+      justify-content:stretch;
+    }
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header-actions .btn{
+      flex:1 1 100%;
+      width:100%;
+    }
+  }
   @media(max-width:920px){
     #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head{display:none;}
     #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
@@ -44799,14 +44819,41 @@ Os outros lançamentos não serão alterados.`;
     var partes=String(mes||"").split("-");
     return partes.length===2 ? ((nomes[Number(partes[1])-1]||partes[1])+" de "+partes[0]) : String(mes||"-");
   }
+  function modoAtivoSeguro(){
+    try{ if(typeof modoAtual !== "undefined") return modoAtual === "empresarial" ? "empresarial" : "pessoal"; }catch(_){ }
+    if(window.modoAtual) return window.modoAtual === "empresarial" ? "empresarial" : "pessoal";
+    try{
+      if(typeof carregarBaseStorage === "function"){
+        var base=carregarBaseStorage();
+        return base&&base.modoAtual === "empresarial" ? "empresarial" : "pessoal";
+      }
+    }catch(_){ }
+    return "pessoal";
+  }
   function listaFixos(){
-    if(Array.isArray(window.gastosFixos)) return window.gastosFixos;
+    /* A variável lexical é a base carregada pelo modo ativo. window.gastosFixos pode ficar com referência do modo anterior. */
     try{ if(typeof gastosFixos !== "undefined" && Array.isArray(gastosFixos)) return gastosFixos; }catch(_){ }
+    if(Array.isArray(window.gastosFixos)) return window.gastosFixos;
+    try{
+      if(typeof carregarBaseStorage === "function"){
+        var base=carregarBaseStorage();
+        var lista=base&&base.modos&&base.modos[modoAtivoSeguro()]&&base.modos[modoAtivoSeguro()].gastosFixos;
+        if(Array.isArray(lista)) return lista;
+      }
+    }catch(_){ }
     return [];
   }
   function listaVariaveis(){
-    if(Array.isArray(window.gastosVariaveis)) return window.gastosVariaveis;
+    /* A variável lexical é a base carregada pelo modo ativo. window.gastosVariaveis pode ficar com referência do modo anterior. */
     try{ if(typeof gastosVariaveis !== "undefined" && Array.isArray(gastosVariaveis)) return gastosVariaveis; }catch(_){ }
+    if(Array.isArray(window.gastosVariaveis)) return window.gastosVariaveis;
+    try{
+      if(typeof carregarBaseStorage === "function"){
+        var base=carregarBaseStorage();
+        var lista=base&&base.modos&&base.modos[modoAtivoSeguro()]&&base.modos[modoAtivoSeguro()].gastosVariaveis;
+        if(Array.isArray(lista)) return lista;
+      }
+    }catch(_){ }
     return [];
   }
   function filtros(tipo){
@@ -44999,7 +45046,8 @@ Os outros lançamentos não serão alterados.`;
     itens.sort(function(a,b){return b.totalSimulado-a.totalSimulado||String(a.titulo).localeCompare(String(b.titulo),"pt-BR");});
     var mapa={};
     itens.forEach(function(item){mapa[item.token]=item;});
-    window.__cmfinSaldoSaidasEstadoV29={tipo:tipo,filtros:f,itens:mapa};
+    var modoAtivo=modoAtivoSeguro();
+    window.__cmfinSaldoSaidasEstadoV29={tipo:tipo,modo:modoAtivo,filtros:f,itens:mapa};
 
     var nomeModulo=tipo==="fixos"?"Gastos Fixos":"Gastos Variáveis";
     var titulo=document.getElementById("cmfinSaldoSaidasTitulo");
@@ -45009,7 +45057,8 @@ Os outros lançamentos não serão alterados.`;
 
     var bancoId=tipo==="fixos"?"filtroFixoBanco":"filtroVariavelBanco";
     var categoriaId=tipo==="fixos"?"filtroFixoCategoria":"filtroVariavelCategoria";
-    var filtroHtml='Mês inicial: <strong>'+escapar(nomeCompetencia(f.referencia))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro(bancoId,"Todos"))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro(categoriaId,"Todas"))+'</strong>';
+    var modoNome=modoAtivo==="empresarial"?"Empresarial":"Pessoal";
+    var filtroHtml='Modo: <strong>'+modoNome+'</strong> · Mês inicial: <strong>'+escapar(nomeCompetencia(f.referencia))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro(bancoId,"Todos"))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro(categoriaId,"Todas"))+'</strong>';
 
     var conteudo=document.getElementById("cmfinSaldoSaidasConteudo");
     if(!conteudo) return;
@@ -45065,5 +45114,144 @@ Os outros lançamentos não serão alterados.`;
       if(modal) modal.style.display="flex";
     }
   };
+})();
+</script>
+
+
+<!-- CMFin v30 — Exportação do Saldo Restante de Gastos Fixos e Variáveis -->
+<style id="cmfin-previa-saldo-saidas-v30-style">
+  #modalPreviaSaldoSaidasExportacao{display:none;z-index:10080;}
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-modal{
+    width:min(960px,calc(100vw - 34px));max-width:960px;padding:0;border-radius:24px;overflow:hidden;
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-shell{
+    padding:22px;background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-header{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-header h3{margin:0 0 4px;color:#102a25;}
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-header p{margin:0;color:#64748b;line-height:1.45;}
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-actions{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-actions .btn{min-width:122px;}
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-body{
+    max-height:420px;overflow:auto;border:1px solid #dbe7e4;border-radius:20px;background:#eef4f3;padding:18px;
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-body img{
+    display:block;width:100%;max-width:780px;height:auto;margin:0 auto;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.08);
+  }
+  #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-note{margin-top:12px;color:#64748b;font-size:12px;line-height:1.5;}
+  @media(max-width:760px){
+    #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-header{flex-direction:column;}
+    #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-actions{width:100%;justify-content:stretch;}
+    #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-actions .btn{flex:1 1 100%;width:100%;min-width:0;}
+    #modalPreviaSaldoSaidasExportacao .cmfin-previa-saidas-body{max-height:calc(100vh - 300px);padding:10px;}
+  }
+</style>
+<div class="modal-backdrop" id="modalPreviaSaldoSaidasExportacao">
+  <div class="modal cmfin-previa-saidas-modal">
+    <div class="cmfin-previa-saidas-shell">
+      <div class="cmfin-previa-saidas-header">
+        <div>
+          <h3>Prévia da exportação</h3>
+          <p>Confira o resumo da quitação antes de exportar.</p>
+        </div>
+        <div class="cmfin-previa-saidas-actions">
+          <button class="btn btn-primary btn-small" type="button" onclick="cmfinCompartilharSaldoSaidas()">Exportar Imagem</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinBaixarPngSaldoSaidas()">Baixar PNG</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinCopiarImagemSaldoSaidas()">Copiar Imagem</button>
+          <button class="btn btn-secondary btn-small" type="button" onclick="cmfinFecharPreviaSaldoSaidas()">Fechar</button>
+        </div>
+      </div>
+      <div class="cmfin-previa-saidas-body"><img id="cmfinPreviaSaldoSaidasImagem" alt="Prévia do saldo restante"></div>
+      <div class="cmfin-previa-saidas-note">A imagem inclui somente as despesas mantidas na simulação e respeita a quantidade de parcelas selecionada em cada lançamento.</div>
+    </div>
+  </div>
+</div>
+<script id="cmfin-previa-saldo-saidas-v30-script">
+(function(){
+  "use strict";
+  if(window.__cmfinPreviaSaldoSaidasV30) return;
+  window.__cmfinPreviaSaldoSaidasV30=true;
+  var dataUrl="";
+  var canvasAtual=null;
+
+  function n(v){var x=Number(v);return Number.isFinite(x)?x:0;}
+  function moedaLocal(v){return n(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+  function nomeMesLocal(mes){
+    try{if(typeof nomeMes==="function") return nomeMes(mes);}catch(_){ }
+    var nomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var p=String(mes||"").split("-");
+    return p.length===2?(nomes[Number(p[1])-1]+" de "+p[0]):"-";
+  }
+  function arredondar(ctx,x,y,w,h,r){
+    var raio=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+raio,y);ctx.arcTo(x+w,y,x+w,y+h,raio);ctx.arcTo(x+w,y+h,x,y+h,raio);ctx.arcTo(x,y+h,x,y,raio);ctx.arcTo(x,y,x+w,y,raio);ctx.closePath();
+  }
+  function cortar(ctx,texto,max){
+    var s=String(texto||"");if(ctx.measureText(s).width<=max)return s;
+    while(s.length>3&&ctx.measureText(s+"…").width>max)s=s.slice(0,-1);
+    return s.trim()+"…";
+  }
+  function logo(){return document.querySelector(".brand-logo img")||document.querySelector(".cmfin-login-logo");}
+  function desenharLogo(ctx,x,y,maxW,maxH){
+    var img=logo();if(!img||!img.complete||!img.naturalWidth||!img.naturalHeight)return false;
+    var escala=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight);var w=img.naturalWidth*escala,h=img.naturalHeight*escala;
+    ctx.drawImage(img,x,y+(maxH-h)/2,w,h);return true;
+  }
+  function estado(){return window.__cmfinSaldoSaidasEstadoV29||null;}
+  function faixa(item){
+    var qtd=Math.max(1,Math.min(n(item.selecionadas)||1,(item.pendentes||[]).length));
+    var p=(item.pendentes||[]).slice(0,qtd);if(!p.length)return {faixa:"-",periodo:"-"};
+    var a=p[0],b=p[p.length-1];
+    return {faixa:a.rotulo===b.rotulo?a.rotulo:(a.rotulo+" → "+b.rotulo),periodo:nomeMesLocal(a.mes)+(a.mes===b.mes?"":" → "+nomeMesLocal(b.mes))};
+  }
+  function dados(){
+    var e=estado();if(!e)throw new Error("Abra o Saldo Restante antes de exportar.");
+    var itens=Object.keys(e.itens||{}).map(function(k){return e.itens[k];}).filter(function(i){return i&&i.incluir;});
+    var total=itens.reduce(function(s,i){return s+n(i.totalSimulado);},0);
+    var parcelas=itens.reduce(function(s,i){return s+Math.max(1,n(i.selecionadas)||1);},0);
+    return {estado:e,itens:itens,total:total,parcelas:parcelas};
+  }
+  function criarCanvas(){
+    var d=dados(), e=d.estado;
+    var largura=1080,margem=54,cardH=94,espaco=14;
+    var altura=Math.max(650,340+d.itens.length*(cardH+espaco));
+    var c=document.createElement("canvas");c.width=largura;c.height=altura;var ctx=c.getContext("2d");
+    ctx.fillStyle="#f3f7f6";ctx.fillRect(0,0,largura,altura);
+    arredondar(ctx,28,28,largura-56,altura-56,34);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#dce5e2";ctx.lineWidth=2;ctx.stroke();
+    arredondar(ctx,margem,margem,largura-margem*2,146,26);var g=ctx.createLinearGradient(margem,margem,largura-margem,margem+146);g.addColorStop(0,"#00352c");g.addColorStop(1,"#0f766e");ctx.fillStyle=g;ctx.fill();
+    var tipo=e.tipo==="variaveis"?"Gastos Variáveis":"Gastos Fixos";
+    var modo=e.modo==="empresarial"?"Modo Empresarial":"Modo Pessoal";
+    var logoOk=desenharLogo(ctx,margem+26,margem+34,205,72);var x=logoOk?margem+260:margem+30;
+    ctx.fillStyle="rgba(255,255,255,.74)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",x,margem+36);
+    ctx.fillStyle="#fff";ctx.font="900 30px Arial";ctx.fillText("Saldo Restante · "+tipo,x,margem+76);
+    ctx.fillStyle="rgba(255,255,255,.9)";ctx.font="700 19px Arial";ctx.fillText(modo+" · "+nomeMesLocal(e.filtros&&e.filtros.referencia),x,margem+110);
+    ctx.textAlign="right";ctx.fillStyle="#fff";ctx.font="800 16px Arial";ctx.fillText("SALDO SIMULADO",largura-margem-28,margem+52);ctx.font="900 39px Arial";ctx.fillText(moedaLocal(d.total),largura-margem-28,margem+99);ctx.textAlign="left";
+
+    var y=margem+170;
+    var kpis=[["COMPRAS INCLUÍDAS",String(d.itens.length)],["PARCELAS SELECIONADAS",String(d.parcelas)]];
+    kpis.forEach(function(k,i){var bx=margem+i*300;arredondar(ctx,bx,y,282,60,14);ctx.fillStyle="#f8fafb";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();ctx.fillStyle="#64748b";ctx.font="800 11px Arial";ctx.fillText(k[0],bx+16,y+21);ctx.fillStyle="#0f172a";ctx.font="900 21px Arial";ctx.fillText(k[1],bx+16,y+47);});
+    y+=82;
+    if(!d.itens.length){ctx.fillStyle="#64748b";ctx.font="700 22px Arial";ctx.fillText("Nenhuma despesa foi mantida na simulação.",margem+20,y+40);}else{
+      d.itens.forEach(function(item){
+        var f=faixa(item);arredondar(ctx,margem,y,largura-margem*2,cardH,18);ctx.fillStyle="#f8fafb";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
+        ctx.fillStyle="#0f172a";ctx.font="800 21px Arial";ctx.fillText(cortar(ctx,item.titulo,570),margem+22,y+28);
+        ctx.fillStyle="#64748b";ctx.font="600 15px Arial";ctx.fillText(cortar(ctx,(item.banco||"-")+" · "+(item.categoria||"-"),570),margem+22,y+54);
+        ctx.fillStyle="#0f766e";ctx.font="700 14px Arial";ctx.fillText(cortar(ctx,f.faixa+" · "+f.periodo,690),margem+22,y+78);
+        ctx.textAlign="right";ctx.fillStyle="#64748b";ctx.font="800 11px Arial";ctx.fillText("SUBTOTAL",largura-margem-22,y+31);ctx.fillStyle="#087f70";ctx.font="900 23px Arial";ctx.fillText(moedaLocal(item.totalSimulado),largura-margem-22,y+61);ctx.textAlign="left";y+=cardH+espaco;
+      });
+    }
+    ctx.fillStyle="#94a3b8";ctx.font="600 14px Arial";ctx.fillText("Simulação informativa — nenhuma baixa foi realizada · "+new Date().toLocaleDateString("pt-BR"),margem,altura-52);
+    return c;
+  }
+  function nomeArquivo(){var e=estado()||{};return "saldo-restante-"+(e.tipo==="variaveis"?"gastos-variaveis":"gastos-fixos")+"-"+(e.modo||"pessoal")+"-"+((e.filtros&&e.filtros.referencia)||"mes")+".png";}
+  function gerar(){canvasAtual=criarCanvas();dataUrl=canvasAtual.toDataURL("image/png");var img=document.getElementById("cmfinPreviaSaldoSaidasImagem");if(img)img.src=dataUrl;return dataUrl;}
+  window.cmfinAbrirPreviaSaldoSaidas=function(){try{gerar();var m=document.getElementById("modalPreviaSaldoSaidasExportacao");if(m)m.style.display="flex";}catch(e){alert(e.message||"Não foi possível gerar a prévia.");}};
+  window.cmfinFecharPreviaSaldoSaidas=function(){var m=document.getElementById("modalPreviaSaldoSaidasExportacao");if(m)m.style.display="none";};
+  window.cmfinBaixarPngSaldoSaidas=function(){try{if(!dataUrl)gerar();var a=document.createElement("a");a.href=dataUrl;a.download=nomeArquivo();document.body.appendChild(a);a.click();a.remove();}catch(e){alert("Não foi possível baixar a imagem.");}};
+  window.cmfinCopiarImagemSaldoSaidas=async function(){try{if(!canvasAtual)gerar();var blob=await new Promise(function(resolve){canvasAtual.toBlob(resolve,"image/png");});if(!blob||!navigator.clipboard||typeof ClipboardItem==="undefined")throw new Error();await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);alert("Imagem copiada com sucesso.");}catch(e){alert("O navegador não permitiu copiar a imagem. Use Baixar PNG.");}};
+  window.cmfinCompartilharSaldoSaidas=async function(){try{if(!canvasAtual)gerar();var blob=await new Promise(function(resolve){canvasAtual.toBlob(resolve,"image/png");});var file=new File([blob],nomeArquivo(),{type:"image/png"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Saldo Restante",text:"Resumo de quitação gerado pelo CMFin."});}else{window.cmfinBaixarPngSaldoSaidas();}}catch(e){window.cmfinBaixarPngSaldoSaidas();}};
 })();
 </script>
