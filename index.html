@@ -9216,6 +9216,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
               <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
                 <button class="btn btn-secondary" onclick="abrirModalCartaoPagoTotal('fixos')">Baixa de Fatura</button>
                 <button class="btn btn-secondary cmfin-sum-toggle" id="cmfinSumToggle-fixos" type="button" onclick="cmfinAlternarSomaDespesas('fixos')" aria-pressed="false">Somar Despesas</button>
+                <button class="btn btn-secondary cmfin-saldo-saidas-btn" type="button" onclick="cmfinAbrirSaldoRestanteSaidas('fixos')">Saldo Restante</button>
                 <button class="btn btn-primary" onclick="abrirModalGastoFixo()">+ Gasto Fixo</button>
               </div>
             </div>
@@ -9295,6 +9296,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
               <button class="btn btn-secondary" onclick="abrirModalCartaoPagoTotal('variaveis')">Baixa de Fatura</button>
               <button class="btn btn-secondary cmfin-sum-toggle" id="cmfinSumToggle-variaveis" type="button" onclick="cmfinAlternarSomaDespesas('variaveis')" aria-pressed="false">Somar Despesas</button>
+              <button class="btn btn-secondary cmfin-saldo-saidas-btn" type="button" onclick="cmfinAbrirSaldoRestanteSaidas('variaveis')">Saldo Restante</button>
               <button class="btn btn-primary" onclick="abrirModalGastoVariavel()">+ Gasto Variável</button>
             </div>
           </div>
@@ -33562,6 +33564,381 @@ Os outros lançamentos não serão alterados.`;
   else sincronizarNoPrincipal();
 })();
 </script>
+
+
+<!-- CMFin v28 — Saldo restante para Gastos Fixos e Gastos Variáveis -->
+<style id="cmfin-saldo-saidas-v28-style">
+  .cmfin-saldo-saidas-btn{
+    color:#087f70 !important;
+    border-color:#a7d6cf !important;
+    background:#f3fbf9 !important;
+  }
+  .cmfin-saldo-saidas-btn:hover{
+    background:#e6f6f2 !important;
+    border-color:#7fbdb3 !important;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-modal{
+    width:min(980px,calc(100vw - 34px));
+    max-width:980px;
+    padding:0;
+    overflow:hidden;
+    border-radius:26px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-shell{
+    padding:22px;
+    background:linear-gradient(180deg,#fff 0%,#f6fbfa 100%);
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+    margin-bottom:16px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header h2{
+    margin:0 0 5px;
+    color:#102a25;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header p{
+    margin:0;
+    color:#64748b;
+    line-height:1.45;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpis{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin-bottom:12px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi{
+    padding:13px 14px;
+    border:1px solid #dbe7e4;
+    border-radius:16px;
+    background:#fff;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi span{
+    display:block;
+    margin-bottom:6px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi strong{
+    display:block;
+    color:#0f172a;
+    font-size:20px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi.total{
+    color:#fff;
+    border-color:#087f70;
+    background:linear-gradient(135deg,#087f70,#0f766e);
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi.total span,
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpi.total strong{color:#fff;}
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-filtros{
+    margin-bottom:12px;
+    padding:10px 13px;
+    border:1px solid #dbe7e4;
+    border-radius:14px;
+    background:#fff;
+    color:#52646f;
+    font-size:12px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-lista{
+    max-height:min(500px,calc(100vh - 330px));
+    overflow:auto;
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#fff;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head,
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
+    display:grid;
+    grid-template-columns:minmax(230px,1.6fr) minmax(160px,1fr) minmax(120px,.72fr) minmax(130px,.82fr);
+    gap:14px;
+    align-items:center;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head{
+    position:sticky;
+    top:0;
+    z-index:2;
+    padding:11px 14px;
+    border-bottom:1px solid #e2e8e6;
+    background:#f7faf9;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
+    padding:14px;
+    border-bottom:1px solid #e6eeeb;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item:last-child{border-bottom:0;}
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc strong{
+    display:block;
+    color:#0f172a;
+    font-size:14px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc span,
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-dado span{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:11px;
+    line-height:1.35;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-dado strong{
+    color:#334155;
+    font-size:13px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-valor{
+    text-align:right;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-valor span{
+    display:block;
+    color:#64748b;
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-valor strong{
+    display:block;
+    margin-top:4px;
+    color:#087f70;
+    font-size:18px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-note{
+    margin-top:12px;
+    padding:11px 13px;
+    border-radius:14px;
+    background:#edf8f5;
+    color:#375d56;
+    font-size:12px;
+    line-height:1.45;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-vazio{
+    padding:34px 18px;
+    text-align:center;
+    color:#64748b;
+  }
+  @media(max-width:760px){
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-shell{padding:16px;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header{flex-direction:column;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-header .btn{width:100%;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpis{grid-template-columns:1fr;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head{display:none;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{grid-template-columns:1fr 1fr;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc{grid-column:1/-1;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-valor{text-align:left;}
+  }
+  @media(max-width:520px){
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{grid-template-columns:1fr;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalSaldoRestanteSaidas">
+  <div class="modal cmfin-saldo-saidas-modal">
+    <div class="cmfin-saldo-saidas-shell">
+      <div class="cmfin-saldo-saidas-header">
+        <div>
+          <h2 id="cmfinSaldoSaidasTitulo">Saldo Restante</h2>
+          <p id="cmfinSaldoSaidasSubtitulo">Parcelas pendentes atuais e futuras.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+      <div id="cmfinSaldoSaidasConteudo"></div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-saldo-saidas-v28-script">
+(function(){
+  "use strict";
+
+  function n(valor){
+    var numero = Number(valor);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+  function esc(valor){
+    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+    });
+  }
+  function dinheiro(valor){
+    try{ if(typeof moeda === "function") return moeda(valor); }catch(_){ }
+    return n(valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  function nomeCompetencia(mes){
+    try{ if(typeof nomeMes === "function") return nomeMes(mes); }catch(_){ }
+    var nomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var p=String(mes||"").split("-");
+    return p.length===2 ? ((nomes[Number(p[1])-1]||p[1])+" de "+p[0]) : String(mes||"-");
+  }
+  function filtros(tipo){
+    var fixo = tipo === "fixos";
+    var prefixo = fixo ? "filtroFixo" : "filtroVariavel";
+    var referencia = "";
+    try{ referencia = obterMesReferenciaFiltro(prefixo); }catch(_){ }
+    if(!referencia) referencia = (document.getElementById("dashboardMes")||{}).value || (typeof mesAtual === "function" ? mesAtual() : "");
+    return {
+      referencia:referencia,
+      banco:(document.getElementById(fixo?"filtroFixoBanco":"filtroVariavelBanco")||{}).value || "todos",
+      categoria:(document.getElementById(fixo?"filtroFixoCategoria":"filtroVariavelCategoria")||{}).value || "todos"
+    };
+  }
+  function bateFiltros(item,f){
+    return (f.banco === "todos" || item.banco === f.banco) &&
+      (f.categoria === "todos" || item.categoria === f.categoria);
+  }
+  function statusPendenteVariavel(item){
+    var status = String(item&&item.status || "Pendente");
+    return status !== "Pago" && status !== "NaoIncluir" && status !== "Não incluir";
+  }
+  function numeroParcelaVariavel(item){
+    var texto=String(item&&item.parcela||"");
+    var numero=Number(texto.split("/")[0]);
+    return Number.isFinite(numero)&&numero>0?numero:0;
+  }
+  function totalParcelaVariavel(item){
+    var total=Number(item&&item.totalParcelas);
+    if(Number.isFinite(total)&&total>0) return total;
+    total=Number(String(item&&item.parcela||"").split("/")[1]);
+    return Number.isFinite(total)&&total>0?total:0;
+  }
+  function mesVariavel(item){
+    try{ if(typeof mesReferenciaVariavel === "function") return mesReferenciaVariavel(item); }catch(_){ }
+    return item&&item.mesReferencia || item&&item.primeiraFatura || String(item&&item.data||"").slice(0,7);
+  }
+  function dadosFixos(f){
+    var lista = [];
+    (Array.isArray(gastosFixos)?gastosFixos:[]).forEach(function(item){
+      if(!item || (item.tipo||"Recorrente") !== "Parcelado" || !bateFiltros(item,f)) return;
+      var cronograma={};
+      try{ cronograma=cronogramaParcelasFixas(item,f.referencia)||{}; }catch(_){ }
+      var pendentes=Object.keys(cronograma).map(function(parcela){
+        return {parcela:Number(parcela),mes:cronograma[parcela]};
+      }).filter(function(p){
+        if(!p.mes || p.mes < f.referencia) return false;
+        var status="Pendente";
+        try{ status=statusFixoNoMes(item,p.mes); }catch(_){ }
+        return status !== "Pago" && status !== "NaoIncluir" && status !== "Não incluir";
+      }).sort(function(a,b){return a.parcela-b.parcela;});
+      if(!pendentes.length) return;
+      var valor=n(item.valor);
+      lista.push({
+        titulo:item.nome||"Gasto fixo parcelado",
+        banco:item.banco||item.forma||"-",
+        categoria:item.categoria||"Outros",
+        primeira:pendentes[0].parcela,
+        ultima:pendentes[pendentes.length-1].parcela,
+        totalParcelas:Math.max(1,n(item.totalParcelas)||pendentes[pendentes.length-1].parcela),
+        mesInicial:pendentes[0].mes,
+        mesFinal:pendentes[pendentes.length-1].mes,
+        quantidade:pendentes.length,
+        valorParcela:valor,
+        saldo:pendentes.length*valor
+      });
+    });
+    return lista;
+  }
+  function chaveGrupoVariavel(item){
+    if(item&&item.compraId!==undefined&&item.compraId!==null) return "id:"+String(item.compraId);
+    return [item&&item.descricao,item&&item.primeiraFatura,item&&item.totalParcelas,item&&item.banco,item&&item.valor].join("|");
+  }
+  function dadosVariaveis(f){
+    var grupos={};
+    (Array.isArray(gastosVariaveis)?gastosVariaveis:[]).forEach(function(item){
+      if(!item || !bateFiltros(item,f)) return;
+      var total=totalParcelaVariavel(item);
+      if(total<=1 && !String(item.parcela||"").includes("/")) return;
+      var chave=chaveGrupoVariavel(item);
+      if(!grupos[chave]) grupos[chave]=[];
+      grupos[chave].push(item);
+    });
+    var lista=[];
+    Object.keys(grupos).forEach(function(chave){
+      var grupo=grupos[chave].slice().sort(function(a,b){
+        return String(mesVariavel(a)||"").localeCompare(String(mesVariavel(b)||"")) || numeroParcelaVariavel(a)-numeroParcelaVariavel(b);
+      });
+      var pendentes=grupo.filter(function(item){
+        var mes=mesVariavel(item);
+        return mes && mes>=f.referencia && statusPendenteVariavel(item);
+      });
+      if(!pendentes.length) return;
+      var base=pendentes[0];
+      var primeira=numeroParcelaVariavel(base)||1;
+      var ultima=numeroParcelaVariavel(pendentes[pendentes.length-1])||primeira+pendentes.length-1;
+      var total=Math.max(totalParcelaVariavel(base),ultima);
+      var saldo=pendentes.reduce(function(s,item){return s+n(item.valor);},0);
+      lista.push({
+        titulo:base.descricao||"Gasto variável parcelado",
+        banco:base.banco||base.forma||"-",
+        categoria:base.categoria||"Outros",
+        primeira:primeira,
+        ultima:ultima,
+        totalParcelas:total,
+        mesInicial:mesVariavel(base),
+        mesFinal:mesVariavel(pendentes[pendentes.length-1]),
+        quantidade:pendentes.length,
+        valorParcela:n(base.valor),
+        saldo:saldo
+      });
+    });
+    return lista;
+  }
+  function render(tipo){
+    var f=filtros(tipo);
+    var itens=tipo==="fixos"?dadosFixos(f):dadosVariaveis(f);
+    itens.sort(function(a,b){return b.saldo-a.saldo;});
+    var total=itens.reduce(function(s,item){return s+item.saldo;},0);
+    var parcelas=itens.reduce(function(s,item){return s+item.quantidade;},0);
+    var nomeModulo=tipo==="fixos"?"Gastos Fixos":"Gastos Variáveis";
+    var titulo=document.getElementById("cmfinSaldoSaidasTitulo");
+    var subtitulo=document.getElementById("cmfinSaldoSaidasSubtitulo");
+    if(titulo) titulo.textContent="Saldo Restante · "+nomeModulo;
+    if(subtitulo) subtitulo.textContent="Quitação geral das parcelas pendentes atuais e futuras a partir do mês selecionado.";
+    var bancoTxt=f.banco==="todos"?"Todos":f.banco;
+    var categoriaTxt=f.categoria==="todos"?"Todas":f.categoria;
+    var linhas=itens.map(function(item){
+      var faixa=item.primeira===item.ultima ? (item.primeira+"/"+item.totalParcelas) : (item.primeira+"/"+item.totalParcelas+" → "+item.ultima+"/"+item.totalParcelas);
+      var periodo=item.mesInicial===item.mesFinal ? nomeCompetencia(item.mesInicial) : (nomeCompetencia(item.mesInicial)+" → "+nomeCompetencia(item.mesFinal));
+      return '<div class="cmfin-saldo-saidas-item">'+
+        '<div class="cmfin-saldo-saidas-desc"><strong>'+esc(item.titulo)+'</strong><span>'+esc(item.banco)+' · '+esc(item.categoria)+'</span></div>'+
+        '<div class="cmfin-saldo-saidas-dado"><strong>'+esc(faixa)+'</strong><span>'+esc(periodo)+'</span></div>'+
+        '<div class="cmfin-saldo-saidas-dado"><strong>'+item.quantidade+' parcela'+(item.quantidade===1?'':'s')+'</strong><span>'+dinheiro(item.valorParcela)+' por parcela</span></div>'+
+        '<div class="cmfin-saldo-saidas-valor"><span>Saldo</span><strong>'+dinheiro(item.saldo)+'</strong></div>'+
+      '</div>';
+    }).join("");
+    var conteudo=document.getElementById("cmfinSaldoSaidasConteudo");
+    if(!conteudo) return;
+    conteudo.innerHTML=''+
+      '<div class="cmfin-saldo-saidas-kpis">'+
+        '<div class="cmfin-saldo-saidas-kpi"><span>Compras parceladas</span><strong>'+itens.length+'</strong></div>'+
+        '<div class="cmfin-saldo-saidas-kpi"><span>Parcelas pendentes</span><strong>'+parcelas+'</strong></div>'+
+        '<div class="cmfin-saldo-saidas-kpi total"><span>Saldo total</span><strong>'+dinheiro(total)+'</strong></div>'+
+      '</div>'+
+      '<div class="cmfin-saldo-saidas-filtros">Mês inicial: <strong>'+esc(nomeCompetencia(f.referencia))+'</strong> · Banco/Cartão: <strong>'+esc(bancoTxt)+'</strong> · Categoria: <strong>'+esc(categoriaTxt)+'</strong></div>'+
+      '<div class="cmfin-saldo-saidas-lista">'+
+        (itens.length?'<div class="cmfin-saldo-saidas-head"><div>Despesa</div><div>Faixa / Período</div><div>Restantes</div><div style="text-align:right">Saldo</div></div>'+linhas:'<div class="cmfin-saldo-saidas-vazio">Nenhum lançamento parcelado pendente foi encontrado a partir deste mês e com os filtros selecionados.</div>')+
+      '</div>'+
+      '<div class="cmfin-saldo-saidas-note"><strong>Importante:</strong> despesas recorrentes não entram nesta soma, pois não possuem uma quantidade final de parcelas. A consulta é apenas informativa e não altera nenhum lançamento.</div>';
+  }
+  window.cmfinAbrirSaldoRestanteSaidas=function(tipo){
+    var normalizado=tipo==="variaveis"?"variaveis":"fixos";
+    render(normalizado);
+    if(typeof abrirModal==="function") abrirModal("modalSaldoRestanteSaidas");
+    else {
+      var modal=document.getElementById("modalSaldoRestanteSaidas");
+      if(modal) modal.style.display="flex";
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
 
