@@ -44671,3 +44671,399 @@ Os outros lançamentos não serão alterados.`;
   try{ cancelarEdicaoTerceiro=cancelarFinal; }catch(_){ }
 })();
 </script>
+
+<!-- CMFin v29 — Simulador de Saldo Restante em Gastos Fixos e Variáveis -->
+<style id="cmfin-saldo-saidas-simulador-v29-style">
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-modal{
+    width:min(1160px,calc(100vw - 28px));
+    max-width:1160px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-kpis{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head,
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
+    grid-template-columns:minmax(210px,1.5fr) minmax(145px,.95fr) minmax(130px,.78fr) minmax(115px,.72fr) minmax(120px,.76fr);
+    gap:10px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
+    transition:opacity .18s ease,background .18s ease;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item.is-excluida{
+    opacity:.55;
+    background:#f8fafc;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item.is-excluida .cmfin-saldo-saidas-valor strong{
+    color:#94a3b8;
+    text-decoration:line-through;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc .cmfin-saldo-saidas-incluir-btn{
+    width:auto;
+    min-width:96px;
+    min-height:30px;
+    margin-top:8px;
+    padding:6px 9px;
+    border:1px solid #b9d8d2;
+    border-radius:10px;
+    background:#effaf7;
+    color:#087f70;
+    font-size:10px;
+    font-weight:900;
+    line-height:1.15;
+    cursor:pointer;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc .cmfin-saldo-saidas-incluir-btn:hover{
+    background:#e3f5f1;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc .cmfin-saldo-saidas-incluir-btn.is-excluido{
+    border-color:#dbe2e8;
+    background:#f8fafc;
+    color:#64748b;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-adiantar{
+    display:grid;
+    gap:4px;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-adiantar select{
+    width:100%;
+    height:36px;
+    padding:0 30px 0 10px;
+    border:1px solid #cadbd7;
+    border-radius:11px;
+    background:#fff;
+    color:#16332d;
+    font-size:12px;
+    font-weight:850;
+    outline:none;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-adiantar select:focus{
+    border-color:#0f766e;
+    box-shadow:0 0 0 3px rgba(15,118,110,.11);
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-adiantar small{
+    color:#64748b;
+    font-size:9.5px;
+    line-height:1.25;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-simulacao-tag{
+    display:inline-flex;
+    align-items:center;
+    margin-left:7px;
+    padding:4px 7px;
+    border-radius:999px;
+    background:#e8f6f3;
+    color:#087f70;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    vertical-align:middle;
+  }
+  #modalSaldoRestanteSaidas .cmfin-saldo-saidas-note strong{color:#16332d;}
+  @media(max-width:920px){
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-head{display:none;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{
+      grid-template-columns:1fr 1fr;
+      gap:10px 12px;
+    }
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc{grid-column:1/-1;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-valor{text-align:left;}
+  }
+  @media(max-width:560px){
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-item{grid-template-columns:1fr;}
+    #modalSaldoRestanteSaidas .cmfin-saldo-saidas-desc{grid-column:auto;}
+  }
+</style>
+<script id="cmfin-saldo-saidas-simulador-v29-script">
+(function(){
+  "use strict";
+  if(window.__cmfinSaldoSaidasSimuladorV29) return;
+  window.__cmfinSaldoSaidasSimuladorV29 = true;
+
+  function numero(valor){
+    var n = Number(valor);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function dinheiro(valor){
+    try{ if(typeof moeda === "function") return moeda(valor); }catch(_){ }
+    return numero(valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  function escapar(valor){
+    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+    });
+  }
+  function nomeCompetencia(mes){
+    try{ if(typeof nomeMes === "function") return nomeMes(mes); }catch(_){ }
+    var nomes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var partes=String(mes||"").split("-");
+    return partes.length===2 ? ((nomes[Number(partes[1])-1]||partes[1])+" de "+partes[0]) : String(mes||"-");
+  }
+  function listaFixos(){
+    if(Array.isArray(window.gastosFixos)) return window.gastosFixos;
+    try{ if(typeof gastosFixos !== "undefined" && Array.isArray(gastosFixos)) return gastosFixos; }catch(_){ }
+    return [];
+  }
+  function listaVariaveis(){
+    if(Array.isArray(window.gastosVariaveis)) return window.gastosVariaveis;
+    try{ if(typeof gastosVariaveis !== "undefined" && Array.isArray(gastosVariaveis)) return gastosVariaveis; }catch(_){ }
+    return [];
+  }
+  function filtros(tipo){
+    var fixo = tipo === "fixos";
+    var prefixo = fixo ? "filtroFixo" : "filtroVariavel";
+    var referencia = "";
+    try{ referencia = obterMesReferenciaFiltro(prefixo); }catch(_){ }
+    if(!referencia) referencia = (document.getElementById("dashboardMes")||{}).value || (typeof mesAtual === "function" ? mesAtual() : "");
+    return {
+      referencia:referencia,
+      banco:(document.getElementById(fixo?"filtroFixoBanco":"filtroVariavelBanco")||{}).value || "todos",
+      categoria:(document.getElementById(fixo?"filtroFixoCategoria":"filtroVariavelCategoria")||{}).value || "todos"
+    };
+  }
+  function rotuloFiltro(id,padrao){
+    var el=document.getElementById(id);
+    if(!el) return padrao;
+    var opt=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;
+    return opt?String(opt.textContent||"").trim():padrao;
+  }
+  function bateFiltros(item,f){
+    return (f.banco === "todos" || String(item.banco||"") === String(f.banco)) &&
+      (f.categoria === "todos" || String(item.categoria||"") === String(f.categoria));
+  }
+  function statusPendente(status){
+    var s=String(status||"Pendente");
+    return s!=="Pago" && s!=="Recebido" && s!=="NaoIncluir" && s!=="Não incluir";
+  }
+  function somarPrimeiras(lista,qtd){
+    return lista.slice(0,Math.max(0,qtd)).reduce(function(total,item){return total+numero(item.valor);},0);
+  }
+  function numeroParcelaVariavel(item){
+    var direto=numero(item&&item.numeroParcela);
+    if(direto>0) return direto;
+    var numeroTexto=Number(String(item&&item.parcela||"").split("/")[0]);
+    return Number.isFinite(numeroTexto)&&numeroTexto>0?numeroTexto:0;
+  }
+  function totalParcelaVariavel(item){
+    var total=numero(item&&item.totalParcelas);
+    if(total>0) return total;
+    var totalTexto=Number(String(item&&item.parcela||"").split("/")[1]);
+    return Number.isFinite(totalTexto)&&totalTexto>0?totalTexto:0;
+  }
+  function mesVariavel(item){
+    try{ if(typeof mesReferenciaVariavel === "function") return mesReferenciaVariavel(item); }catch(_){ }
+    return item&&item.mesReferencia || item&&item.primeiraFatura || String(item&&item.data||item&&item.vencimento||"").slice(0,7);
+  }
+  function chaveGrupoVariavel(item){
+    if(item&&item.compraId!==undefined&&item.compraId!==null) return "id:"+String(item.compraId);
+    return [item&&item.descricao,item&&item.primeiraFatura,item&&item.totalParcelas,item&&item.banco,item&&item.valor].join("|");
+  }
+  function itensFixos(f){
+    var saida=[];
+    listaFixos().forEach(function(item,indice){
+      if(!item || (item.tipo||"Recorrente")!=="Parcelado" || !bateFiltros(item,f)) return;
+      var cronograma={};
+      try{ cronograma=cronogramaParcelasFixas(item,f.referencia)||{}; }catch(_){ }
+      var totalParcelas=Math.max(1,numero(item.totalParcelas));
+      var pendentes=Object.keys(cronograma).map(function(chave){
+        var parcela=Number(chave);
+        var mes=cronograma[chave];
+        return {parcela:parcela,rotulo:parcela+"/"+totalParcelas,mes:mes,valor:numero(item.valor)};
+      }).filter(function(p){
+        if(!p.mes || p.mes<f.referencia) return false;
+        var status="Pendente";
+        try{ status=statusFixoNoMes(item,p.mes); }catch(_){ }
+        return statusPendente(status);
+      }).sort(function(a,b){return a.parcela-b.parcela;});
+      if(!pendentes.length) return;
+      saida.push({
+        token:"fx"+indice,
+        titulo:item.nome||"Gasto fixo parcelado",
+        banco:item.banco||item.forma||"-",
+        categoria:item.categoria||"Outros",
+        pendentes:pendentes,
+        selecionadas:pendentes.length,
+        incluir:true,
+        valorParcela:pendentes[0].valor,
+        totalSimulado:somarPrimeiras(pendentes,pendentes.length)
+      });
+    });
+    return saida;
+  }
+  function itensVariaveis(f){
+    var grupos={};
+    listaVariaveis().forEach(function(item){
+      if(!item || !bateFiltros(item,f)) return;
+      var total=totalParcelaVariavel(item);
+      if(total<=1 && !String(item.parcela||"").includes("/")) return;
+      var chave=chaveGrupoVariavel(item);
+      if(!grupos[chave]) grupos[chave]=[];
+      grupos[chave].push(item);
+    });
+    var saida=[];
+    Object.keys(grupos).forEach(function(chave,indice){
+      var grupo=grupos[chave].slice().sort(function(a,b){
+        return String(mesVariavel(a)||"").localeCompare(String(mesVariavel(b)||"")) || numeroParcelaVariavel(a)-numeroParcelaVariavel(b);
+      });
+      var pendentes=grupo.filter(function(item){
+        var mes=mesVariavel(item);
+        return mes && mes>=f.referencia && statusPendente(item.status);
+      }).map(function(item){
+        var parcela=numeroParcelaVariavel(item)||1;
+        var total=Math.max(totalParcelaVariavel(item),parcela);
+        return {parcela:parcela,rotulo:parcela+"/"+total,mes:mesVariavel(item),valor:numero(item.valor)};
+      });
+      if(!pendentes.length) return;
+      var base=grupo[0]||{};
+      saida.push({
+        token:"vr"+indice,
+        titulo:base.descricao||"Gasto variável parcelado",
+        banco:base.banco||base.forma||"-",
+        categoria:base.categoria||"Outros",
+        pendentes:pendentes,
+        selecionadas:pendentes.length,
+        incluir:true,
+        valorParcela:pendentes[0].valor,
+        totalSimulado:somarPrimeiras(pendentes,pendentes.length)
+      });
+    });
+    return saida;
+  }
+  function estado(){return window.__cmfinSaldoSaidasEstadoV29||null;}
+  function itemToken(token){var e=estado();return e&&e.itens?e.itens[token]:null;}
+  function faixaSelecionada(item){
+    if(!item||!item.pendentes.length) return {faixa:"-",periodo:"-"};
+    var qtd=Math.max(1,Math.min(numero(item.selecionadas)||1,item.pendentes.length));
+    var primeira=item.pendentes[0];
+    var ultima=item.pendentes[qtd-1];
+    return {
+      faixa:primeira.rotulo===ultima.rotulo?primeira.rotulo:(primeira.rotulo+" → "+ultima.rotulo),
+      periodo:nomeCompetencia(primeira.mes)+(primeira.mes===ultima.mes?"":(" → "+nomeCompetencia(ultima.mes)))
+    };
+  }
+  function recalcular(){
+    var e=estado();
+    if(!e) return;
+    var total=0,parcelas=0,compras=0;
+    Object.keys(e.itens).forEach(function(token){
+      var item=e.itens[token];
+      item.selecionadas=Math.max(1,Math.min(numero(item.selecionadas)||1,item.pendentes.length));
+      item.totalSimulado=item.incluir?somarPrimeiras(item.pendentes,item.selecionadas):0;
+      if(item.incluir){total+=item.totalSimulado;parcelas+=item.selecionadas;compras++;}
+      var linha=document.querySelector('[data-cmfin-saldo-saidas-token="'+token+'"]');
+      if(linha) linha.classList.toggle("is-excluida",!item.incluir);
+      var faixa=faixaSelecionada(item);
+      var faixaEl=document.getElementById("cmfinSaldoSaidasFaixa_"+token);
+      if(faixaEl) faixaEl.innerHTML="<strong>"+escapar(faixa.faixa)+"</strong><span>"+escapar(faixa.periodo)+"</span>";
+      var qtdEl=document.getElementById("cmfinSaldoSaidasQtd_"+token);
+      if(qtdEl) qtdEl.textContent=item.selecionadas+" de "+item.pendentes.length+" parcela"+(item.pendentes.length===1?"":"s");
+      var subtotalEl=document.getElementById("cmfinSaldoSaidasSubtotal_"+token);
+      if(subtotalEl) subtotalEl.textContent=dinheiro(item.totalSimulado);
+      var btn=document.getElementById("cmfinSaldoSaidasIncluir_"+token);
+      if(btn){
+        btn.classList.toggle("is-excluido",!item.incluir);
+        btn.textContent=item.incluir?"Não incluir":"Incluir novamente";
+      }
+      var select=document.getElementById("cmfinSaldoSaidasSelect_"+token);
+      if(select) select.disabled=!item.incluir;
+    });
+    var comprasEl=document.getElementById("cmfinSaldoSaidasKpiCompras");
+    var parcelasEl=document.getElementById("cmfinSaldoSaidasKpiParcelas");
+    var totalEl=document.getElementById("cmfinSaldoSaidasKpiTotal");
+    if(comprasEl) comprasEl.textContent=compras;
+    if(parcelasEl) parcelasEl.textContent=parcelas;
+    if(totalEl) totalEl.textContent=dinheiro(total);
+  }
+  window.cmfinSaldoSaidasDefinirParcelas=function(token,valor){
+    var item=itemToken(token);
+    if(!item) return;
+    item.selecionadas=Math.max(1,Math.min(numero(valor)||1,item.pendentes.length));
+    recalcular();
+  };
+  window.cmfinSaldoSaidasAlternarInclusao=function(token){
+    var item=itemToken(token);
+    if(!item) return;
+    item.incluir=!item.incluir;
+    recalcular();
+  };
+  function opcoesParcelas(item){
+    var html="";
+    for(var i=1;i<=item.pendentes.length;i++){
+      html+='<option value="'+i+'" '+(i===item.selecionadas?'selected':'')+'>'+i+' parcela'+(i===1?'':'s')+'</option>';
+    }
+    return html;
+  }
+  function render(tipo){
+    var f=filtros(tipo);
+    var itens=tipo==="fixos"?itensFixos(f):itensVariaveis(f);
+    itens.sort(function(a,b){return b.totalSimulado-a.totalSimulado||String(a.titulo).localeCompare(String(b.titulo),"pt-BR");});
+    var mapa={};
+    itens.forEach(function(item){mapa[item.token]=item;});
+    window.__cmfinSaldoSaidasEstadoV29={tipo:tipo,filtros:f,itens:mapa};
+
+    var nomeModulo=tipo==="fixos"?"Gastos Fixos":"Gastos Variáveis";
+    var titulo=document.getElementById("cmfinSaldoSaidasTitulo");
+    var subtitulo=document.getElementById("cmfinSaldoSaidasSubtitulo");
+    if(titulo) titulo.innerHTML='Saldo Restante · '+nomeModulo+' <span class="cmfin-saldo-saidas-simulacao-tag">Simulação</span>';
+    if(subtitulo) subtitulo.textContent="Escolha quantas parcelas deseja adiantar e retire do cálculo as despesas que não deseja quitar agora.";
+
+    var bancoId=tipo==="fixos"?"filtroFixoBanco":"filtroVariavelBanco";
+    var categoriaId=tipo==="fixos"?"filtroFixoCategoria":"filtroVariavelCategoria";
+    var filtroHtml='Mês inicial: <strong>'+escapar(nomeCompetencia(f.referencia))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro(bancoId,"Todos"))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro(categoriaId,"Todas"))+'</strong>';
+
+    var conteudo=document.getElementById("cmfinSaldoSaidasConteudo");
+    if(!conteudo) return;
+    if(!itens.length){
+      conteudo.innerHTML=''+
+        '<div class="cmfin-saldo-saidas-kpis">'+
+          '<div class="cmfin-saldo-saidas-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoSaidasKpiCompras">0</strong></div>'+
+          '<div class="cmfin-saldo-saidas-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoSaidasKpiParcelas">0</strong></div>'+
+          '<div class="cmfin-saldo-saidas-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoSaidasKpiTotal">'+dinheiro(0)+'</strong></div>'+
+        '</div>'+
+        '<div class="cmfin-saldo-saidas-filtros">'+filtroHtml+'</div>'+
+        '<div class="cmfin-saldo-saidas-vazio">Nenhum lançamento parcelado pendente foi encontrado a partir deste mês e com os filtros selecionados.</div>';
+      return;
+    }
+
+    var linhas=itens.map(function(item){
+      var faixa=faixaSelecionada(item);
+      return '<div class="cmfin-saldo-saidas-item" data-cmfin-saldo-saidas-token="'+item.token+'">'+
+        '<div class="cmfin-saldo-saidas-desc">'+
+          '<strong>'+escapar(item.titulo)+'</strong>'+
+          '<span>'+escapar(item.banco)+' · '+escapar(item.categoria)+'</span>'+
+          '<button type="button" class="cmfin-saldo-saidas-incluir-btn" id="cmfinSaldoSaidasIncluir_'+item.token+'" onclick="cmfinSaldoSaidasAlternarInclusao(\''+item.token+'\')">Não incluir</button>'+
+        '</div>'+
+        '<div class="cmfin-saldo-saidas-dado" id="cmfinSaldoSaidasFaixa_'+item.token+'"><strong>'+escapar(faixa.faixa)+'</strong><span>'+escapar(faixa.periodo)+'</span></div>'+
+        '<div class="cmfin-saldo-saidas-adiantar">'+
+          '<select id="cmfinSaldoSaidasSelect_'+item.token+'" onchange="cmfinSaldoSaidasDefinirParcelas(\''+item.token+'\',this.value)">'+opcoesParcelas(item)+'</select>'+
+          '<small id="cmfinSaldoSaidasQtd_'+item.token+'">'+item.selecionadas+' de '+item.pendentes.length+' parcelas</small>'+
+        '</div>'+
+        '<div class="cmfin-saldo-saidas-dado"><strong>'+dinheiro(item.valorParcela)+'</strong><span>por parcela</span></div>'+
+        '<div class="cmfin-saldo-saidas-valor"><span>Subtotal</span><strong id="cmfinSaldoSaidasSubtotal_'+item.token+'">'+dinheiro(item.totalSimulado)+'</strong></div>'+
+      '</div>';
+    }).join("");
+
+    conteudo.innerHTML=''+
+      '<div class="cmfin-saldo-saidas-kpis">'+
+        '<div class="cmfin-saldo-saidas-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoSaidasKpiCompras">'+itens.length+'</strong></div>'+
+        '<div class="cmfin-saldo-saidas-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoSaidasKpiParcelas">'+itens.reduce(function(s,item){return s+item.selecionadas;},0)+'</strong></div>'+
+        '<div class="cmfin-saldo-saidas-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoSaidasKpiTotal">'+dinheiro(itens.reduce(function(s,item){return s+item.totalSimulado;},0))+'</strong></div>'+
+      '</div>'+
+      '<div class="cmfin-saldo-saidas-filtros">'+filtroHtml+'<br><span style="display:block;margin-top:6px;color:#64748b;"><strong>Como usar:</strong> escolha quantas parcelas deseja adiantar em cada despesa. Use <strong>Não incluir</strong> para retirar um lançamento do cálculo. O total é atualizado automaticamente e nenhuma baixa ou alteração é feita nos registros.</span></div>'+
+      '<div class="cmfin-saldo-saidas-lista">'+
+        '<div class="cmfin-saldo-saidas-head"><div>Despesa</div><div>Faixa / Período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div></div>'+linhas+
+      '</div>'+
+      '<div class="cmfin-saldo-saidas-note"><strong>Importante:</strong> despesas recorrentes não entram nesta simulação, pois não possuem uma quantidade final de parcelas.</div>';
+  }
+
+  window.cmfinAbrirSaldoRestanteSaidas=function(tipo){
+    var normalizado=tipo==="variaveis"?"variaveis":"fixos";
+    render(normalizado);
+    if(typeof abrirModal==="function") abrirModal("modalSaldoRestanteSaidas");
+    else {
+      var modal=document.getElementById("modalSaldoRestanteSaidas");
+      if(modal) modal.style.display="flex";
+    }
+  };
+})();
+</script>
