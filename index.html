@@ -45216,8 +45216,8 @@ Os outros lançamentos não serão alterados.`;
   }
   function criarCanvas(){
     var d=dados(), e=d.estado;
-    var largura=1080,margem=54,cardH=94,espaco=14;
-    var altura=Math.max(650,340+d.itens.length*(cardH+espaco));
+    var largura=1080,margem=54,cardH=94,espaco=14,rodapeH=92;
+    var altura=Math.max(720,340+d.itens.length*(cardH+espaco)+rodapeH);
     var c=document.createElement("canvas");c.width=largura;c.height=altura;var ctx=c.getContext("2d");
     ctx.fillStyle="#f3f7f6";ctx.fillRect(0,0,largura,altura);
     arredondar(ctx,28,28,largura-56,altura-56,34);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#dce5e2";ctx.lineWidth=2;ctx.stroke();
@@ -45243,7 +45243,8 @@ Os outros lançamentos não serão alterados.`;
         ctx.textAlign="right";ctx.fillStyle="#64748b";ctx.font="800 11px Arial";ctx.fillText("SUBTOTAL",largura-margem-22,y+31);ctx.fillStyle="#087f70";ctx.font="900 23px Arial";ctx.fillText(moedaLocal(item.totalSimulado),largura-margem-22,y+61);ctx.textAlign="left";y+=cardH+espaco;
       });
     }
-    ctx.fillStyle="#94a3b8";ctx.font="600 14px Arial";ctx.fillText("Simulação informativa — nenhuma baixa foi realizada · "+new Date().toLocaleDateString("pt-BR"),margem,altura-52);
+    var rodapeY=Math.max(y+12,altura-44);
+    ctx.fillStyle="#94a3b8";ctx.font="600 14px Arial";ctx.fillText("Simulação informativa — nenhuma baixa foi realizada · "+new Date().toLocaleDateString("pt-BR"),margem,rodapeY);
     return c;
   }
   function nomeArquivo(){var e=estado()||{};return "saldo-restante-"+(e.tipo==="variaveis"?"gastos-variaveis":"gastos-fixos")+"-"+(e.modo||"pessoal")+"-"+((e.filtros&&e.filtros.referencia)||"mes")+".png";}
