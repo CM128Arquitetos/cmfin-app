@@ -45797,6 +45797,29 @@ Os outros lançamentos não serão alterados.`;
     flex-wrap:wrap;
     margin-top:16px;
   }
+
+  /* Mantém as ações de registro sempre visíveis, mesmo com muitas contas */
+  .cmfin-pagto-modal{
+    max-height:calc(100vh - 32px) !important;
+    overflow:hidden !important;
+  }
+  .cmfin-pagto-shell{
+    max-height:calc(100vh - 34px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    padding-bottom:0;
+  }
+  .cmfin-pagto-actions{
+    position:sticky;
+    bottom:0;
+    z-index:30;
+    margin:12px -22px 0;
+    padding:14px 22px 18px;
+    background:linear-gradient(180deg,rgba(247,251,250,.92) 0%,#f7fbfa 28%,#f7fbfa 100%);
+    border-top:1px solid #dbe7e4;
+    box-shadow:0 -12px 24px rgba(15,23,42,.08);
+  }
   .cmfin-historico-lista{
     display:grid;
     gap:10px;
@@ -45868,6 +45891,13 @@ Os outros lançamentos não serão alterados.`;
     .cmfin-pagto-header,
     .cmfin-historico-header,
     .cmfin-comprovante-header{align-items:flex-start;}
+    .cmfin-pagto-modal{max-height:calc(100vh - 20px) !important;}
+    .cmfin-pagto-shell{max-height:calc(100vh - 22px);padding-bottom:0;}
+    .cmfin-pagto-actions{
+      margin:12px -22px 0;
+      padding:12px 22px 14px;
+    }
+    .cmfin-pagto-actions .btn{flex:1 1 210px;}
   }
 </style>
 
