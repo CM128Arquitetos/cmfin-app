@@ -10083,8 +10083,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                 </div>
                 <div class="terc-export-actions">
                   <button class="btn btn-primary btn-small" type="button" onclick="cmfinAbrirRegistroPagamentoTerceiro()">Registrar Pagamento</button>
-                  <button class="btn btn-secondary btn-small" type="button" onclick="cmfinAbrirHistoricoComprovantesTerceiros()">Comprovantes</button>
-                  <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar Imagem</button>
+                                    <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar Imagem</button>
                   <button class="btn btn-secondary btn-small terc-btn-saldo-geral" type="button" onclick="cmfinAbrirSaldoGeralTerceiros()">Saldo Restante</button>
                 </div>
               </div>
@@ -46263,91 +46262,114 @@ Os outros lançamentos não serão alterados.`;
     }catch(_e){return false;}
   }
   function criarCanvasComprovante(comp){
-    var largura=1080,margem=54,headerH=176,infoH=148,tableHeadH=42,rowH=86;
-    var listaH=tableHeadH+Math.max(1,(comp.itens||[]).length)*rowH;
-    var totalH=104,declaracaoH=112,footerH=84;
-    var altura=Math.max(780,margem*2+headerH+infoH+54+listaH+totalH+declaracaoH+footerH);
+    var largura=1080,margem=52,headerH=118,infoH=126,tableHeadH=42,rowH=78;
+    var itens=(comp.itens||[]);
+    var listaH=tableHeadH+Math.max(1,itens.length)*rowH;
+    var resumoH=112,declaracaoH=108,footerH=66;
+    var altura=Math.max(820,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
     var canvas=document.createElement("canvas");
     canvas.width=largura; canvas.height=altura;
     var ctx=canvas.getContext("2d");
 
-    ctx.fillStyle="#eef4f2";ctx.fillRect(0,0,largura,altura);
-    arredondar(ctx,24,24,largura-48,altura-48,32);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle="#f4f7f6";ctx.fillRect(0,0,largura,altura);
+    arredondar(ctx,28,28,largura-56,altura-56,24);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#d7e3df";ctx.lineWidth=2;ctx.stroke();
 
-    arredondar(ctx,margem,margem,largura-margem*2,headerH,26);
-    var grad=ctx.createLinearGradient(margem,margem,largura-margem,margem+headerH);grad.addColorStop(0,"#062a22");grad.addColorStop(1,"#0f766e");ctx.fillStyle=grad;ctx.fill();
-    var logoOk=desenharLogo(ctx,margem+26,margem+35,190,78);
-    var tx=logoOk?margem+245:margem+28;
-    var statusW=248,statusH=74,statusX=largura-margem-statusW-18,statusY=margem+18;
-    var titulo=comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL";
-    ctx.fillStyle="rgba(255,255,255,.72)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+38);
-    ctx.fillStyle="#fff";ctx.font="900 27px Arial";ctx.fillText(cortar(ctx,titulo,statusX-tx-26),tx,margem+76);
-    ctx.fillStyle="rgba(255,255,255,.90)";ctx.font="700 18px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+114);
+    var areaX=margem, areaW=largura-margem*2;
 
-    arredondar(ctx,statusX,statusY,statusW,statusH,18);ctx.fillStyle="rgba(255,255,255,.14)";ctx.fill();ctx.strokeStyle="rgba(255,255,255,.28)";ctx.stroke();
-    ctx.textAlign="center";ctx.fillStyle="#d1fae5";ctx.font="900 13px Arial";ctx.fillText(comp.tipo==="integral"?"PAGAMENTO CONFIRMADO":"PAGAMENTO PARCIAL",statusX+statusW/2,statusY+27);
-    ctx.fillStyle="#fff";ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="integral"?"QUITADO":"SALDO EM ABERTO",statusX+statusW/2,statusY+53);ctx.textAlign="left";
+    // Header clean/professional
+    arredondar(ctx,areaX,margem,areaW,headerH,22);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.stroke();
+    ctx.fillStyle="#0f766e";ctx.fillRect(areaX,margem,areaW,8);
+    var logoOk=desenharLogo(ctx,areaX+18,margem+22,150,54);
+    var tx=logoOk?areaX+190:areaX+24;
+    ctx.fillStyle="#64748b";ctx.font="800 12px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+34);
+    ctx.fillStyle="#0f172a";ctx.font="900 30px Arial";ctx.fillText(cortar(ctx,comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL",610),tx,margem+72);
+    ctx.fillStyle="#475569";ctx.font="700 16px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+98);
 
-    var y=margem+headerH+24;
-    arredondar(ctx,margem,y,largura-margem*2,infoH,20);ctx.fillStyle="#f8fbfa";ctx.fill();ctx.strokeStyle="#dce7e4";ctx.stroke();
-    var col1=margem+26,col2=margem+520;
-    function campo(x,yy,label,value){ctx.fillStyle="#64748b";ctx.font="900 11px Arial";ctx.fillText(label.toUpperCase(),x,yy);ctx.fillStyle="#0f172a";ctx.font="800 20px Arial";ctx.fillText(cortar(ctx,value,410),x,yy+27);}
-    campo(col1,y+29,"Recebido de",comp.pessoa||"-");
-    campo(col2,y+29,"Referência",comp.referencia||referenciaTexto(comp.mesReferencia));
-    campo(col1,y+90,"Data do pagamento",dataBR(comp.dataPagamento));
-    campo(col2,y+90,"Forma de pagamento",comp.formaPagamento||"-");
+    var badgeW=210,badgeH=56,bx=areaX+areaW-badgeW-20,by=margem+30;
+    arredondar(ctx,bx,by,badgeW,badgeH,16);ctx.fillStyle=comp.tipo==="parcial"?"#fff7ed":"#effaf7";ctx.fill();ctx.strokeStyle=comp.tipo==="parcial"?"#fdba74":"#a7f3d0";ctx.stroke();
+    ctx.textAlign="center";ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 12px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PAGAMENTO CONFIRMADO",bx+badgeW/2,by+22);
+    ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"EM ABERTO":"QUITADO",bx+badgeW/2,by+44);ctx.textAlign="left";
+
+    // Information block
+    var y=margem+headerH+18;
+    arredondar(ctx,areaX,y,areaW,infoH,18);ctx.fillStyle="#fbfcfc";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.stroke();
+    var c1=areaX+24,c2=areaX+areaW/2+10;
+    function campo(x,yy,label,value){
+      ctx.fillStyle="#64748b";ctx.font="900 11px Arial";ctx.fillText(String(label||"").toUpperCase(),x,yy);
+      ctx.fillStyle="#0f172a";ctx.font="800 21px Arial";ctx.fillText(cortar(ctx,String(value||"-"),380),x,yy+28);
+    }
+    campo(c1,y+28,"Recebido de",comp.pessoa||"-");
+    campo(c2,y+28,"Referência",comp.referencia||referenciaTexto(comp.mesReferencia));
+    campo(c1,y+86,"Data do pagamento",dataBR(comp.dataPagamento));
+    campo(c2,y+86,"Forma de pagamento",comp.formaPagamento||"-");
+
+    // Table title
     y+=infoH+22;
+    ctx.fillStyle="#334155";ctx.font="900 13px Arial";ctx.fillText("ITENS PAGOS",areaX+2,y+14);
+    y+=24;
 
-    ctx.fillStyle="#46635d";ctx.font="900 12px Arial";ctx.fillText("ITENS PAGOS",margem+8,y+18);y+=28;
-    arredondar(ctx,margem,y,largura-margem*2,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
-    var xDesc=margem+18, xData=margem+610, xOrigem=margem+730, xParcela=margem+850, xValor=largura-margem-18;
+    // Table header
+    arredondar(ctx,areaX,y,areaW,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
+    var xDesc=areaX+16, xData=areaX+610, xOrigem=areaX+730, xParcela=areaX+842, xValor=areaX+areaW-16;
     ctx.fillStyle="#46635d";ctx.font="900 11px Arial";
-    ctx.fillText("DESCRIÇÃO",xDesc,y+24);
-    ctx.fillText("DATA",xData,y+24);
-    ctx.fillText("ORIGEM",xOrigem,y+24);
-    ctx.fillText("PARCELA",xParcela,y+24);
-    ctx.textAlign="right";ctx.fillText("VALOR",xValor,y+24);ctx.textAlign="left";
-    y+=tableHeadH+8;
+    ctx.fillText("DESCRIÇÃO",xDesc,y+25);
+    ctx.fillText("DATA",xData,y+25);
+    ctx.fillText("ORIGEM",xOrigem,y+25);
+    ctx.fillText("PARCELA",xParcela,y+25);
+    ctx.textAlign="right";ctx.fillText("VALOR",xValor,y+25);ctx.textAlign="left";
+    y+=tableHeadH;
 
-    (comp.itens||[]).forEach(function(item){
-      ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(margem,y+rowH-10);ctx.lineTo(largura-margem,y+rowH-10);ctx.stroke();
-      var origem=item.forma||item.origem||item.banco||item.cartao||"-";
-      var parcela=item.parcela||"-";
-      var categoria=item.categoria||"";
-      ctx.fillStyle="#0f172a";ctx.font="800 18px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",520),xDesc,y+28);
-      if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 14px Arial";ctx.fillText(cortar(ctx,categoria,320),xDesc,y+53); }
-      ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+38);
-      ctx.fillText(cortar(ctx,origem,100),xOrigem,y+38);
-      ctx.fillText(cortar(ctx,String(parcela),70),xParcela,y+38);
-      ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 18px Arial";ctx.fillText(dinheiro(item.valor),xValor,y+38);ctx.textAlign="left";
+    if(!itens.length){
+      ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,y+54);ctx.lineTo(areaX+areaW,y+54);ctx.stroke();
+      ctx.fillStyle="#64748b";ctx.font="700 16px Arial";ctx.fillText("Nenhum item vinculado a este comprovante.",areaX+18,y+34);
       y+=rowH;
-    });
+    }else{
+      itens.forEach(function(item){
+        ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,y+rowH);ctx.lineTo(areaX+areaW,y+rowH);ctx.stroke();
+        var origem=item.forma||item.origem||item.banco||item.cartao||"-";
+        var parcela=item.parcela||"-";
+        var categoria=item.categoria||"";
+        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",520),xDesc,y+27);
+        if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,260),xDesc,y+49); }
+        ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+36);
+        ctx.fillText(cortar(ctx,origem,92),xOrigem,y+36);
+        ctx.fillText(cortar(ctx,String(parcela),70),xParcela,y+36);
+        ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 18px Arial";ctx.fillText(dinheiro(item.valor),xValor,y+36);ctx.textAlign="left";
+        y+=rowH;
+      });
+    }
 
-    arredondar(ctx,margem,y,largura-margem*2,totalH,20);
-    ctx.fillStyle="#eef7f4";ctx.fill();ctx.strokeStyle="#b8d9d3";ctx.stroke();
-    var boxW=(largura-margem*2)/3;
-    ctx.strokeStyle="#d7e8e2";
-    ctx.beginPath();ctx.moveTo(margem+boxW,y+18);ctx.lineTo(margem+boxW,y+totalH-18);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(margem+boxW*2,y+18);ctx.lineTo(margem+boxW*2,y+totalH-18);ctx.stroke();
+    // Summary box with 3 columns
+    y+=18;
+    arredondar(ctx,areaX,y,areaW,resumoH,18);ctx.fillStyle="#f6fbfa";ctx.fill();ctx.strokeStyle="#bdd8d1";ctx.stroke();
+    var colW=areaW/3;
+    ctx.strokeStyle="#d8e8e3";
+    ctx.beginPath();ctx.moveTo(areaX+colW,y+16);ctx.lineTo(areaX+colW,y+resumoH-16);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(areaX+colW*2,y+16);ctx.lineTo(areaX+colW*2,y+resumoH-16);ctx.stroke();
     ctx.fillStyle="#46635d";ctx.font="900 12px Arial";
-    ctx.fillText("TOTAL RECEBIDO",margem+22,y+28);
-    ctx.fillText("SALDO PENDENTE",margem+boxW+22,y+28);
-    ctx.fillText("SITUAÇÃO",margem+boxW*2+22,y+28);
-    ctx.fillStyle="#075e54";ctx.font="900 38px Arial";ctx.fillText(dinheiro(comp.totalPago),margem+22,y+72);
+    ctx.fillText("TOTAL RECEBIDO",areaX+20,y+28);
+    ctx.fillText("SALDO PENDENTE",areaX+colW+20,y+28);
+    ctx.fillText("SITUAÇÃO",areaX+colW*2+20,y+28);
+    ctx.fillStyle="#075e54";ctx.font="900 36px Arial";ctx.fillText(dinheiro(comp.totalPago),areaX+20,y+72);
     var saldo=comp.tipo==="parcial"?Number(comp.saldoRestante||0):0;
-    ctx.fillText(dinheiro(saldo),margem+boxW+22,y+72);
-    ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#087f70";ctx.font="900 18px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PERÍODO QUITADO",margem+boxW*2+22,y+68);
-    y+=totalH+8;
+    ctx.fillText(dinheiro(saldo),areaX+colW+20,y+72);
+    ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PERÍODO QUITADO",areaX+colW*2+20,y+69);
 
+    // Formal declaration
+    y+=resumoH+18;
+    arredondar(ctx,areaX,y,areaW,declaracaoH,16);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
     var declaracao=comp.tipo==="integral"
-      ? "Declaramos que recebemos de "+comp.pessoa+" o valor total de "+dinheiro(comp.totalPago)+", referente às contas relacionadas acima, ficando os lançamentos indicados devidamente quitados."
-      : "Declaramos que recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", referente às contas relacionadas acima. Permanece em aberto o saldo de "+dinheiro(comp.saldoRestante)+" no período informado.";
+      ? "Declaramos que recebemos de "+comp.pessoa+" o valor total de "+dinheiro(comp.totalPago)+", referente aos itens descritos neste comprovante, ficando o período informado devidamente quitado."
+      : "Declaramos que recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", referente aos itens descritos neste comprovante. Permanece em aberto o saldo de "+dinheiro(comp.saldoRestante)+" para o período informado.";
     ctx.fillStyle="#334155";ctx.font="650 17px Arial";
-    var linhas=quebrar(ctx,declaracao,largura-margem*2-32).slice(0,4);
-    linhas.forEach(function(l,i){ctx.fillText(l,margem+8,y+25+i*25);});
+    var linhas=quebrar(ctx,declaracao,areaW-36).slice(0,4);
+    linhas.forEach(function(l,i){ctx.fillText(l,areaX+18,y+30+i*24);});
 
+    // Footer small
     var footerY=altura-footerH;
-    ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(margem,footerY);ctx.lineTo(largura-margem,footerY);ctx.stroke();
+    ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,footerY);ctx.lineTo(areaX+areaW,footerY);ctx.stroke();
+    ctx.fillStyle="#94a3b8";ctx.font="700 12px Arial";ctx.fillText("Documento emitido pelo CMFin",areaX,footerY+26);
+    ctx.textAlign="right";ctx.fillText(String(comp.numero||""),areaX+areaW,footerY+26);ctx.textAlign="left";
     return canvas;
   }
 
