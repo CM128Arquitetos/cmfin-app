@@ -45874,10 +45874,10 @@ Os outros lançamentos não serão alterados.`;
     background:#fff;
   }
 
-  /* Recibo: mostrar em tamanho mais legível, sem comprimir quando houver muitos itens */
+  /* Recibo: manter prévia no mesmo padrão do Exportar resumo por pessoa */
   .cmfin-comprovante-modal{
-    width:min(1160px,calc(100vw - 34px));
-    max-width:1160px;
+    width:min(820px,92vw);
+    max-width:820px;
     max-height:calc(100vh - 32px);
     overflow:hidden;
   }
@@ -45888,15 +45888,26 @@ Os outros lançamentos não serão alterados.`;
     scrollbar-gutter:stable;
   }
   .cmfin-comprovante-preview{
-    padding:18px;
-    max-height:none;
-    overflow:visible;
+    margin-top:14px;
+    min-height:260px;
+    max-height:440px;
+    overflow:auto;
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#f8fafb;
+    padding:12px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
   }
   .cmfin-comprovante-preview img{
+    display:block;
     width:100%;
-    max-width:1080px;
-    min-width:0;
+    max-width:680px;
     height:auto;
+    border-radius:14px;
+    box-shadow:0 12px 32px rgba(15,23,42,.12);
+    background:#fff;
   }
   @media(max-width:760px){
     .cmfin-pagto-grid,
@@ -46419,8 +46430,8 @@ Os outros lançamentos não serão alterados.`;
     y+=resumoH+18;
     arredondar(ctx,areaX,y,areaW,declaracaoH,16);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
     var declaracao=comp.tipo==="integral"
-      ? "Declaramos, para os devidos fins, que recebemos de "+comp.pessoa+" a importância total de "+dinheiro(comp.totalPago)+", na data de "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens discriminados neste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+", conferindo plena, rasa e irrevogável quitação do período mencionado."
-      : "Declaramos, para os devidos fins, que recebemos de "+comp.pessoa+" a importância de "+dinheiro(comp.totalPago)+", na data de "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens discriminados neste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+". Registra-se que permanece saldo pendente de "+dinheiro(comp.saldoRestante)+", razão pela qual a quitação do período ainda não se encontra integralmente concluída.";
+      ? "Recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", pago em "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens deste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+"."
+      : "Recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", pago em "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens deste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+". Saldo pendente: "+dinheiro(comp.saldoRestante)+".";
     ctx.fillStyle="#334155";ctx.font="650 16px Arial";
     var linhas=quebrar(ctx,declaracao,areaW-36).slice(0,5);
     linhas.forEach(function(l,i){ctx.fillText(l,areaX+18,y+28+i*22);});
