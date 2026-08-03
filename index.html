@@ -46265,8 +46265,8 @@ Os outros lançamentos não serão alterados.`;
     var largura=1080,margem=52,headerH=132,infoH=126,tableHeadH=42,rowH=78;
     var itens=(comp.itens||[]);
     var listaH=tableHeadH+Math.max(1,itens.length)*rowH;
-    var resumoH=112,declaracaoH=108,footerH=66;
-    var altura=Math.max(836,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
+    var resumoH=112,declaracaoH=122,footerH=66;
+    var altura=Math.max(850,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
     var canvas=document.createElement("canvas");
     canvas.width=largura; canvas.height=altura;
     var ctx=canvas.getContext("2d");
@@ -46283,10 +46283,10 @@ Os outros lançamentos não serão alterados.`;
     ctx.fillStyle=grad;ctx.fill();
     var logoOk=desenharLogo(ctx,areaX+22,margem+26,190,72);
     var tx=logoOk?areaX+238:areaX+26;
-    var titulo=comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL";
+    var titulo=comp.tipo==="integral"?"RECIBO DE PAGAMENTO":"RECIBO DE PAGAMENTO PARCIAL";
     var subtitulo=(comp.pessoa||"-") + " · " + (comp.referencia||referenciaTexto(comp.mesReferencia));
     ctx.fillStyle="rgba(255,255,255,.86)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+36);
-    ctx.fillStyle="#fff";ctx.font="900 26px Arial";ctx.fillText(cortar(ctx,titulo,460),tx,margem+70);
+    ctx.fillStyle="#fff";ctx.font="900 26px Arial";ctx.fillText(cortar(ctx,titulo,470),tx,margem+70);
     ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,subtitulo,430),tx,margem+98);
     ctx.fillStyle="rgba(255,255,255,.92)";ctx.font="700 15px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+119);
 
@@ -46315,7 +46315,7 @@ Os outros lançamentos não serão alterados.`;
 
     // Table header with separated columns
     arredondar(ctx,areaX,y,areaW,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
-    var xDesc=areaX+16, xData=areaX+610, xOrigem=areaX+730, xParcelaCenter=areaX+858, xValorRight=areaX+areaW-16;
+    var xDesc=areaX+16, xData=areaX+600, xOrigem=areaX+700, xParcelaCenter=areaX+835, xValorRight=areaX+areaW-18;
     ctx.fillStyle="#46635d";ctx.font="900 11px Arial";
     ctx.fillText("DESCRIÇÃO",xDesc,y+25);
     ctx.fillText("DATA",xData,y+25);
@@ -46326,7 +46326,7 @@ Os outros lançamentos não serão alterados.`;
 
     if(!itens.length){
       ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,y+54);ctx.lineTo(areaX+areaW,y+54);ctx.stroke();
-      ctx.fillStyle="#64748b";ctx.font="700 16px Arial";ctx.fillText("Nenhum item vinculado a este comprovante.",areaX+18,y+34);
+      ctx.fillStyle="#64748b";ctx.font="700 16px Arial";ctx.fillText("Nenhum item vinculado a este recibo.",areaX+18,y+34);
       y+=rowH;
     }else{
       itens.forEach(function(item){
@@ -46334,11 +46334,11 @@ Os outros lançamentos não serão alterados.`;
         var origem=item.forma||item.origem||item.banco||item.cartao||"-";
         var parcela=item.parcela||"-";
         var categoria=item.categoria||"";
-        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",520),xDesc,y+27);
-        if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,260),xDesc,y+49); }
+        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",500),xDesc,y+27);
+        if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,240),xDesc,y+49); }
         ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+36);
-        ctx.fillText(cortar(ctx,origem,92),xOrigem,y+36);
-        ctx.textAlign="center";ctx.fillText(cortar(ctx,String(parcela),46),xParcelaCenter,y+36);
+        ctx.fillText(cortar(ctx,origem,86),xOrigem,y+36);
+        ctx.textAlign="center";ctx.fillText(cortar(ctx,String(parcela),38),xParcelaCenter,y+36);
         ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 17px Arial";ctx.fillText(dinheiro(item.valor),xValorRight,y+36);ctx.textAlign="left";
         y+=rowH;
       });
@@ -46358,17 +46358,17 @@ Os outros lançamentos não serão alterados.`;
     ctx.fillStyle="#075e54";ctx.font="900 36px Arial";ctx.fillText(dinheiro(comp.totalPago),areaX+20,y+72);
     var saldo=comp.tipo==="parcial"?Number(comp.saldoRestante||0):0;
     ctx.fillText(dinheiro(saldo),areaX+colW+20,y+72);
-    ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PERÍODO QUITADO",areaX+colW*2+20,y+69);
+    ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"QUITADO",areaX+colW*2+20,y+69);
 
     // Formal declaration
     y+=resumoH+18;
     arredondar(ctx,areaX,y,areaW,declaracaoH,16);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
     var declaracao=comp.tipo==="integral"
-      ? "Declaramos que recebemos de "+comp.pessoa+" o valor total de "+dinheiro(comp.totalPago)+", referente aos itens descritos neste comprovante, ficando o período informado devidamente quitado."
-      : "Declaramos que recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", referente aos itens descritos neste comprovante. Permanece em aberto o saldo de "+dinheiro(comp.saldoRestante)+" para o período informado.";
-    ctx.fillStyle="#334155";ctx.font="650 17px Arial";
-    var linhas=quebrar(ctx,declaracao,areaW-36).slice(0,4);
-    linhas.forEach(function(l,i){ctx.fillText(l,areaX+18,y+30+i*24);});
+      ? "Declaramos, para os devidos fins, que recebemos de "+comp.pessoa+" a importância total de "+dinheiro(comp.totalPago)+", na data de "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens discriminados neste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+", conferindo plena, rasa e irrevogável quitação do período mencionado."
+      : "Declaramos, para os devidos fins, que recebemos de "+comp.pessoa+" a importância de "+dinheiro(comp.totalPago)+", na data de "+dataBR(comp.dataPagamento)+", por meio de "+(comp.formaPagamento||"pagamento identificado")+", referente aos itens discriminados neste recibo e à competência "+(comp.referencia||referenciaTexto(comp.mesReferencia))+". Registra-se que permanece saldo pendente de "+dinheiro(comp.saldoRestante)+", razão pela qual a quitação do período ainda não se encontra integralmente concluída.";
+    ctx.fillStyle="#334155";ctx.font="650 16px Arial";
+    var linhas=quebrar(ctx,declaracao,areaW-36).slice(0,5);
+    linhas.forEach(function(l,i){ctx.fillText(l,areaX+18,y+28+i*22);});
 
     // Footer small
     var footerY=altura-footerH;
