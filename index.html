@@ -46328,9 +46328,21 @@ Os outros lançamentos não serão alterados.`;
     }catch(_e){return false;}
   }
   function criarCanvasComprovante(comp){
-    var largura=1080,margem=52,headerH=132,infoH=126,tableHeadH=42,rowH=78;
+    var largura=1080,margem=52,headerH=132,infoH=126,tableHeadH=42;
     var itens=(comp.itens||[]);
-    var listaH=tableHeadH+Math.max(1,itens.length)*rowH;
+    var itensRender=itens.map(function(item){
+      var observacao=String(item && (item.obs||item.observacao) || "").trim();
+      return {
+        item:item,
+        dataLinha:dataBR(item && (item.vencimentoExibido||item.vencimento)),
+        origemLinha:formaItem(item),
+        parcelaLinha:(typeof textoParcelaExportTerceiros === "function" ? textoParcelaExportTerceiros(item) : (item && item.parcela) || ""),
+        observacao:observacao,
+        possuiObs:!!observacao,
+        rowH:observacao ? 102 : 84
+      };
+    });
+    var listaH=tableHeadH + (itensRender.length ? itensRender.reduce(function(s,r){ return s + r.rowH; },0) : 84);
     var resumoH=112,declaracaoH=122,footerH=66;
     var altura=Math.max(850,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
     var canvas=document.createElement("canvas");
@@ -46342,7 +46354,6 @@ Os outros lançamentos não serão alterados.`;
 
     var areaX=margem, areaW=largura-margem*2;
 
-    // Header based on export-image style
     arredondar(ctx,areaX,margem,areaW,headerH,22);
     var grad=ctx.createLinearGradient(areaX,margem,areaX+areaW,margem+headerH);
     grad.addColorStop(0,"#06392f");grad.addColorStop(1,"#0f766e");
@@ -46361,7 +46372,6 @@ Os outros lançamentos não serão alterados.`;
     ctx.textAlign="center";ctx.fillStyle="#d1fae5";ctx.font="900 12px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PAGAMENTO CONFIRMADO",bx+badgeW/2,by+28);
     ctx.fillStyle="#fff";ctx.font="900 18px Arial";ctx.fillText(comp.tipo==="parcial"?"EM ABERTO":"QUITADO",bx+badgeW/2,by+53);ctx.textAlign="left";
 
-    // Information block
     var y=margem+headerH+18;
     arredondar(ctx,areaX,y,areaW,infoH,18);ctx.fillStyle="#fbfcfc";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.stroke();
     var c1=areaX+24,c2=areaX+areaW/2+10;
@@ -46374,12 +46384,10 @@ Os outros lançamentos não serão alterados.`;
     campo(c1,y+86,"Data do pagamento",dataBR(comp.dataPagamento));
     campo(c2,y+86,"Forma de pagamento",comp.formaPagamento||"-");
 
-    // Table title
     y+=infoH+22;
     ctx.fillStyle="#334155";ctx.font="900 13px Arial";ctx.fillText("ITENS PAGOS",areaX+2,y+14);
     y+=24;
 
-    // Table header with separated columns
     arredondar(ctx,areaX,y,areaW,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
     var xDesc=areaX+16, xData=areaX+565, xOrigem=areaX+675, xParcelaCenter=areaX+805, xValorRight=areaX+areaW-18;
     ctx.fillStyle="#46635d";ctx.font="900 11px Arial";
@@ -46390,27 +46398,60 @@ Os outros lançamentos não serão alterados.`;
     ctx.textAlign="right";ctx.fillText("VALOR",xValorRight,y+25);ctx.textAlign="left";
     y+=tableHeadH;
 
-    if(!itens.length){
+    if(!itensRender.length){
       ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,y+54);ctx.lineTo(areaX+areaW,y+54);ctx.stroke();
       ctx.fillStyle="#64748b";ctx.font="700 16px Arial";ctx.fillText("Nenhum item vinculado a este recibo.",areaX+18,y+34);
-      y+=rowH;
+      y+=84;
     }else{
-      itens.forEach(function(item){
+      itensRender.forEach(function(linha){
+        var item=linha.item;
+        var rowH=linha.rowH;
         ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,y+rowH);ctx.lineTo(areaX+areaW,y+rowH);ctx.stroke();
-        var origem=item.forma||item.origem||item.banco||item.cartao||"-";
-        var parcela=item.parcela||"-";
-        var categoria=item.categoria||"";
-        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",440),xDesc,y+27);
-        if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,240),xDesc,y+49); }
-        ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+36);
-        ctx.fillText(cortar(ctx,origem,86),xOrigem,y+36);
-        ctx.textAlign="center";ctx.fillText(cortar(ctx,String(parcela),38),xParcelaCenter,y+36);
-        ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 17px Arial";ctx.fillText(dinheiro(item.valor),xValorRight,y+36);ctx.textAlign="left";
+
+        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";
+        ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",430),xDesc,y+28);
+
+        var metaY=y+50, metaX=xDesc;
+        ctx.font="650 13px Arial";
+        ctx.fillStyle="#64748b";
+        var dataTxt=linha.dataLinha || "-";
+        ctx.fillText(dataTxt,metaX,metaY);
+        var dataW=ctx.measureText(dataTxt).width;
+        var sepTxt=" • ";
+        ctx.fillStyle="#94a3b8";
+        ctx.fillText(sepTxt,metaX+dataW+4,metaY);
+        var sepW=ctx.measureText(sepTxt).width;
+
+        var origemTxt=String(linha.origemLinha||"-").slice(0,24);
+        var origemX=metaX+dataW+sepW+8;
+        ctx.fillStyle=(typeof corMarcaCartaoTerceiro === "function" ? corMarcaCartaoTerceiro(origemTxt) : "#7c3aed");
+        ctx.fillText(origemTxt,origemX,metaY);
+        var origemW=ctx.measureText(origemTxt).width;
+
+        if(linha.parcelaLinha){
+          var sep2X=origemX+origemW+6;
+          ctx.fillStyle="#94a3b8";
+          ctx.fillText(sepTxt,sep2X,metaY);
+          var parcelaX=sep2X+sepW+4;
+          var limiteParcela=Math.max(60,(xData-18)-parcelaX);
+          ctx.fillStyle="#0f766e";
+          ctx.font="700 13px Arial";
+          ctx.fillText(cortar(ctx,linha.parcelaLinha,limiteParcela),parcelaX,metaY);
+        }
+
+        if(linha.possuiObs){
+          ctx.fillStyle="#64748b";ctx.font="600 12px Arial";
+          ctx.fillText(cortar(ctx,"Obs.: "+linha.observacao,500),xDesc,y+70);
+        }
+
+        ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(linha.dataLinha,xData,y+44);
+        ctx.fillText(cortar(ctx,String(linha.origemLinha||"-"),78),xOrigem,y+44);
+        ctx.textAlign="center";ctx.fillText(cortar(ctx,String(linha.parcelaLinha||item.parcela||"-"),48),xParcelaCenter,y+44);
+        ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 17px Arial";ctx.fillText(dinheiro(valorItem(item)),xValorRight,y+44);ctx.textAlign="left";
         y+=rowH;
       });
     }
 
-    // Summary box with 3 columns
     y+=18;
     arredondar(ctx,areaX,y,areaW,resumoH,18);ctx.fillStyle="#f6fbfa";ctx.fill();ctx.strokeStyle="#bdd8d1";ctx.stroke();
     var colW=areaW/3;
@@ -46426,7 +46467,6 @@ Os outros lançamentos não serão alterados.`;
     ctx.fillText(dinheiro(saldo),areaX+colW+20,y+72);
     ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"QUITADO",areaX+colW*2+20,y+69);
 
-    // Formal declaration
     y+=resumoH+18;
     arredondar(ctx,areaX,y,areaW,declaracaoH,16);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
     var declaracao=comp.tipo==="integral"
@@ -46436,7 +46476,6 @@ Os outros lançamentos não serão alterados.`;
     var linhas=quebrar(ctx,declaracao,areaW-36).slice(0,5);
     linhas.forEach(function(l,i){ctx.fillText(l,areaX+18,y+28+i*22);});
 
-    // Footer small
     var footerY=altura-footerH;
     ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(areaX,footerY);ctx.lineTo(areaX+areaW,footerY);ctx.stroke();
     ctx.fillStyle="#94a3b8";ctx.font="700 12px Arial";ctx.fillText("Documento emitido pelo CMFin",areaX,footerY+26);
