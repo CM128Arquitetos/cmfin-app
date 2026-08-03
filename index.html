@@ -1,4 +1,5 @@
-<!-- CMFin V31 - Central de Sugestões: layout administrativo e anexos - 2026-07-31 -->
+<!-- CMFin V33 - Comprovantes de pagamento de terceiros, copiar imagem e histórico - 2026-08-02 -->
+<!-- Base: CMFin V31 - Central de Sugestões: layout administrativo e anexos - 2026-07-31 -->
 <!-- CMFin atualização: exclusão de parcelas futuras e reset da divisão automática v6 - 2026-07-16 -->
 <!DOCTYPE html>
 <!-- CMFin V32: estrutura HTML normalizada; scripts externos do Kaspersky removidos; senha não persistida no localStorage; rascunhos locais automáticos. -->
@@ -10081,6 +10082,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                   <p>Filtre por pessoa, forma/cartão, categoria e status. Acompanhe as parcelas e o total exato a receber.</p>
                 </div>
                 <div class="terc-export-actions">
+                  <button class="btn btn-primary btn-small" type="button" onclick="cmfinAbrirRegistroPagamentoTerceiro()">Registrar Pagamento</button>
+                  <button class="btn btn-secondary btn-small" type="button" onclick="cmfinAbrirHistoricoComprovantesTerceiros()">Comprovantes</button>
                   <button class="btn btn-secondary btn-small" onclick="abrirExportacaoTerceiros()">Exportar Imagem</button>
                   <button class="btn btn-secondary btn-small terc-btn-saldo-geral" type="button" onclick="cmfinAbrirSaldoGeralTerceiros()">Saldo Restante</button>
                 </div>
@@ -10619,7 +10622,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       <div class="actions" style="margin-top:14px; justify-content:flex-end;">
         <button class="btn btn-secondary" onclick="gerarPreviewExportacaoTerceiros()">Atualizar Prévia</button>
         <button class="btn btn-secondary" onclick="compartilharImagemTerceiros()">Compartilhar</button>
-        <button class="btn btn-primary" onclick="baixarImagemTerceiros()">Baixar PNG</button>
+        <button class="btn btn-secondary" onclick="copiarImagemTerceiros()">Copiar Imagem</button>
+        <button class="btn btn-primary" onclick="baixarImagemTerceiros()">Baixar Imagem</button>
       </div>
     </div>
   </div>
@@ -11401,6 +11405,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     let rendimentosInvestimentos = [];
     let pessoasTerceiros = [];
     let terceiros = [];
+    let comprovantesTerceiros = [];
 
 
     function normalizarTexto(texto) {
@@ -11797,6 +11802,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         rendimentosInvestimentos: [],
         pessoasTerceiros: [],
         terceiros: [],
+        comprovantesTerceiros: [],
         dividasTerceiros: []
       };
     }
@@ -11819,7 +11825,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       return {
         categorias, configuracoes, bancos, gastosFixos, gastosVariaveis, pagamentosTerceirizados, pagamentosArquitetos, comprasCredito,
-        recebimentos, cofrinhos, movimentosBanco, investimentos, rendimentosInvestimentos, pessoasTerceiros, terceiros,
+        recebimentos, cofrinhos, movimentosBanco, investimentos, rendimentosInvestimentos, pessoasTerceiros, terceiros, comprovantesTerceiros,
         dividasTerceiros: dividasTerceirosSnapshot
       };
     }
@@ -11843,6 +11849,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       rendimentosInvestimentos = base.rendimentosInvestimentos || [];
       pessoasTerceiros = base.pessoasTerceiros || [];
       terceiros = base.terceiros || [];
+      comprovantesTerceiros = base.comprovantesTerceiros || [];
 
       if (modoAtual === "pessoal" && Object.prototype.hasOwnProperty.call(base, "dividasTerceiros")) {
         const listaDividas = Array.isArray(base.dividasTerceiros) ? base.dividasTerceiros : [];
@@ -24468,7 +24475,7 @@ Os outros lançamentos não serão alterados.`;
         categorias,configuracoes,bancos,gastosFixos,gastosVariaveis,
         pagamentosTerceirizados,pagamentosArquitetos,comprasCredito,
         recebimentos,cofrinhos,movimentosBanco,investimentos,
-        rendimentosInvestimentos,pessoasTerceiros,terceiros
+        rendimentosInvestimentos,pessoasTerceiros,terceiros,comprovantesTerceiros
       }
     };
   }
@@ -24513,6 +24520,7 @@ Os outros lançamentos não serão alterados.`;
         if(Array.isArray(dados.rendimentosInvestimentos)) rendimentosInvestimentos=dados.rendimentosInvestimentos;
         if(Array.isArray(dados.pessoasTerceiros)) pessoasTerceiros=dados.pessoasTerceiros;
         if(Array.isArray(dados.terceiros)) terceiros=dados.terceiros;
+        if(Array.isArray(dados.comprovantesTerceiros)) comprovantesTerceiros=dados.comprovantesTerceiros;
 
         try{salvarDados();}catch(e){}
         try{renderizarTudo();}catch(e){}
@@ -45614,6 +45622,821 @@ Os outros lançamentos não serão alterados.`;
   hardenLegacyCredentials();
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
+})();
+</script>
+
+
+<!-- CMFin V33 — comprovante de pagamento para Gastos por Terceiros -->
+<style id="cmfin-comprovantes-terceiros-v33-style">
+  #terceiros .terc-export-actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .cmfin-pagto-modal,
+  .cmfin-historico-modal,
+  .cmfin-comprovante-modal{
+    width:min(940px,calc(100vw - 34px));
+    max-width:940px;
+    border-radius:24px;
+    padding:0;
+    overflow:hidden;
+  }
+  .cmfin-pagto-shell,
+  .cmfin-historico-shell,
+  .cmfin-comprovante-shell{
+    padding:22px;
+    background:linear-gradient(180deg,#fff 0%,#f7fbfa 100%);
+  }
+  .cmfin-pagto-header,
+  .cmfin-historico-header,
+  .cmfin-comprovante-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .cmfin-pagto-header h2,
+  .cmfin-historico-header h2,
+  .cmfin-comprovante-header h2{
+    margin:0 0 5px;
+    color:#102a25;
+  }
+  .cmfin-pagto-header p,
+  .cmfin-historico-header p,
+  .cmfin-comprovante-header p{
+    margin:0;
+    color:#64748b;
+    line-height:1.45;
+  }
+  .cmfin-pagto-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .cmfin-pagto-grid label{
+    display:block;
+    margin-bottom:6px;
+    font-size:12px;
+    font-weight:800;
+    color:#334155;
+  }
+  .cmfin-pagto-grid input,
+  .cmfin-pagto-grid select{
+    width:100%;
+  }
+  .cmfin-pagto-kpis{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin:14px 0;
+  }
+  .cmfin-pagto-kpi{
+    border:1px solid #dbe7e4;
+    background:#fff;
+    border-radius:16px;
+    padding:13px 14px;
+    min-width:0;
+  }
+  .cmfin-pagto-kpi.total{
+    background:linear-gradient(135deg,#087f70,#0f766e);
+    border-color:#087f70;
+  }
+  .cmfin-pagto-kpi span{
+    display:block;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+  .cmfin-pagto-kpi strong{
+    display:block;
+    font-size:19px;
+    color:#0f172a;
+    overflow-wrap:anywhere;
+  }
+  .cmfin-pagto-kpi.total span,
+  .cmfin-pagto-kpi.total strong{color:#fff;}
+  .cmfin-pagto-lista{
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#fff;
+    overflow:hidden;
+    max-height:360px;
+    overflow-y:auto;
+  }
+  .cmfin-pagto-lista-head,
+  .cmfin-pagto-linha{
+    display:grid;
+    grid-template-columns:34px minmax(0,1fr) minmax(130px,.55fr) minmax(110px,.45fr);
+    gap:12px;
+    align-items:center;
+    padding:12px 15px;
+  }
+  .cmfin-pagto-lista-head{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:#f5f8f7;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    border-bottom:1px solid #dbe7e4;
+  }
+  .cmfin-pagto-linha{border-bottom:1px solid #edf2f1;}
+  .cmfin-pagto-linha:last-child{border-bottom:0;}
+  .cmfin-pagto-linha input[type="checkbox"]{
+    width:18px;
+    height:18px;
+    accent-color:#087f70;
+  }
+  .cmfin-pagto-desc strong{
+    display:block;
+    color:#0f172a;
+    font-size:14px;
+    line-height:1.35;
+  }
+  .cmfin-pagto-desc span,
+  .cmfin-pagto-meta{
+    display:block;
+    color:#64748b;
+    font-size:12px;
+    margin-top:3px;
+  }
+  .cmfin-pagto-valor{
+    text-align:right;
+    font-weight:900;
+    color:#0f172a;
+  }
+  .cmfin-pagto-vazio{
+    padding:28px 18px;
+    text-align:center;
+    color:#64748b;
+  }
+  .cmfin-pagto-note{
+    margin-top:12px;
+    padding:11px 13px;
+    border-radius:14px;
+    background:#edf8f5;
+    color:#375d56;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .cmfin-pagto-actions,
+  .cmfin-comprovante-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:9px;
+    flex-wrap:wrap;
+    margin-top:16px;
+  }
+  .cmfin-historico-lista{
+    display:grid;
+    gap:10px;
+    max-height:570px;
+    overflow-y:auto;
+  }
+  .cmfin-historico-item{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:14px;
+    align-items:center;
+    padding:14px 16px;
+    border:1px solid #dbe7e4;
+    border-radius:17px;
+    background:#fff;
+  }
+  .cmfin-historico-item strong{
+    display:block;
+    color:#0f172a;
+    font-size:15px;
+  }
+  .cmfin-historico-item span{
+    display:block;
+    color:#64748b;
+    font-size:12px;
+    margin-top:4px;
+  }
+  .cmfin-historico-valor{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .cmfin-historico-valor strong{color:#087f70;}
+  .cmfin-comprovante-preview{
+    border:1px solid #dbe7e4;
+    border-radius:18px;
+    background:#eef4f2;
+    padding:16px;
+    max-height:68vh;
+    overflow:auto;
+    display:flex;
+    justify-content:center;
+  }
+  .cmfin-comprovante-preview img{
+    display:block;
+    width:min(100%,760px);
+    height:auto;
+    border-radius:14px;
+    box-shadow:0 12px 35px rgba(15,23,42,.13);
+    background:#fff;
+  }
+  @media(max-width:760px){
+    .cmfin-pagto-grid,
+    .cmfin-pagto-kpis{grid-template-columns:1fr;}
+    .cmfin-pagto-lista-head{display:none;}
+    .cmfin-pagto-linha{
+      grid-template-columns:30px minmax(0,1fr);
+      gap:8px 10px;
+    }
+    .cmfin-pagto-meta,
+    .cmfin-pagto-valor{
+      grid-column:2;
+      text-align:left;
+    }
+    .cmfin-historico-item{grid-template-columns:1fr;}
+    .cmfin-historico-valor{justify-content:flex-start;}
+    .cmfin-pagto-header,
+    .cmfin-historico-header,
+    .cmfin-comprovante-header{align-items:flex-start;}
+  }
+</style>
+
+<div class="modal-backdrop" id="modalRegistroPagamentoTerceiro">
+  <div class="modal cmfin-pagto-modal">
+    <div class="cmfin-pagto-shell">
+      <div class="cmfin-pagto-header">
+        <div>
+          <h2>Registrar pagamento</h2>
+          <p>Selecione as contas quitadas, confirme o recebimento e gere o comprovante para enviar à pessoa.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+
+      <div class="cmfin-pagto-grid">
+        <div>
+          <label>Pessoa que realizou o pagamento</label>
+          <select id="cmfinPagtoPessoa" onchange="cmfinAtualizarRegistroPagamentoTerceiro()"></select>
+        </div>
+        <div>
+          <label>Tipo de pagamento</label>
+          <select id="cmfinPagtoTipo" onchange="cmfinAlternarTipoPagamentoTerceiro()">
+            <option value="integral">Pagamento integral do mês</option>
+            <option value="parcial">Pagamento parcial — selecionar contas</option>
+          </select>
+        </div>
+        <div>
+          <label>Mês de referência</label>
+          <select id="cmfinPagtoMes" onchange="cmfinAtualizarRegistroPagamentoTerceiro()"></select>
+        </div>
+        <div>
+          <label>Ano de referência</label>
+          <select id="cmfinPagtoAno" onchange="cmfinAtualizarRegistroPagamentoTerceiro()"></select>
+        </div>
+        <div>
+          <label>Data do pagamento</label>
+          <input id="cmfinPagtoData" type="date" />
+        </div>
+        <div>
+          <label>Forma de pagamento</label>
+          <select id="cmfinPagtoForma">
+            <option value="Pix">Pix</option>
+            <option value="Transferência">Transferência</option>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Boleto">Boleto</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cmfin-pagto-kpis">
+        <div class="cmfin-pagto-kpi"><span>Total pendente no período</span><strong id="cmfinPagtoTotalPendente">R$ 0,00</strong></div>
+        <div class="cmfin-pagto-kpi total"><span>Total selecionado para baixa</span><strong id="cmfinPagtoTotalSelecionado">R$ 0,00</strong></div>
+        <div class="cmfin-pagto-kpi"><span>Saldo após o pagamento</span><strong id="cmfinPagtoSaldoRestante">R$ 0,00</strong></div>
+      </div>
+
+      <div class="cmfin-pagto-lista" id="cmfinPagtoLista"></div>
+      <div class="cmfin-pagto-note" id="cmfinPagtoNota">No pagamento integral, todas as contas pendentes do período serão marcadas como recebidas. No pagamento parcial, selecione somente as contas efetivamente quitadas.</div>
+
+      <div class="cmfin-pagto-actions">
+        <button class="btn btn-secondary" type="button" onclick="fecharModais()">Cancelar</button>
+        <button class="btn btn-primary" id="cmfinPagtoConfirmar" type="button" onclick="cmfinConfirmarPagamentoTerceiro()">Confirmar e Gerar Comprovante</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalHistoricoComprovantesTerceiros">
+  <div class="modal cmfin-historico-modal">
+    <div class="cmfin-historico-shell">
+      <div class="cmfin-historico-header">
+        <div>
+          <h2>Comprovantes de pagamento</h2>
+          <p>Consulte e reabra os comprovantes já emitidos para reenviar quando necessário.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+      <div class="cmfin-historico-lista" id="cmfinHistoricoComprovantesLista"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalComprovantePagamentoTerceiro">
+  <div class="modal cmfin-comprovante-modal">
+    <div class="cmfin-comprovante-shell">
+      <div class="cmfin-comprovante-header">
+        <div>
+          <h2 id="cmfinComprovanteModalTitulo">Comprovante de pagamento</h2>
+          <p id="cmfinComprovanteModalSubtitulo">Pagamento confirmado e registrado no CMFin.</p>
+        </div>
+        <button class="btn btn-secondary btn-small" type="button" onclick="fecharModais()">Fechar</button>
+      </div>
+      <div class="cmfin-comprovante-preview">
+        <img id="cmfinComprovanteImagem" alt="Comprovante de pagamento gerado pelo CMFin" />
+      </div>
+      <div class="cmfin-comprovante-actions">
+        <button class="btn btn-secondary" type="button" onclick="cmfinCompartilharComprovanteTerceiro()">Compartilhar</button>
+        <button class="btn btn-secondary" type="button" onclick="cmfinCopiarComprovanteTerceiro()">Copiar Imagem</button>
+        <button class="btn btn-primary" type="button" onclick="cmfinBaixarComprovanteTerceiro()">Baixar Imagem</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-comprovantes-terceiros-v33-script">
+(function(){
+  "use strict";
+
+  var estadoPagamento = { itens:[], mesRef:"", pessoa:"" };
+  var comprovanteAtual = null;
+  var canvasComprovanteAtual = null;
+  var mesesNomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  function n(valor){
+    var numero = Number(valor);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+  function dinheiro(valor){
+    try{ if(typeof moeda === "function") return moeda(valor); }catch(_e){}
+    return n(valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  function esc(valor){
+    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+    });
+  }
+  function dataBR(valor){
+    if(!valor) return "-";
+    var s = String(valor);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+      var p = s.split("-");
+      return p[2]+"/"+p[1]+"/"+p[0];
+    }
+    try{return new Date(valor).toLocaleDateString("pt-BR");}catch(_e){return s;}
+  }
+  function referenciaTexto(mesRef){
+    if(!/^\d{4}-\d{2}$/.test(String(mesRef||""))) return String(mesRef||"-");
+    var p = mesRef.split("-");
+    return (mesesNomes[Number(p[1])-1]||p[1])+" de "+p[0];
+  }
+  function slug(valor){
+    return String(valor||"comprovante").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  }
+  function abrir(id){
+    try{ if(typeof abrirModal === "function") return abrirModal(id); }catch(_e){}
+    var modal = document.getElementById(id);
+    if(modal) modal.style.display = "flex";
+  }
+  function valorItem(item){
+    try{ if(typeof valorTotalTerceiro === "function") return n(valorTotalTerceiro(item)); }catch(_e){}
+    return n(item && (item.valorTotal != null ? item.valorTotal : item.valor));
+  }
+  function formaItem(item){
+    try{ if(typeof formaCartaoTerceiro === "function") return formaCartaoTerceiro(item); }catch(_e){}
+    return item && (item.formaPagamento || item.cartao || item.forma) || "-";
+  }
+  function apareceNoMes(item,mesRef){
+    try{ if(typeof terceiroApareceNoMes === "function") return terceiroApareceNoMes(item,mesRef); }catch(_e){}
+    return String(item && item.vencimento || "").slice(0,7) === mesRef;
+  }
+  function statusNoMes(item,mesRef){
+    try{ if(typeof statusTerceiroNoMes === "function") return statusTerceiroNoMes(item,mesRef); }catch(_e){}
+    return item && item.status || "Pendente";
+  }
+  function vencimentoNoMes(item,mesRef){
+    try{ if(typeof vencimentoTerceiroNoMes === "function") return vencimentoTerceiroNoMes(item,mesRef); }catch(_e){}
+    return item && item.vencimento || (mesRef+"-01");
+  }
+  function listaPendente(pessoa,mesRef){
+    var base = (typeof terceiros !== "undefined" && Array.isArray(terceiros)) ? terceiros : [];
+    return base.filter(function(item){
+      return item && String(item.pessoa||"") === String(pessoa||"") && apareceNoMes(item,mesRef) && statusNoMes(item,mesRef) !== "Recebido";
+    }).map(function(item){
+      return Object.assign({},item,{ vencimentoExibido:vencimentoNoMes(item,mesRef), mesStatusReferencia:mesRef });
+    }).sort(function(a,b){
+      return String(a.vencimentoExibido||"").localeCompare(String(b.vencimentoExibido||"")) || n(a.id)-n(b.id);
+    });
+  }
+  function obterMesRef(){
+    var mes = document.getElementById("cmfinPagtoMes");
+    var ano = document.getElementById("cmfinPagtoAno");
+    return (ano && ano.value ? ano.value : String(new Date().getFullYear()))+"-"+(mes && mes.value ? mes.value : String(new Date().getMonth()+1).padStart(2,"0"));
+  }
+  function idsSelecionados(){
+    return Array.prototype.filter.call(document.querySelectorAll(".cmfin-pagto-check"),function(el){return el.checked;}).map(function(el){return String(el.value);});
+  }
+  function preencherPessoa(){
+    var select = document.getElementById("cmfinPagtoPessoa");
+    if(!select) return;
+    var atual = select.value;
+    var nomes = [];
+    if(typeof pessoasTerceiros !== "undefined" && Array.isArray(pessoasTerceiros)){
+      nomes = pessoasTerceiros.map(function(p){return p && p.nome;}).filter(Boolean);
+    }
+    if(!nomes.length && typeof terceiros !== "undefined" && Array.isArray(terceiros)){
+      nomes = terceiros.map(function(t){return t && t.pessoa;}).filter(Boolean);
+    }
+    nomes = Array.from(new Set(nomes)).sort(function(a,b){return a.localeCompare(b,"pt-BR");});
+    select.innerHTML = nomes.length ? nomes.map(function(nome){return '<option value="'+esc(nome)+'">'+esc(nome)+'</option>';}).join("") : '<option value="">Nenhuma pessoa cadastrada</option>';
+    var filtro = document.getElementById("filtroTercPessoa");
+    var preferida = filtro && filtro.value && filtro.value !== "todos" ? filtro.value : atual;
+    if(preferida && nomes.indexOf(preferida)>=0) select.value = preferida;
+  }
+  function preencherMesAno(){
+    var selMes = document.getElementById("cmfinPagtoMes");
+    var selAno = document.getElementById("cmfinPagtoAno");
+    if(!selMes || !selAno) return;
+    var ref;
+    try{ ref = typeof obterMesReferenciaFiltro === "function" ? obterMesReferenciaFiltro("filtroTerc") : ""; }catch(_e){ref="";}
+    if(!/^\d{4}-\d{2}$/.test(ref)) ref = new Date().toISOString().slice(0,7);
+    selMes.innerHTML = mesesNomes.map(function(nome,i){var v=String(i+1).padStart(2,"0");return '<option value="'+v+'">'+nome+'</option>';}).join("");
+    var anoAtual = new Date().getFullYear();
+    var anos = [];
+    for(var a=anoAtual-5;a<=anoAtual+5;a++) anos.push(String(a));
+    if(anos.indexOf(ref.slice(0,4))<0) anos.push(ref.slice(0,4));
+    anos.sort();
+    selAno.innerHTML = anos.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join("");
+    selMes.value = ref.slice(5,7);
+    selAno.value = ref.slice(0,4);
+  }
+  function atualizarKpis(){
+    var totalPendente = estadoPagamento.itens.reduce(function(s,item){return s+valorItem(item);},0);
+    var selecionados = new Set(idsSelecionados());
+    var totalSelecionado = estadoPagamento.itens.filter(function(item){return selecionados.has(String(item.id));}).reduce(function(s,item){return s+valorItem(item);},0);
+    var saldo = Math.max(0,totalPendente-totalSelecionado);
+    var a = document.getElementById("cmfinPagtoTotalPendente");
+    var b = document.getElementById("cmfinPagtoTotalSelecionado");
+    var c = document.getElementById("cmfinPagtoSaldoRestante");
+    if(a) a.textContent = dinheiro(totalPendente);
+    if(b) b.textContent = dinheiro(totalSelecionado);
+    if(c) c.textContent = dinheiro(saldo);
+    var btn = document.getElementById("cmfinPagtoConfirmar");
+    if(btn) btn.disabled = !estadoPagamento.itens.length || totalSelecionado <= 0;
+  }
+  function renderLista(){
+    var lista = document.getElementById("cmfinPagtoLista");
+    if(!lista) return;
+    var tipo = document.getElementById("cmfinPagtoTipo") ? document.getElementById("cmfinPagtoTipo").value : "integral";
+    if(!estadoPagamento.itens.length){
+      lista.innerHTML = '<div class="cmfin-pagto-vazio">Não há contas pendentes para esta pessoa no período selecionado.</div>';
+      atualizarKpis();
+      return;
+    }
+    var linhas = estadoPagamento.itens.map(function(item){
+      var parcela = item.parcela && item.parcela !== "Recorrente" ? " · "+item.parcela : "";
+      return '<div class="cmfin-pagto-linha">'+
+        '<div><input class="cmfin-pagto-check" type="checkbox" value="'+esc(item.id)+'" '+(tipo==="integral"?'checked disabled':'checked')+' onchange="cmfinAtualizarResumoPagamentoTerceiro()" /></div>'+
+        '<div class="cmfin-pagto-desc"><strong>'+esc(item.descricao||"Sem descrição")+'</strong><span>'+esc(dataBR(item.vencimentoExibido))+parcela+'</span></div>'+
+        '<div class="cmfin-pagto-meta">'+esc(formaItem(item))+'<br>'+esc(item.categoria||"Outros")+'</div>'+
+        '<div class="cmfin-pagto-valor">'+esc(dinheiro(valorItem(item)))+'</div>'+
+      '</div>';
+    }).join("");
+    lista.innerHTML = '<div class="cmfin-pagto-lista-head"><div></div><div>Conta cobrada</div><div>Forma / categoria</div><div style="text-align:right">Valor</div></div>'+linhas;
+    atualizarKpis();
+  }
+
+  window.cmfinAtualizarResumoPagamentoTerceiro = atualizarKpis;
+
+  window.cmfinAtualizarRegistroPagamentoTerceiro = function(){
+    var pessoa = document.getElementById("cmfinPagtoPessoa") ? document.getElementById("cmfinPagtoPessoa").value : "";
+    var mesRef = obterMesRef();
+    estadoPagamento = { pessoa:pessoa, mesRef:mesRef, itens:listaPendente(pessoa,mesRef) };
+    renderLista();
+  };
+
+  window.cmfinAlternarTipoPagamentoTerceiro = function(){
+    renderLista();
+    var tipo = document.getElementById("cmfinPagtoTipo") ? document.getElementById("cmfinPagtoTipo").value : "integral";
+    var nota = document.getElementById("cmfinPagtoNota");
+    if(nota){
+      nota.innerHTML = tipo === "integral"
+        ? "Todas as contas pendentes do período serão marcadas como <strong>Recebidas</strong> e o comprovante será emitido como <strong>Quitado</strong>."
+        : "Marque somente as contas efetivamente pagas. O comprovante mostrará o <strong>valor recebido</strong> e o <strong>saldo ainda pendente</strong>.";
+    }
+  };
+
+  window.cmfinAbrirRegistroPagamentoTerceiro = function(){
+    preencherPessoa();
+    preencherMesAno();
+    var data = document.getElementById("cmfinPagtoData");
+    if(data) data.value = new Date().toISOString().slice(0,10);
+    var tipo = document.getElementById("cmfinPagtoTipo");
+    if(tipo) tipo.value = "integral";
+    window.cmfinAtualizarRegistroPagamentoTerceiro();
+    window.cmfinAlternarTipoPagamentoTerceiro();
+    abrir("modalRegistroPagamentoTerceiro");
+  };
+
+  function numeroComprovante(){
+    var d = new Date();
+    var ymd = d.toISOString().slice(0,10).replace(/-/g,"");
+    return "CMP-"+ymd+"-"+String(Date.now()).slice(-6);
+  }
+
+  window.cmfinConfirmarPagamentoTerceiro = function(){
+    var pessoa = document.getElementById("cmfinPagtoPessoa") ? document.getElementById("cmfinPagtoPessoa").value : "";
+    var mesRef = obterMesRef();
+    var dataPagamento = document.getElementById("cmfinPagtoData") ? document.getElementById("cmfinPagtoData").value : "";
+    var formaPagamento = document.getElementById("cmfinPagtoForma") ? document.getElementById("cmfinPagtoForma").value : "Pix";
+    var itensPendentes = listaPendente(pessoa,mesRef);
+    var selecionados = new Set(idsSelecionados());
+    var itens = itensPendentes.filter(function(item){return selecionados.has(String(item.id));});
+    if(!pessoa) return alert("Selecione a pessoa que realizou o pagamento.");
+    if(!dataPagamento) return alert("Informe a data do pagamento.");
+    if(!itens.length) return alert("Selecione ao menos uma conta para registrar o pagamento.");
+
+    var totalPendente = itensPendentes.reduce(function(s,item){return s+valorItem(item);},0);
+    var totalPago = itens.reduce(function(s,item){return s+valorItem(item);},0);
+    var saldoRestante = Math.max(0,totalPendente-totalPago);
+    var integral = itens.length === itensPendentes.length && saldoRestante < 0.005;
+    var mensagem = "Confirmar o recebimento de "+dinheiro(totalPago)+" de "+pessoa+", referente a "+referenciaTexto(mesRef)+"?";
+    if(!integral) mensagem += "\n\nEste pagamento será registrado como parcial. Saldo restante: "+dinheiro(saldoRestante)+".";
+    if(!confirm(mensagem)) return;
+
+    var ids = new Set(itens.map(function(item){return String(item.id);}));
+    terceiros = terceiros.map(function(item){
+      if(!item || !ids.has(String(item.id))) return item;
+      try{ if(typeof definirStatusTerceiroNoMes === "function") return definirStatusTerceiroNoMes(item,mesRef,"Recebido"); }catch(_e){}
+      return Object.assign({},item,{status:"Recebido"});
+    });
+
+    var comprovante = {
+      id: Date.now(),
+      numero: numeroComprovante(),
+      pessoa: pessoa,
+      mesReferencia: mesRef,
+      referencia: referenciaTexto(mesRef),
+      dataPagamento: dataPagamento,
+      formaPagamento: formaPagamento,
+      tipo: integral ? "integral" : "parcial",
+      situacao: integral ? "Quitado" : "Parcial",
+      totalPago: totalPago,
+      totalPendenteAntes: totalPendente,
+      saldoRestante: saldoRestante,
+      criadoEm: new Date().toISOString(),
+      itens: itens.map(function(item){
+        return {
+          idOrigem:item.id,
+          compraId:item.compraId,
+          descricao:item.descricao||"Sem descrição",
+          vencimento:item.vencimentoExibido||vencimentoNoMes(item,mesRef),
+          forma:formaItem(item),
+          categoria:item.categoria||"Outros",
+          parcela:item.parcela||((item.tipo||"")==="Recorrente"?"Recorrente":""),
+          valor:valorItem(item)
+        };
+      })
+    };
+    comprovantesTerceiros = [comprovante].concat(Array.isArray(comprovantesTerceiros)?comprovantesTerceiros:[]);
+
+    try{ if(typeof salvarDados === "function") salvarDados(); }catch(erro){console.error("Falha ao salvar comprovante:",erro);}
+    try{ if(typeof renderizarTudo === "function") renderizarTudo(); else if(typeof renderizarTerceiros === "function") renderizarTerceiros(); }catch(_e){}
+    try{ if(typeof fecharModais === "function") fecharModais(); }catch(_e){}
+    window.cmfinAbrirComprovanteTerceiro(comprovante.id);
+  };
+
+  function arredondar(ctx,x,y,w,h,r){
+    var raio=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+raio,y);
+    ctx.arcTo(x+w,y,x+w,y+h,raio);
+    ctx.arcTo(x+w,y+h,x,y+h,raio);
+    ctx.arcTo(x,y+h,x,y,raio);
+    ctx.arcTo(x,y,x+w,y,raio);
+    ctx.closePath();
+  }
+  function cortar(ctx,texto,max){
+    var s=String(texto||"");
+    if(ctx.measureText(s).width<=max) return s;
+    while(s.length>3 && ctx.measureText(s+"…").width>max) s=s.slice(0,-1);
+    return s.trim()+"…";
+  }
+  function quebrar(ctx,texto,max){
+    var palavras=String(texto||"").split(/\s+/).filter(Boolean), linhas=[], linha="";
+    palavras.forEach(function(p){
+      var teste=linha?linha+" "+p:p;
+      if(ctx.measureText(teste).width<=max) linha=teste;
+      else{ if(linha) linhas.push(linha); linha=p; }
+    });
+    if(linha) linhas.push(linha);
+    return linhas.length?linhas:["-"];
+  }
+  function desenharLogo(ctx,x,y,maxW,maxH){
+    var logo=document.querySelector(".brand-logo img")||document.querySelector(".cmfin-login-logo")||document.querySelector("img[alt*='CMFin']");
+    if(!logo||!logo.complete||!logo.naturalWidth||!logo.naturalHeight) return false;
+    try{
+      var esc=Math.min(maxW/logo.naturalWidth,maxH/logo.naturalHeight);
+      var w=logo.naturalWidth*esc,h=logo.naturalHeight*esc;
+      ctx.drawImage(logo,x,y+(maxH-h)/2,w,h);
+      return true;
+    }catch(_e){return false;}
+  }
+  function criarCanvasComprovante(comp){
+    var largura=1080,margem=54,headerH=176,infoH=148,rowH=90,listaH=Math.max(1,(comp.itens||[]).length)*rowH;
+    var totalH=comp.tipo==="parcial"?138:118;
+    var declaracaoH=112,footerH=84;
+    var altura=Math.max(760,margem*2+headerH+infoH+54+listaH+totalH+declaracaoH+footerH);
+    var canvas=document.createElement("canvas");
+    canvas.width=largura; canvas.height=altura;
+    var ctx=canvas.getContext("2d");
+
+    ctx.fillStyle="#eef4f2";ctx.fillRect(0,0,largura,altura);
+    arredondar(ctx,24,24,largura-48,altura-48,32);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.lineWidth=2;ctx.stroke();
+
+    arredondar(ctx,margem,margem,largura-margem*2,headerH,26);
+    var grad=ctx.createLinearGradient(margem,margem,largura-margem,margem+headerH);grad.addColorStop(0,"#062a22");grad.addColorStop(1,"#0f766e");ctx.fillStyle=grad;ctx.fill();
+    var logoOk=desenharLogo(ctx,margem+26,margem+35,190,78);
+    var tx=logoOk?margem+245:margem+28;
+    ctx.fillStyle="rgba(255,255,255,.72)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+38);
+    ctx.fillStyle="#fff";ctx.font="900 31px Arial";ctx.fillText(comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL",tx,margem+78);
+    ctx.fillStyle="rgba(255,255,255,.90)";ctx.font="700 18px Arial";ctx.fillText("Documento "+comp.numero,tx,margem+111);
+    ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+139);
+
+    var statusX=largura-margem-320,statusY=margem+43;
+    arredondar(ctx,statusX,statusY,292,88,18);ctx.fillStyle="rgba(255,255,255,.14)";ctx.fill();ctx.strokeStyle="rgba(255,255,255,.28)";ctx.stroke();
+    ctx.textAlign="center";ctx.fillStyle="#d1fae5";ctx.font="900 14px Arial";ctx.fillText(comp.tipo==="integral"?"PAGAMENTO CONFIRMADO":"PAGAMENTO PARCIAL",statusX+146,statusY+31);
+    ctx.fillStyle="#fff";ctx.font="900 24px Arial";ctx.fillText(comp.tipo==="integral"?"QUITADO":"SALDO EM ABERTO",statusX+146,statusY+63);ctx.textAlign="left";
+
+    var y=margem+headerH+24;
+    arredondar(ctx,margem,y,largura-margem*2,infoH,20);ctx.fillStyle="#f8fbfa";ctx.fill();ctx.strokeStyle="#dce7e4";ctx.stroke();
+    var col1=margem+26,col2=margem+520;
+    function campo(x,yy,label,value){ctx.fillStyle="#64748b";ctx.font="900 11px Arial";ctx.fillText(label.toUpperCase(),x,yy);ctx.fillStyle="#0f172a";ctx.font="800 20px Arial";ctx.fillText(cortar(ctx,value,410),x,yy+27);}
+    campo(col1,y+29,"Recebido de",comp.pessoa||"-");
+    campo(col2,y+29,"Referência",comp.referencia||referenciaTexto(comp.mesReferencia));
+    campo(col1,y+90,"Data do pagamento",dataBR(comp.dataPagamento));
+    campo(col2,y+90,"Forma de pagamento",comp.formaPagamento||"-");
+    y+=infoH+22;
+
+    ctx.fillStyle="#64748b";ctx.font="900 12px Arial";ctx.fillText("CONTAS INCLUÍDAS NO PAGAMENTO",margem+8,y+20);y+=38;
+    (comp.itens||[]).forEach(function(item){
+      arredondar(ctx,margem,y,largura-margem*2,rowH-10,17);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#e2e8f0";ctx.stroke();
+      ctx.fillStyle="#0f172a";ctx.font="800 20px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",650),margem+22,y+29);
+      var meta=[dataBR(item.vencimento),item.forma,item.categoria,item.parcela].filter(Boolean).join(" · ");
+      ctx.fillStyle="#64748b";ctx.font="650 14px Arial";ctx.fillText(cortar(ctx,meta,700),margem+22,y+56);
+      ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 24px Arial";ctx.fillText(dinheiro(item.valor),largura-margem-22,y+45);ctx.textAlign="left";
+      y+=rowH;
+    });
+
+    arredondar(ctx,margem,y,largura-margem*2,totalH-12,20);
+    var tg=ctx.createLinearGradient(margem,y,largura-margem,y+totalH);tg.addColorStop(0,"#ecf8f5");tg.addColorStop(1,"#dff2ee");ctx.fillStyle=tg;ctx.fill();ctx.strokeStyle="#b8d9d3";ctx.stroke();
+    ctx.fillStyle="#46635d";ctx.font="900 12px Arial";ctx.fillText("TOTAL RECEBIDO",margem+24,y+34);
+    ctx.fillStyle="#075e54";ctx.font="900 38px Arial";ctx.fillText(dinheiro(comp.totalPago),margem+24,y+77);
+    if(comp.tipo==="parcial"){
+      ctx.textAlign="right";ctx.fillStyle="#8a3c16";ctx.font="900 12px Arial";ctx.fillText("SALDO AINDA PENDENTE",largura-margem-24,y+34);
+      ctx.fillStyle="#9a3412";ctx.font="900 31px Arial";ctx.fillText(dinheiro(comp.saldoRestante),largura-margem-24,y+75);ctx.textAlign="left";
+    }else{
+      ctx.textAlign="right";ctx.fillStyle="#087f70";ctx.font="900 16px Arial";ctx.fillText("SEM PENDÊNCIAS NO PERÍODO",largura-margem-24,y+60);ctx.textAlign="left";
+    }
+    y+=totalH+8;
+
+    var declaracao=comp.tipo==="integral"
+      ? "Declaramos que recebemos de "+comp.pessoa+" o valor total de "+dinheiro(comp.totalPago)+", referente às contas relacionadas acima, ficando os lançamentos indicados devidamente quitados."
+      : "Declaramos que recebemos de "+comp.pessoa+" o valor de "+dinheiro(comp.totalPago)+", referente às contas relacionadas acima. Permanece em aberto o saldo de "+dinheiro(comp.saldoRestante)+" no período informado.";
+    ctx.fillStyle="#334155";ctx.font="650 17px Arial";
+    var linhas=quebrar(ctx,declaracao,largura-margem*2-32).slice(0,4);
+    linhas.forEach(function(l,i){ctx.fillText(l,margem+8,y+25+i*25);});
+
+    var footerY=altura-footerH;
+    ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(margem,footerY);ctx.lineTo(largura-margem,footerY);ctx.stroke();
+    ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText("Comprovante gerado e armazenado no CMFin em "+new Date(comp.criadoEm||Date.now()).toLocaleString("pt-BR")+".",margem,footerY+32);
+    ctx.fillText("Este documento registra a baixa dos lançamentos selecionados no sistema.",margem,footerY+55);
+    return canvas;
+  }
+
+  function obterComprovante(id){
+    var lista=(typeof comprovantesTerceiros!=="undefined"&&Array.isArray(comprovantesTerceiros))?comprovantesTerceiros:[];
+    return lista.find(function(c){return String(c.id)===String(id);})||null;
+  }
+  function nomeArquivo(comp){
+    return "comprovante-pagamento-"+slug(comp.pessoa)+"-"+(comp.mesReferencia||"periodo")+"-"+slug(comp.numero)+".png";
+  }
+  function canvasBlob(canvas){
+    return new Promise(function(resolve){canvas.toBlob(resolve,"image/png");});
+  }
+
+  window.cmfinAbrirComprovanteTerceiro = function(id){
+    var comp=obterComprovante(id);
+    if(!comp) return alert("Comprovante não encontrado.");
+    comprovanteAtual=comp;
+    canvasComprovanteAtual=criarCanvasComprovante(comp);
+    var img=document.getElementById("cmfinComprovanteImagem");
+    if(img) img.src=canvasComprovanteAtual.toDataURL("image/png");
+    var titulo=document.getElementById("cmfinComprovanteModalTitulo");
+    var subtitulo=document.getElementById("cmfinComprovanteModalSubtitulo");
+    if(titulo) titulo.textContent=comp.tipo==="integral"?"Comprovante de pagamento":"Comprovante de pagamento parcial";
+    if(subtitulo) subtitulo.textContent=comp.pessoa+" · "+(comp.referencia||referenciaTexto(comp.mesReferencia))+" · "+dinheiro(comp.totalPago);
+    abrir("modalComprovantePagamentoTerceiro");
+  };
+
+  window.cmfinAbrirHistoricoComprovantesTerceiros = function(){
+    var lista=document.getElementById("cmfinHistoricoComprovantesLista");
+    if(!lista) return;
+    var dados=(typeof comprovantesTerceiros!=="undefined"&&Array.isArray(comprovantesTerceiros))?comprovantesTerceiros.slice():[];
+    dados.sort(function(a,b){return String(b.criadoEm||"").localeCompare(String(a.criadoEm||""));});
+    if(!dados.length){
+      lista.innerHTML='<div class="cmfin-pagto-vazio">Nenhum comprovante foi emitido ainda.</div>';
+    }else{
+      lista.innerHTML=dados.map(function(c){
+        var rotulo=c.tipo==="integral"?"Quitado":"Pagamento parcial";
+        return '<div class="cmfin-historico-item">'+
+          '<div><strong>'+esc(c.pessoa||"Terceiro")+' · '+esc(c.referencia||referenciaTexto(c.mesReferencia))+'</strong><span>'+esc(c.numero||"")+' · Pago em '+esc(dataBR(c.dataPagamento))+' · '+esc(c.formaPagamento||"-")+' · '+esc(rotulo)+'</span></div>'+
+          '<div class="cmfin-historico-valor"><strong>'+esc(dinheiro(c.totalPago))+'</strong><button class="btn btn-secondary btn-small" type="button" onclick="cmfinAbrirComprovanteTerceiro('+JSON.stringify(c.id)+')">Abrir</button></div>'+
+        '</div>';
+      }).join("");
+    }
+    abrir("modalHistoricoComprovantesTerceiros");
+  };
+
+  window.cmfinBaixarComprovanteTerceiro = function(){
+    if(!comprovanteAtual||!canvasComprovanteAtual) return alert("Abra um comprovante antes de baixar.");
+    canvasComprovanteAtual.toBlob(function(blob){
+      if(!blob) return alert("Não foi possível gerar a imagem do comprovante.");
+      var url=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=url;a.download=nomeArquivo(comprovanteAtual);document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1500);
+    },"image/png");
+  };
+
+  window.cmfinCopiarComprovanteTerceiro = async function(){
+    if(!comprovanteAtual||!canvasComprovanteAtual) return alert("Abra um comprovante antes de copiar.");
+    try{
+      if(!navigator.clipboard||typeof ClipboardItem==="undefined") throw new Error("clipboard-indisponivel");
+      var blob=await canvasBlob(canvasComprovanteAtual);
+      if(!blob) throw new Error("blob-invalido");
+      await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+      alert("Imagem do comprovante copiada. Agora você pode colar no WhatsApp, e-mail ou outro aplicativo.");
+    }catch(erro){
+      console.error("Falha ao copiar comprovante:",erro);
+      alert("Este navegador não permitiu copiar a imagem diretamente. Use Compartilhar ou Baixar Imagem.");
+    }
+  };
+
+  window.cmfinCompartilharComprovanteTerceiro = async function(){
+    if(!comprovanteAtual||!canvasComprovanteAtual) return alert("Abra um comprovante antes de compartilhar.");
+    var primeiroNome=String(comprovanteAtual.pessoa||"").trim().split(/\s+/)[0]||"";
+    var texto="Olá"+(primeiroNome?", "+primeiroNome:"")+"! Segue o comprovante do pagamento referente a "+(comprovanteAtual.referencia||referenciaTexto(comprovanteAtual.mesReferencia))+", no valor de "+dinheiro(comprovanteAtual.totalPago)+". Obrigado!";
+    try{
+      var blob=await canvasBlob(canvasComprovanteAtual);
+      var arquivo=new File([blob],nomeArquivo(comprovanteAtual),{type:"image/png"});
+      if(navigator.share && (!navigator.canShare || navigator.canShare({files:[arquivo]}))){
+        await navigator.share({title:"Comprovante de pagamento",text:texto,files:[arquivo]});
+        return;
+      }
+      try{if(navigator.clipboard) await navigator.clipboard.writeText(texto);}catch(_e){}
+      window.cmfinBaixarComprovanteTerceiro();
+      alert("O compartilhamento direto não está disponível neste navegador. A imagem foi baixada e a mensagem foi copiada para você enviar pelo WhatsApp.");
+    }catch(erro){
+      if(erro && erro.name==="AbortError") return;
+      console.error("Falha ao compartilhar comprovante:",erro);
+      alert("Não foi possível compartilhar diretamente. Use Copiar Imagem ou Baixar Imagem.");
+    }
+  };
+
+  window.copiarImagemTerceiros = async function(){
+    try{
+      var canvas=document.querySelector("#wrapExportTerceiros canvas");
+      if(!canvas && typeof criarCanvasResumoTerceiros==="function") canvas=criarCanvasResumoTerceiros();
+      if(!canvas) throw new Error("preview-indisponivel");
+      if(!navigator.clipboard||typeof ClipboardItem==="undefined") throw new Error("clipboard-indisponivel");
+      var blob=await canvasBlob(canvas);
+      if(!blob) throw new Error("blob-invalido");
+      await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+      alert("Imagem copiada para a área de transferência.");
+    }catch(erro){
+      console.error("Falha ao copiar resumo de terceiros:",erro);
+      alert("Este navegador não permitiu copiar a imagem diretamente. Use o botão Baixar Imagem.");
+    }
+  };
 })();
 </script>
 
