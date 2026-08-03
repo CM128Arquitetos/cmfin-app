@@ -46280,10 +46280,9 @@ Os outros lançamentos não serão alterados.`;
     var tx=logoOk?margem+245:margem+28;
     ctx.fillStyle="rgba(255,255,255,.72)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+38);
     ctx.fillStyle="#fff";ctx.font="900 31px Arial";ctx.fillText(comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL",tx,margem+78);
-    ctx.fillStyle="rgba(255,255,255,.90)";ctx.font="700 18px Arial";ctx.fillText("Documento "+comp.numero,tx,margem+111);
-    ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+139);
+    ctx.fillStyle="rgba(255,255,255,.90)";ctx.font="700 18px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+116);
 
-    var statusX=largura-margem-320,statusY=margem+43;
+    var statusX=largura-margem-320,statusY=margem+20;
     arredondar(ctx,statusX,statusY,292,88,18);ctx.fillStyle="rgba(255,255,255,.14)";ctx.fill();ctx.strokeStyle="rgba(255,255,255,.28)";ctx.stroke();
     ctx.textAlign="center";ctx.fillStyle="#d1fae5";ctx.font="900 14px Arial";ctx.fillText(comp.tipo==="integral"?"PAGAMENTO CONFIRMADO":"PAGAMENTO PARCIAL",statusX+146,statusY+31);
     ctx.fillStyle="#fff";ctx.font="900 24px Arial";ctx.fillText(comp.tipo==="integral"?"QUITADO":"SALDO EM ABERTO",statusX+146,statusY+63);ctx.textAlign="left";
@@ -46329,8 +46328,6 @@ Os outros lançamentos não serão alterados.`;
 
     var footerY=altura-footerH;
     ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(margem,footerY);ctx.lineTo(largura-margem,footerY);ctx.stroke();
-    ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText("Comprovante gerado e armazenado no CMFin em "+new Date(comp.criadoEm||Date.now()).toLocaleString("pt-BR")+".",margem,footerY+32);
-    ctx.fillText("Este documento registra a baixa dos lançamentos selecionados no sistema.",margem,footerY+55);
     return canvas;
   }
 
