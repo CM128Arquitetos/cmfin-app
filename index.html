@@ -46345,7 +46345,7 @@ Os outros lançamentos não serão alterados.`;
 
     // Table header with separated columns
     arredondar(ctx,areaX,y,areaW,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
-    var xDesc=areaX+16, xData=areaX+585, xOrigem=areaX+710, xParcelaCenter=areaX+845, xValorRight=areaX+areaW-14;
+    var xDesc=areaX+16, xData=areaX+565, xOrigem=areaX+675, xParcelaCenter=areaX+805, xValorRight=areaX+areaW-18;
     ctx.fillStyle="#46635d";ctx.font="900 11px Arial";
     ctx.fillText("DESCRIÇÃO",xDesc,y+25);
     ctx.fillText("DATA",xData,y+25);
@@ -46364,7 +46364,7 @@ Os outros lançamentos não serão alterados.`;
         var origem=item.forma||item.origem||item.banco||item.cartao||"-";
         var parcela=item.parcela||"-";
         var categoria=item.categoria||"";
-        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",470),xDesc,y+27);
+        ctx.fillStyle="#0f172a";ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,item.descricao||"Sem descrição",440),xDesc,y+27);
         if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,240),xDesc,y+49); }
         ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+36);
         ctx.fillText(cortar(ctx,origem,86),xOrigem,y+36);
