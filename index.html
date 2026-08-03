@@ -46262,11 +46262,11 @@ Os outros lançamentos não serão alterados.`;
     }catch(_e){return false;}
   }
   function criarCanvasComprovante(comp){
-    var largura=1080,margem=52,headerH=118,infoH=126,tableHeadH=42,rowH=78;
+    var largura=1080,margem=52,headerH=132,infoH=126,tableHeadH=42,rowH=78;
     var itens=(comp.itens||[]);
     var listaH=tableHeadH+Math.max(1,itens.length)*rowH;
     var resumoH=112,declaracaoH=108,footerH=66;
-    var altura=Math.max(820,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
+    var altura=Math.max(836,margem*2+headerH+infoH+26+listaH+20+resumoH+18+declaracaoH+footerH);
     var canvas=document.createElement("canvas");
     canvas.width=largura; canvas.height=altura;
     var ctx=canvas.getContext("2d");
@@ -46276,19 +46276,24 @@ Os outros lançamentos não serão alterados.`;
 
     var areaX=margem, areaW=largura-margem*2;
 
-    // Header clean/professional
-    arredondar(ctx,areaX,margem,areaW,headerH,22);ctx.fillStyle="#ffffff";ctx.fill();ctx.strokeStyle="#d9e4e0";ctx.stroke();
-    ctx.fillStyle="#0f766e";ctx.fillRect(areaX,margem,areaW,8);
-    var logoOk=desenharLogo(ctx,areaX+18,margem+22,150,54);
-    var tx=logoOk?areaX+190:areaX+24;
-    ctx.fillStyle="#64748b";ctx.font="800 12px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+34);
-    ctx.fillStyle="#0f172a";ctx.font="900 30px Arial";ctx.fillText(cortar(ctx,comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL",610),tx,margem+72);
-    ctx.fillStyle="#475569";ctx.font="700 16px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+98);
+    // Header based on export-image style
+    arredondar(ctx,areaX,margem,areaW,headerH,22);
+    var grad=ctx.createLinearGradient(areaX,margem,areaX+areaW,margem+headerH);
+    grad.addColorStop(0,"#06392f");grad.addColorStop(1,"#0f766e");
+    ctx.fillStyle=grad;ctx.fill();
+    var logoOk=desenharLogo(ctx,areaX+22,margem+26,190,72);
+    var tx=logoOk?areaX+238:areaX+26;
+    var titulo=comp.tipo==="integral"?"COMPROVANTE DE PAGAMENTO":"COMPROVANTE DE PAGAMENTO PARCIAL";
+    var subtitulo=(comp.pessoa||"-") + " · " + (comp.referencia||referenciaTexto(comp.mesReferencia));
+    ctx.fillStyle="rgba(255,255,255,.86)";ctx.font="800 13px Arial";ctx.fillText("CMFIN · GESTÃO FINANCEIRA INTELIGENTE",tx,margem+36);
+    ctx.fillStyle="#fff";ctx.font="900 26px Arial";ctx.fillText(cortar(ctx,titulo,460),tx,margem+70);
+    ctx.font="800 17px Arial";ctx.fillText(cortar(ctx,subtitulo,430),tx,margem+98);
+    ctx.fillStyle="rgba(255,255,255,.92)";ctx.font="700 15px Arial";ctx.fillText("Emitido em "+dataBR(String(comp.criadoEm||"").slice(0,10)),tx,margem+119);
 
-    var badgeW=210,badgeH=56,bx=areaX+areaW-badgeW-20,by=margem+30;
-    arredondar(ctx,bx,by,badgeW,badgeH,16);ctx.fillStyle=comp.tipo==="parcial"?"#fff7ed":"#effaf7";ctx.fill();ctx.strokeStyle=comp.tipo==="parcial"?"#fdba74":"#a7f3d0";ctx.stroke();
-    ctx.textAlign="center";ctx.fillStyle=comp.tipo==="parcial"?"#9a3412":"#0f766e";ctx.font="900 12px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PAGAMENTO CONFIRMADO",bx+badgeW/2,by+22);
-    ctx.font="900 20px Arial";ctx.fillText(comp.tipo==="parcial"?"EM ABERTO":"QUITADO",bx+badgeW/2,by+44);ctx.textAlign="left";
+    var badgeW=230,badgeH=74,bx=areaX+areaW-badgeW-18,by=margem+29;
+    arredondar(ctx,bx,by,badgeW,badgeH,18);ctx.fillStyle="rgba(255,255,255,.14)";ctx.fill();ctx.strokeStyle="rgba(255,255,255,.30)";ctx.stroke();
+    ctx.textAlign="center";ctx.fillStyle="#d1fae5";ctx.font="900 12px Arial";ctx.fillText(comp.tipo==="parcial"?"PAGAMENTO PARCIAL":"PAGAMENTO CONFIRMADO",bx+badgeW/2,by+28);
+    ctx.fillStyle="#fff";ctx.font="900 18px Arial";ctx.fillText(comp.tipo==="parcial"?"EM ABERTO":"QUITADO",bx+badgeW/2,by+53);ctx.textAlign="left";
 
     // Information block
     var y=margem+headerH+18;
@@ -46308,15 +46313,15 @@ Os outros lançamentos não serão alterados.`;
     ctx.fillStyle="#334155";ctx.font="900 13px Arial";ctx.fillText("ITENS PAGOS",areaX+2,y+14);
     y+=24;
 
-    // Table header
+    // Table header with separated columns
     arredondar(ctx,areaX,y,areaW,tableHeadH,14);ctx.fillStyle="#eef5f3";ctx.fill();
-    var xDesc=areaX+16, xData=areaX+610, xOrigem=areaX+730, xParcela=areaX+842, xValor=areaX+areaW-16;
+    var xDesc=areaX+16, xData=areaX+610, xOrigem=areaX+730, xParcelaCenter=areaX+858, xValorRight=areaX+areaW-16;
     ctx.fillStyle="#46635d";ctx.font="900 11px Arial";
     ctx.fillText("DESCRIÇÃO",xDesc,y+25);
     ctx.fillText("DATA",xData,y+25);
     ctx.fillText("ORIGEM",xOrigem,y+25);
-    ctx.fillText("PARCELA",xParcela,y+25);
-    ctx.textAlign="right";ctx.fillText("VALOR",xValor,y+25);ctx.textAlign="left";
+    ctx.textAlign="center";ctx.fillText("PARCELA",xParcelaCenter,y+25);
+    ctx.textAlign="right";ctx.fillText("VALOR",xValorRight,y+25);ctx.textAlign="left";
     y+=tableHeadH;
 
     if(!itens.length){
@@ -46333,8 +46338,8 @@ Os outros lançamentos não serão alterados.`;
         if(categoria){ ctx.fillStyle="#64748b";ctx.font="650 13px Arial";ctx.fillText(cortar(ctx,categoria,260),xDesc,y+49); }
         ctx.fillStyle="#475569";ctx.font="700 14px Arial";ctx.fillText(dataBR(item.vencimento),xData,y+36);
         ctx.fillText(cortar(ctx,origem,92),xOrigem,y+36);
-        ctx.fillText(cortar(ctx,String(parcela),70),xParcela,y+36);
-        ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 18px Arial";ctx.fillText(dinheiro(item.valor),xValor,y+36);ctx.textAlign="left";
+        ctx.textAlign="center";ctx.fillText(cortar(ctx,String(parcela),46),xParcelaCenter,y+36);
+        ctx.textAlign="right";ctx.fillStyle="#0f766e";ctx.font="900 17px Arial";ctx.fillText(dinheiro(item.valor),xValorRight,y+36);ctx.textAlign="left";
         y+=rowH;
       });
     }
