@@ -1,3 +1,4 @@
+<!-- CMFin V47 - Correção segura de “Lembrar usuário e licença” - 2026-08-04 -->
 <!-- CMFin V33 - Comprovantes de pagamento de terceiros, copiar imagem e histórico - 2026-08-02 -->
 <!-- Base: CMFin V31 - Central de Sugestões: layout administrativo e anexos - 2026-07-31 -->
 <!-- CMFin atualização: exclusão de parcelas futuras e reset da divisão automática v6 - 2026-07-16 -->
@@ -8770,7 +8771,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <input id="cmfinLoginLicenca" autocomplete="off" placeholder="Ex.: CMFIN-2026-ELTON" />
       </div>
       <div class="cmfin-login-options">
-        <label><input type="checkbox" id="cmfinLembrarAcesso" checked /><span style="white-space:nowrap;">Lembrar usuário e licença</span></label>
+        <label><input type="checkbox" id="cmfinLembrarAcesso" checked /><span style="white-space:nowrap;" title="A senha não é armazenada neste dispositivo.">Lembrar usuário e licença</span></label>
       </div>
       <div class="cmfin-login-error" id="cmfinLoginErro">Usuário, senha ou licença inválidos.</div>
       <button class="cmfin-login-btn" type="submit">Entrar no sistema</button>
@@ -29892,7 +29893,16 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function getAcessoLembrado(){
-    try { return JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_ACCESS_KEY) || "null"); }
+    try {
+      var salvo = JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_ACCESS_KEY) || "null");
+      // Migração defensiva: versões antigas podiam ter gravado a senha.
+      // O recurso atual lembra somente usuário e licença.
+      if(salvo && Object.prototype.hasOwnProperty.call(salvo, "senha")){
+        delete salvo.senha;
+        localStorage.setItem(CMFIN_REMEMBERED_ACCESS_KEY, JSON.stringify(salvo));
+      }
+      return salvo;
+    }
     catch(e){ return null; }
   }
 
@@ -29923,12 +29933,11 @@ Os outros lançamentos não serão alterados.`;
     return !!(s && s.autenticado && s.usuario && s.licenca);
   }
 
-  function salvarSessao(u, storage){
-    storage = sessionStorage;
-    try{
-      if(storage === sessionStorage) localStorage.removeItem(CMFIN_AUTH_KEY);
-      if(storage === localStorage) sessionStorage.removeItem(CMFIN_AUTH_KEY);
-    }catch(e){}
+  function salvarSessao(u){
+    // A sessão autenticada (que contém a senha necessária à revalidação)
+    // existe somente durante a sessão atual do navegador.
+    var storage = sessionStorage;
+    try{ localStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
     storage.setItem(CMFIN_AUTH_KEY, JSON.stringify({
       autenticado: true,
       usuario: u.usuario,
@@ -30403,7 +30412,7 @@ Os outros lançamentos não serão alterados.`;
           u.senha = novaSenha;
           u.senha_temporaria = false;
           u.senha_alterada_em = new Date().toISOString();
-          salvarSessao(u, storage || sessionStorage);
+          salvarSessao(u);
           if(lembrar) salvarAcessoLembrado(u); else limparAcessoLembrado();
           overlay.style.display = "none";
           overlay.innerHTML = "";
@@ -30421,65 +30430,28 @@ Os outros lançamentos não serão alterados.`;
     });
   }
 
-  async function entrarComAcessoLembrado(){
+  function restaurarAcessoLembrado(){
     var salvo = getAcessoLembrado();
-    if(!salvo || !salvo.usuario || !salvo.senha || !salvo.licenca) return false;
+    if(!salvo || !salvo.usuario || !salvo.licenca) return false;
 
-    try{
-      bloquearSistema();
-      mostrarErro("Validando licença salva...");
+    var usuarioEl = document.getElementById("cmfinLoginUsuario");
+    var licencaEl = document.getElementById("cmfinLoginLicenca");
+    var lembrarEl = document.getElementById("cmfinLembrarAcesso");
 
-      var resultado = await validarSupabase(salvo.usuario, salvo.senha, salvo.licenca);
+    if(usuarioEl && !usuarioEl.value) usuarioEl.value = salvo.usuario || "";
+    if(licencaEl && !licencaEl.value) licencaEl.value = salvo.licenca || "";
+    if(lembrarEl) lembrarEl.checked = true;
 
-      if(!resultado || !resultado.ok){
-        limparSessao();
-        // Se a licença foi bloqueada/vencida, mantém os campos preenchidos para conferência,
-        // mas não entra automaticamente.
-        mostrarErro((resultado && resultado.mensagem) || "Licença bloqueada, vencida ou inválida.");
-        return false;
-      }
-
-      var u = {
-        usuario: resultado.usuario || salvo.usuario,
-        senha: salvo.senha,
-        cliente: resultado.cliente || salvo.cliente || salvo.usuario,
-        licenca: resultado.licenca || salvo.licenca,
-        validade: resultado.validade || salvo.validade || null,
-        tipo_usuario: resultado.tipo_usuario || salvo.tipo_usuario || "usuario",
-        acesso_vitalicio: !!(resultado.acesso_vitalicio || salvo.acesso_vitalicio),
-        bloqueado: !!resultado.bloqueado,
-        acesso_pessoal: resultado.acesso_pessoal !== undefined ? !!resultado.acesso_pessoal : (salvo.acesso_pessoal !== false),
-        acesso_empresarial: resultado.acesso_empresarial !== undefined ? !!resultado.acesso_empresarial : (salvo.acesso_empresarial !== false),
-        limite_dispositivos: Number(resultado.limite_dispositivos || salvo.limite_dispositivos || 1),
-        senha_temporaria: cmfinBool(resultado.senha_temporaria),
-        senha_alterada_em: resultado.senha_alterada_em || null
-      };
-
-      if(u.senha_temporaria === true){
-        await abrirPrimeiroAcessoSenha(u, salvo.senha, localStorage, true);
-        return true;
-      }
-
-      salvarSessao(u, localStorage);
-      salvarAcessoLembrado(u);
-      ocultarErro();
-      liberarSistema();
-      return true;
-    }catch(err){
-      console.warn("Não foi possível validar o acesso lembrado", err);
-      mostrarErro("Não foi possível validar a licença salva. Verifique a internet ou entre manualmente.");
-      return false;
-    }
+    // Não existe login automático sem senha: ela não é persistida no dispositivo.
+    ocultarErro();
+    return true;
   }
 
   async function revalidarSessaoSalva(){
     var sessao = getSessao(sessionStorage);
-    var storage = sessionStorage;
 
-    if(!sessaoMinima(sessao)){
-      sessao = getSessao(localStorage);
-      storage = localStorage;
-    }
+    // Compatibilidade: migra uma sessão legada do localStorage somente para esta sessão.
+    if(!sessaoMinima(sessao)) sessao = getSessao(localStorage);
 
     if(!sessaoMinima(sessao)) return false;
 
@@ -30489,18 +30461,12 @@ Os outros lançamentos não serão alterados.`;
       bloquearSistema();
       mostrarErro("Validando licença online...");
 
-      // Se a sessão antiga não guardou a senha, tenta usar o acesso lembrado ANTES de consultar o Supabase.
+      // Sessões legadas sem senha não podem ser revalidadas automaticamente.
+      // Usuário e licença permanecem preenchidos, mas a senha deve ser informada novamente.
       if(!sessao.senha){
-        var salvo = getAcessoLembrado();
-        if(salvo && salvo.usuario && salvo.senha && salvo.licenca){
-          sessao.senha = salvo.senha;
-          sessao.usuario = sessao.usuario || salvo.usuario;
-          sessao.licenca = sessao.licenca || salvo.licenca;
-        }else{
-          limparSessao();
-          mostrarErro("Por segurança, entre novamente para revalidar sua licença online.");
-          return false;
-        }
+        limparSessao();
+        mostrarErro("Por segurança, informe sua senha novamente para revalidar a licença.");
+        return false;
       }
 
       var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", sessao.licenca);
@@ -30525,11 +30491,11 @@ Os outros lançamentos não serão alterados.`;
         limite_dispositivos: Number(resultado.limite_dispositivos || sessao.limite_dispositivos || 1),
         senha_temporaria: cmfinBool(resultado.senha_temporaria),
         senha_alterada_em: resultado.senha_alterada_em || null
-      }, storage);
+      });
 
-      var sessaoAtualizada = getSessao(storage);
+      var sessaoAtualizada = getSessao(sessionStorage);
       if(sessaoAtualizada && cmfinBool(sessaoAtualizada.senha_temporaria)){
-        await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, storage, storage === localStorage);
+        await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, sessionStorage, !!getAcessoLembrado());
         return true;
       }
 
@@ -30555,7 +30521,6 @@ Os outros lançamentos não serão alterados.`;
 
     var acessoLembrado = getAcessoLembrado();
     if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || localStorage.getItem(CMFIN_LAST_USER_KEY) || "";
-    if(senhaEl && !senhaEl.value && acessoLembrado && acessoLembrado.senha) senhaEl.value = acessoLembrado.senha || "";
     if(licencaEl && !licencaEl.value && acessoLembrado && acessoLembrado.licenca) licencaEl.value = acessoLembrado.licenca || "";
 
     var footer = document.querySelector(".cmfin-login-footer");
@@ -30615,15 +30580,9 @@ Os outros lançamentos não serão alterados.`;
             return;
           }
 
-          if(lembrarEl && lembrarEl.checked) {
-            try{ sessionStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
-            salvarSessao(u, sessionStorage);
-            salvarAcessoLembrado(u);
-          } else {
-            try{ localStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
-            salvarSessao(u, sessionStorage);
-            limparAcessoLembrado();
-          }
+          salvarSessao(u);
+          if(lembrarEl && lembrarEl.checked) salvarAcessoLembrado(u);
+          else limparAcessoLembrado();
 
           ocultarErro();
           liberarSistema();
@@ -30653,7 +30612,7 @@ Os outros lançamentos não serão alterados.`;
 
     posicionarControlesTopo();
     revalidarSessaoSalva().then(function(ok){
-      if(!ok) entrarComAcessoLembrado();
+      if(!ok) restaurarAcessoLembrado();
     });
   }
 
@@ -35589,14 +35548,13 @@ Os outros lançamentos não serão alterados.`;
 
   async function salvarManualForcado(){
     var sessao = getSessao() || {};
-    var lembrado = getAcessoLembrado() || {};
 
-    var usuario = sessao.usuario || lembrado.usuario;
-    var senha = sessao.senha || lembrado.senha;
-    var licenca = sessao.licenca || lembrado.licenca;
+    var usuario = sessao.usuario;
+    var senha = sessao.senha;
+    var licenca = sessao.licenca;
 
     if(!usuario || !senha || !licenca){
-      toast("Não foi possível salvar: sessão incompleta. Saia e entre novamente marcando Lembrar acesso.", "erro");
+      toast("Não foi possível salvar: sua sessão expirou. Entre novamente no CMFin.", "erro");
       return false;
     }
 
@@ -37560,10 +37518,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   async function buscarHistorico(){
-    var s = getSessao() || getLembrado();
+    var s = getSessao();
 
     if(!s || !s.usuario || !s.senha || !s.licenca){
-      toast("Sessão incompleta. Saia e entre novamente marcando Lembrar acesso.", "erro");
+      toast("Sua sessão expirou. Entre novamente no CMFin.", "erro");
       return null;
     }
 
