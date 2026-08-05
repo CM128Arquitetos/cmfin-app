@@ -10,6 +10,7 @@
 <!-- CMFin V54 - Análise financeira sem Gastos por Terceiros; controle mantido separado - 2026-08-04 -->
 <!DOCTYPE html>
 <!-- CMFin V55 - Central de Sugestões com ícone de lâmpada; sino exclusivo para Alertas Inteligentes - 2026-08-04 -->
+<!-- CMFin V56 - Cabeçalho imediato: Sugestões, Novo Registro, Alertas e Ações presentes no HTML inicial - 2026-08-05 -->
 
 <!-- CMFin V32: estrutura HTML normalizada; scripts externos do Kaspersky removidos; senha não persistida no localStorage; rascunhos locais automáticos. -->
 <!-- CMFin atualização: saldo restante geral de terceiros v2 - 2026-07-16 -->
@@ -8772,6 +8773,23 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
   }
 </style>
+
+<style id="cmfin-v56-cabecalho-imediato-css">
+  .topbar .actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;}
+  #cmfinSugestoesBtn,#cmfinAlertasBtn{position:relative!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;align-items:center!important;justify-content:center!important;border:1px solid #d7e2df!important;border-radius:14px!important;background:#fff!important;color:#083b32!important;box-shadow:0 8px 20px rgba(15,23,42,.055)!important;visibility:visible!important;opacity:1!important;}
+  #cmfinSugestoesBtn{order:1!important;display:inline-flex!important;}
+  #cmfinSugestoesBtn .cmfin-sugestoes-icon{display:block;font-size:21px;line-height:1;transform:translateY(-1px);}
+  #cmfinNovoRegistroWrap{order:2!important;display:inline-flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;}
+  #cmfinAlertasBtn{order:3!important;display:inline-grid!important;place-items:center!important;cursor:pointer!important;}
+  #cmfinAlertasBtn svg{width:20px;height:20px;display:block;}
+  #cmfinSugestoesBadge,#cmfinAlertasBadge{position:absolute;right:-6px;top:-7px;min-width:20px;height:20px;padding:0 5px;display:none;align-items:center;justify-content:center;border-radius:999px;background:#dc2626;color:#fff;border:2px solid #fff;font-size:9px;font-weight:950;line-height:1;box-shadow:0 5px 12px rgba(220,38,38,.25);}
+  #cmfinSugestoesBadge.show,#cmfinAlertasBadge.show{display:flex!important;}
+  .topbar .actions .actions-menu-wrap{order:4!important;display:inline-flex!important;align-items:center!important;position:relative!important;visibility:visible!important;opacity:1!important;}
+  #cmfinLicenseBadge{order:5!important;}
+  #cmfinLogoutBtn{order:6!important;}
+  #inputImportarDados{order:99!important;}
+  @media (min-width:901px){.topbar .actions{flex-wrap:nowrap!important;}}
+</style>
 </head>
 <body class="cmfin-lock">
 
@@ -8846,11 +8864,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           <h1 id="tituloModulo">Dashboard</h1>
           <div class="subtitle" id="subtituloModulo">CMFin — Gestão Financeira Inteligente para organizar entradas, saídas, cartões, metas e saldos de forma clara.</div><div class="mode-indicator" id="indicadorModoAtual">Modo Pessoal</div>
         </div>
-        <div class="actions">
+        <div class="actions cmfin-actions-ordered-v2">
+          <button id="cmfinSugestoesBtn" type="button" class="btn btn-secondary cmfin-sugestoes-trigger" title="Central de Sugestões" aria-label="Abrir Central de Sugestões" onclick="event.preventDefault();event.stopPropagation();window.cmfinAbrirSugestoes&&window.cmfinAbrirSugestoes()">
+            <span class="cmfin-sugestoes-icon" aria-hidden="true">💡</span><span id="cmfinSugestoesBadge" class="cmfin-sugestoes-badge">0</span>
+          </button>
           <div class="novo-registro-wrap" id="cmfinNovoRegistroWrap">
             <button id="cmfinNovoRegistroBtn" class="btn btn-primary" type="button" onclick="alternarMenuNovoRegistro(event)">+ Novo Registro</button>
             <div class="novo-registro-dropdown" id="menuNovoRegistro" aria-label="Atalhos de Novo Registro"></div>
           </div>
+          <button id="cmfinAlertasBtn" type="button" title="Alertas Inteligentes" aria-label="Abrir Alertas Inteligentes" onclick="event.preventDefault();event.stopPropagation();window.cmfinAbrirAlertas&&window.cmfinAbrirAlertas()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span id="cmfinAlertasBadge"></span>
+          </button>
           <div class="actions-menu-wrap">
             <button class="btn btn-secondary btn-menu-toggle" onclick="alternarMenuAcoes(event)" title="Mais ações">☰ <span>Ações</span></button>
             <div class="actions-dropdown" id="menuAcoesTopo">
@@ -30473,34 +30497,20 @@ Os outros lançamentos não serão alterados.`;
     var host = document.querySelector(".topbar .actions");
     if(!host) return;
 
+    host.classList.add("cmfin-actions-ordered-v2");
+    var sugestoes = document.getElementById("cmfinSugestoesBtn");
+    var novo = document.getElementById("cmfinNovoRegistroWrap");
+    var alertas = document.getElementById("cmfinAlertasBtn");
     var menuWrap = host.querySelector(".actions-menu-wrap");
     var badge = document.getElementById("cmfinLicenseBadge");
     var logout = document.getElementById("cmfinLogoutBtn");
+    var input = document.getElementById("inputImportarDados");
 
-    if(badge){
-      if(!badge.classList.contains("cmfin-top-license-badge")){
-        badge.classList.add("cmfin-top-license-badge");
-      }
-      if(menuWrap){
-        host.insertBefore(badge, menuWrap);
-      }else{
-        host.insertBefore(badge, host.firstChild);
-      }
-    }
-
-    if(logout){
-      if(menuWrap){
-        if(badge && badge.parentElement === host){
-          if(badge.nextSibling !== logout){
-            host.insertBefore(logout, badge.nextSibling);
-          }
-        }else{
-          host.insertBefore(logout, menuWrap);
-        }
-      }else{
-        host.appendChild(logout);
-      }
-    }
+    if(badge) badge.classList.add("cmfin-top-license-badge");
+    [sugestoes, novo, alertas, menuWrap, badge, logout, input].forEach(function(el){
+      if(el && el.parentElement === host) host.appendChild(el);
+      else if(el) host.appendChild(el);
+    });
   }
 
   function atualizarBadgeLicenca(){
@@ -31221,12 +31231,12 @@ Os outros lançamentos não serão alterados.`;
     position:relative !important;
     display:inline-flex !important;
     align-items:center !important;
-    order:1 !important;
+    order:2 !important;
   }
-  #cmfinNovoRegistroBtn{order:1 !important; white-space:nowrap !important;}
-  .topbar .actions .actions-menu-wrap{order:2 !important; position:relative !important;}
-  #cmfinLicenseBadge{order:3 !important;}
-  #cmfinLogoutBtn{order:4 !important;}
+  #cmfinNovoRegistroBtn{white-space:nowrap !important;}
+  .topbar .actions .actions-menu-wrap{order:4 !important; position:relative !important;}
+  #cmfinLicenseBadge{order:5 !important;}
+  #cmfinLogoutBtn{order:6 !important;}
   .novo-registro-dropdown{
     position:absolute !important;
     top:calc(100% + 10px) !important;
@@ -32061,7 +32071,7 @@ Os outros lançamentos não serão alterados.`;
 <!-- CMFin V8 - Central de Sugestões integrada ao Supabase -->
 <style id="cmfin-sugestoes-v8-css">
   .cmfin-sugestoes-trigger{
-    position:relative;width:44px;min-width:44px;height:44px;padding:0!important;
+    order:1!important;position:relative;width:44px;min-width:44px;height:44px;padding:0!important;
     display:inline-flex!important;align-items:center;justify-content:center;
     border-radius:13px!important;color:#0A221A!important;background:#fff!important;
     border:1px solid #cbd8d5!important;box-shadow:0 3px 10px rgba(15,23,42,.05);
@@ -39598,12 +39608,16 @@ Os outros lançamentos não serão alterados.`;
     var host = document.querySelector(".topbar .actions");
     if(!host) return;
     host.classList.add("cmfin-actions-ordered-v2");
+    var sugestoes = document.getElementById("cmfinSugestoesBtn");
     var novoWrap = findNovoWrap(host);
+    var alertas = document.getElementById("cmfinAlertasBtn");
     var menuWrap = findMenuWrap(host);
     var badge = document.getElementById("cmfinLicenseBadge");
     var logout = document.getElementById("cmfinLogoutBtn");
     var input = document.getElementById("inputImportarDados");
+    if(sugestoes){ host.appendChild(sugestoes); }
     if(novoWrap){ novoWrap.classList.add("cmfin-topbar-action-wrap-v2"); host.appendChild(novoWrap); }
+    if(alertas){ host.appendChild(alertas); }
     if(menuWrap){ menuWrap.classList.add("cmfin-topbar-action-wrap-v2"); host.appendChild(menuWrap); }
     if(badge){ badge.classList.add("cmfin-topbar-action-badge-v2"); host.appendChild(badge); }
     if(logout){ logout.classList.add("cmfin-topbar-action-btn-v2"); host.appendChild(logout); }
@@ -39617,10 +39631,12 @@ Os outros lançamentos não serão alterados.`;
     css.id = "cmfin-topbar-order-actions-v2-style";
     css.textContent = `
       .topbar .actions.cmfin-actions-ordered-v2{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:10px !important;flex-wrap:wrap !important;}
-      .cmfin-actions-ordered-v2 #cmfinNovoRegistroWrap{order:1 !important;}
-      .cmfin-actions-ordered-v2 .actions-menu-wrap{order:2 !important;}
-      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{order:3 !important;}
-      .cmfin-actions-ordered-v2 #cmfinLogoutBtn{order:4 !important;}
+      .cmfin-actions-ordered-v2 #cmfinSugestoesBtn{order:1 !important;}
+      .cmfin-actions-ordered-v2 #cmfinNovoRegistroWrap{order:2 !important;}
+      .cmfin-actions-ordered-v2 #cmfinAlertasBtn{order:3 !important;}
+      .cmfin-actions-ordered-v2 .actions-menu-wrap{order:4 !important;}
+      .cmfin-actions-ordered-v2 #cmfinLicenseBadge{order:5 !important;}
+      .cmfin-actions-ordered-v2 #cmfinLogoutBtn{order:6 !important;}
       .cmfin-actions-ordered-v2 #inputImportarDados{order:99 !important;}
       .cmfin-actions-ordered-v2 #cmfinNovoRegistroBtn,
       .cmfin-actions-ordered-v2 .actions-menu-wrap > .btn,
@@ -46172,9 +46188,9 @@ Os outros lançamentos não serão alterados.`;
 
 <!-- CMFin V53 - Central de Alertas Inteligentes - 2026-08-04 -->
 <style id="cmfin-v53-alertas-inteligentes-css">
-  #cmfinAlertasBtn{position:relative!important;order:2!important;width:44px;height:44px;padding:0!important;display:inline-grid!important;place-items:center!important;border:1px solid #d7e2df!important;border-radius:14px!important;background:#fff!important;color:#083b32!important;cursor:pointer!important;box-shadow:0 8px 20px rgba(15,23,42,.055)!important}
+  #cmfinAlertasBtn{position:relative!important;order:3!important;width:44px;height:44px;padding:0!important;display:inline-grid!important;place-items:center!important;border:1px solid #d7e2df!important;border-radius:14px!important;background:#fff!important;color:#083b32!important;cursor:pointer!important;box-shadow:0 8px 20px rgba(15,23,42,.055)!important}
   #cmfinAlertasBtn:hover{background:#f3faf7!important;transform:translateY(-1px)}
-  #cmfinAlertasBtn svg{width:20px;height:20px;display:block}.topbar .actions .actions-menu-wrap{order:3!important}#cmfinLicenseBadge{order:4!important}#cmfinLogoutBtn{order:5!important}
+  #cmfinAlertasBtn svg{width:20px;height:20px;display:block}.topbar .actions .actions-menu-wrap{order:4!important}#cmfinLicenseBadge{order:5!important}#cmfinLogoutBtn{order:6!important}
   #cmfinAlertasBadge{position:absolute;right:-5px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;border:2px solid #fff;font-size:9px;font-weight:950;box-shadow:0 5px 12px rgba(220,38,38,.25)}#cmfinAlertasBadge.show{display:flex}
   .cmfin-v53-modal{position:fixed;inset:0;z-index:100050;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(3,13,11,.70);backdrop-filter:blur(10px)}.cmfin-v53-modal.open{display:flex}
   .cmfin-v53-shell{width:min(980px,100%);max-height:min(88vh,850px);display:flex;flex-direction:column;overflow:hidden;border-radius:27px;background:#f7f9f8;border:1px solid rgba(255,255,255,.7);box-shadow:0 36px 110px rgba(0,0,0,.38)}
@@ -46256,7 +46272,7 @@ Os outros lançamentos não serão alterados.`;
   function renderConfig(){var c=config(),host=document.getElementById('cmfinAlertTypeSettings');host.innerHTML=Object.keys(tipos).map(function(k){var desc={vencimentos:'Avisa sobre contas vencidas e próximas do vencimento.',recebimentos:'Destaca entradas previstas que ainda não foram recebidas.',resultado:'Avisa quando as saídas superam as entradas do mês.',media:'Compara as despesas com a média dos três meses anteriores.',categorias:'Identifica categorias com aumento acima do limite configurado.',cartoes:'Monitora o uso dos limites cadastrados em Bancos e Cartões.',reserva:'Compara a reserva acumulada com uma base mensal de despesas.',terceiros:'Mostra valores pessoais pendentes com terceiros, sem alterar receitas, despesas, saldo, gráficos ou DRE.',backup:'Lembra quando o salvamento na nuvem está desatualizado.',licenca:'Avisa quando a licença estiver próxima do vencimento.'}[k]||'';return'<label class="cmfin-v53-setting"><input type="checkbox" data-alert-type="'+k+'" '+(c.tipos[k]!==false?'checked':'')+'><span><strong>'+esc(tipos[k])+'</strong><span>'+esc(desc)+'</span></span></label>';}).join('');document.getElementById('cmfinAlertDays').value=c.antecedencia;document.getElementById('cmfinAlertCardPct').value=c.cartaoPercent;document.getElementById('cmfinAlertIncreasePct').value=c.aumentoPercent;document.getElementById('cmfinAlertBackupDays').value=c.backupDias;}
   function saveConfig(){var c=config();document.querySelectorAll('[data-alert-type]').forEach(function(i){c.tipos[i.getAttribute('data-alert-type')]=i.checked;});c.antecedencia=Number(document.getElementById('cmfinAlertDays').value||5);c.cartaoPercent=Number(document.getElementById('cmfinAlertCardPct').value||80);c.aumentoPercent=Number(document.getElementById('cmfinAlertIncreasePct').value||25);c.backupDias=Number(document.getElementById('cmfinAlertBackupDays').value||7);storage().setItem(CONFIG_KEY,JSON.stringify(c));tab='lista';gerar();try{if(typeof mostrarToast==='function')mostrarToast('Configurações de alertas salvas.');}catch(_){} }
   window.cmfinAbrirAlertas=abrir;window.cmfinGerarAlertas=gerar;window.cmfinAlertasAtuais=function(){return cache.slice();};
-  function agenda(){clearTimeout(timer);timer=setTimeout(function(){installButton();gerar();},140);}
+  function agenda(){clearTimeout(timer);installButton();timer=setTimeout(function(){gerar();},0);}
   var oldTudo=window.renderizarTudo;if(typeof oldTudo==='function'&&!oldTudo.__cmfinV53){var w=function(){var r=oldTudo.apply(this,arguments);agenda();return r;};w.__cmfinV53=true;window.renderizarTudo=w;}
   document.addEventListener('DOMContentLoaded',agenda);window.addEventListener('load',agenda);document.addEventListener('cmfin:v52-analysis-updated',agenda);document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-modo],#btnModoPessoal,#btnModoEmpresarial'))setTimeout(agenda,180);},true);setInterval(function(){try{installButton();gerar();}catch(_){}},60000);
 })();
