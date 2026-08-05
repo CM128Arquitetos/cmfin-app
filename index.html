@@ -1,3 +1,4 @@
+<!-- CMFin V50 - Análise Financeira separada por modo: DRE e equipe empresarial ocultas no Pessoal - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
 <!-- V48: módulos explícitos CMFin.Data, CMFin.UI, CMFin.Auth, CMFin.Cloud e CMFin.Reports. -->
 <!-- V48: acesso direto à tabela cmfin_licencas removido; RPCs do Supabase são obrigatórias. -->
@@ -8748,6 +8749,24 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 #dreSimplificada table.dre-table-premium tbody{display:table-row-group!important;}
 #dreSimplificada table.dre-table-premium tr{display:table-row!important;}
 #dreSimplificada table.dre-table-premium td{white-space:normal!important;word-break:break-word!important;overflow-wrap:anywhere!important;}
+</style>
+
+<style id="cmfin-v50-analise-por-modo-css">
+  #dreSimplificada[hidden],
+  #elloExecEquipeCard[hidden]{display:none!important;}
+  #analiseFinanceira .ello-exec-metrics.modo-pessoal{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  @media(max-width:1180px){
+    #analiseFinanceira .ello-exec-metrics.modo-pessoal{
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+  }
+  @media(max-width:720px){
+    #analiseFinanceira .ello-exec-metrics.modo-pessoal{
+      grid-template-columns:1fr!important;
+    }
+  }
 </style>
 </head>
 <body class="cmfin-lock">
@@ -24420,6 +24439,13 @@ Os outros lançamentos não serão alterados.`;
     window.renderizarDRESimplificadaELLO();
   };
   window.renderizarDRESimplificadaELLO=function(){
+    const secaoDRE=document.getElementById('dreSimplificada');
+    const empresarial=(typeof modoAtual!=='undefined' && modoAtual==='empresarial');
+    if(secaoDRE){
+      secaoDRE.hidden=!empresarial;
+      secaoDRE.setAttribute('aria-hidden', empresarial?'false':'true');
+    }
+    if(!empresarial) return;
     preencherDREAtual();
     const mes=mesDRE();
     const receita=receitasPagas(mes);
@@ -24854,10 +24880,11 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function mesDados(mes){
+    const empresarial=(typeof modoAtual!=='undefined' && modoAtual==='empresarial');
     const fix=(typeof gastosFixosDoMes==='function'?gastosFixosDoMes(mes):[]).filter(i=>!isNao(statusFixoSeguro(i,mes)));
     const vari=(typeof gastosVariaveisDoMes==='function'?gastosVariaveisDoMes(mes):[]).filter(i=>!isNao(i.status));
-    const terc=(typeof pagamentosTerceirizadosDoMes==='function'?pagamentosTerceirizadosDoMes(mes):[]).filter(i=>!isNao(i.status));
-    const arq=(typeof pagamentosArquitetosDoMes==='function'?pagamentosArquitetosDoMes(mes):[]).filter(i=>!isNao(i.status));
+    const terc=empresarial ? (typeof pagamentosTerceirizadosDoMes==='function'?pagamentosTerceirizadosDoMes(mes):[]).filter(i=>!isNao(i.status)) : [];
+    const arq=empresarial ? (typeof pagamentosArquitetosDoMes==='function'?pagamentosArquitetosDoMes(mes):[]).filter(i=>!isNao(i.status)) : [];
     const rec=(typeof linhasRecebimentoDoMes==='function'?linhasRecebimentoDoMes(mes):[]).filter(l=>!isNao(l.statusLinha||l.item?.status));
 
     const fixPago=fix.filter(i=>isPago(statusFixoSeguro(i,mes)));
@@ -29312,7 +29339,7 @@ Os outros lançamentos não serão alterados.`;
         <div class="ello-exec-card"><div class="ello-exec-card-head"><div><small>Margem Financeira</small><strong id="elloExecMargemPct">0%</strong></div><span id="elloExecMargemBadge" class="ello-exec-badge neutral">Acompanhar</span></div><div class="ello-exec-mini" id="elloExecMargemTxt">Resultado sobre os recebimentos do período.</div></div>
         <div class="ello-exec-card"><div class="ello-exec-card-head"><div><small>Pressão das Despesas</small><strong id="elloExecComprometimentoPct">0%</strong></div><span id="elloExecCompBadge" class="ello-exec-badge neutral">Acompanhar</span></div><div class="ello-exec-mini" id="elloExecCompTxt">Percentual dos recebimentos consumido pelas saídas.</div></div>
         <div class="ello-exec-card"><div class="ello-exec-card-head"><div><small>Resultado Operacional</small><strong id="elloExecResultado">R$ 0,00</strong></div><span id="elloExecResultadoBadge" class="ello-exec-badge neutral">Neutro</span></div><div class="ello-exec-mini" id="elloExecResultadoTxt">Recebimentos menos saídas pagas do período.</div></div>
-        <div class="ello-exec-card"><div class="ello-exec-card-head"><div><small>Equipe Externa</small><strong id="elloExecEquipe">R$ 0,00</strong></div><span class="ello-exec-badge neutral">Operação</span></div><div class="ello-exec-mini" id="elloExecEquipeTxt">Terceirizados e arquitetos pagos no mês.</div></div>`;
+        <div class="ello-exec-card" id="elloExecEquipeCard"><div class="ello-exec-card-head"><div><small>Equipe Externa</small><strong id="elloExecEquipe">R$ 0,00</strong></div><span class="ello-exec-badge neutral">Operação</span></div><div class="ello-exec-mini" id="elloExecEquipeTxt">Terceirizados e sócios/pró-labore pagos no mês.</div></div>`;
       const stats=shell.querySelector('.analysis-stats-grid');
       if(stats) stats.insertAdjacentElement('afterend', metrics);
       else shell.appendChild(metrics);
@@ -29347,9 +29374,14 @@ Os outros lançamentos não serão alterados.`;
 
   window.atualizarAnaliseExecutiva=function(){
     montarEstrutura();
+    const empresarial=(typeof modoAtual!=='undefined' && modoAtual==='empresarial');
     const d=lerDadosMes();
-    const equipe=d.terceirizados + d.arquitetos;
-    const saidas=d.saidas || (d.fixos+d.variaveis+equipe);
+    const equipe=empresarial ? (d.terceirizados + d.arquitetos) : 0;
+    const saidas=empresarial ? (d.saidas || (d.fixos+d.variaveis+equipe)) : (d.fixos+d.variaveis);
+    const equipeCard=document.getElementById('elloExecEquipeCard');
+    if(equipeCard) equipeCard.hidden=!empresarial;
+    const metrics=document.getElementById('elloExecMetrics');
+    if(metrics) metrics.classList.toggle('modo-pessoal',!empresarial);
     const lucro=d.receita - saidas;
     const margem=d.receita>0 ? lucro/d.receita*100 : 0;
     const comprometimento=d.receita>0 ? saidas/d.receita*100 : 0;
@@ -29372,17 +29404,19 @@ Os outros lançamentos não serão alterados.`;
     if(resBadge){ resBadge.className=badgeClasse(lucro,'lucro'); resBadge.textContent = lucro > 0 ? 'Positivo' : (lucro < 0 ? 'Negativo' : 'Zerado'); }
     setText('elloExecResultadoTxt', lucro > 0 ? 'Há sobra operacional para reserva, caixa ou distribuição.' : (lucro < 0 ? 'Resultado exige ajuste de receita, custos ou prazos.' : 'Recebimentos e saídas estão empatados.'));
 
-    setText('elloExecEquipe', brl(equipe));
-    setText('elloExecEquipeTxt', equipe > 0 ? `${pct(d.receita>0?equipe/d.receita*100:0)} dos recebimentos do período.` : 'Sem pagamentos de equipe externa no mês.');
+    if(empresarial){
+      setText('elloExecEquipe', brl(equipe));
+      setText('elloExecEquipeTxt', equipe > 0 ? `${pct(d.receita>0?equipe/d.receita*100:0)} dos recebimentos do período.` : 'Sem pagamentos de equipe externa no mês.');
+    }
 
     setHTML('elloExecWaterfall', [
       itemWF('Recebimentos pagos', d.receita, base, ''),
       itemWF('Gastos fixos', d.fixos, base, 'blue'),
       itemWF('Gastos variáveis', d.variaveis, base, 'gold'),
-      itemWF('Equipe técnica externa', equipe, base, 'gold'),
+      empresarial ? itemWF('Equipe técnica externa e sócios/pró-labore', equipe, base, 'gold') : '',
       itemWF('Saídas totais', saidas, base, 'red'),
       itemWF('Resultado final', lucro, base, lucro>=0?'':'red')
-    ].join(''));
+    ].filter(Boolean).join(''));
 
     const caixaStatus = lucro > 0 ? 'Saudável' : (lucro === 0 ? 'Neutro' : 'Crítico');
     const margemStatus = margem >= 30 ? 'Excelente' : (margem >= 10 ? 'Atenção' : 'Baixa');
@@ -45922,5 +45956,45 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+<script id="cmfin-v50-analise-por-modo-js">
+(function(){
+  function modoEmpresarial(){
+    try{return typeof modoAtual!=='undefined' && modoAtual==='empresarial';}
+    catch(e){return window.modoAtual==='empresarial';}
+  }
+  function aplicar(){
+    var empresarial=modoEmpresarial();
+    var dre=document.getElementById('dreSimplificada');
+    if(dre){dre.hidden=!empresarial;dre.setAttribute('aria-hidden',empresarial?'false':'true');}
+    var card=document.getElementById('elloExecEquipeCard');
+    if(card)card.hidden=!empresarial;
+    var metrics=document.getElementById('elloExecMetrics');
+    if(metrics)metrics.classList.toggle('modo-pessoal',!empresarial);
+    if(empresarial && typeof window.renderizarDRESimplificadaELLO==='function'){
+      try{window.renderizarDRESimplificadaELLO();}catch(e){console.warn('DRE empresarial:',e);}
+    }
+    if(typeof window.atualizarAnaliseExecutiva==='function'){
+      try{window.atualizarAnaliseExecutiva();}catch(e){console.warn('Análise por modo:',e);}
+    }
+  }
+  window.cmfinAplicarAnalisePorModo=aplicar;
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(aplicar,250);});
+  window.addEventListener('load',function(){setTimeout(aplicar,500);});
+  document.addEventListener('click',function(e){
+    var alvo=e.target&&e.target.closest?e.target.closest('[data-modo],#btnModoPessoal,#btnModoEmpresarial,.mode-option,.modo-option'):null;
+    if(alvo){setTimeout(aplicar,100);setTimeout(aplicar,350);}
+  },true);
+  document.addEventListener('change',function(e){
+    if(e.target && /modo/i.test(e.target.id||'')){setTimeout(aplicar,100);}
+  },true);
+  var antigo=window.renderizarTudo;
+  if(typeof antigo==='function'&&!antigo.__cmfinV50AnaliseModo){
+    var embrulhado=function(){var r=antigo.apply(this,arguments);setTimeout(aplicar,120);return r;};
+    embrulhado.__cmfinV50AnaliseModo=true;
+    window.renderizarTudo=embrulhado;
+  }
+})();
+</script>
 </body>
 </html>
