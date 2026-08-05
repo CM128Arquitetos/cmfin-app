@@ -6,6 +6,7 @@
 <!-- CMFin V33 - Comprovantes de pagamento de terceiros, copiar imagem e histórico - 2026-08-02 -->
 <!-- Base: CMFin V31 - Central de Sugestões: layout administrativo e anexos - 2026-07-31 -->
 <!-- CMFin atualização: exclusão de parcelas futuras e reset da divisão automática v6 - 2026-07-16 -->
+<!-- CMFin V51 - Central de Sugestões compatível com autenticação bcrypt - 2026-08-04 -->
 <!DOCTYPE html>
 <!-- CMFin V32: estrutura HTML normalizada; scripts externos do Kaspersky removidos; senha não persistida no localStorage; rascunhos locais automáticos. -->
 <!-- CMFin atualização: saldo restante geral de terceiros v2 - 2026-07-16 -->
@@ -32217,7 +32218,7 @@ Os outros lançamentos não serão alterados.`;
   </div>
 </div>
 
-<script id="cmfin-sugestoes-v8-js">
+<script id="cmfin-sugestoes-v51-js">
 (function(){
   'use strict';
   var AUTH_KEY='cmfin_auth_session_supabase_v2_revalidate';
@@ -32505,7 +32506,7 @@ Os outros lançamentos não serão alterados.`;
       p_modulo:String(document.getElementById('cmfinSugModulo').value||'Outro').trim(),
       p_titulo:String(document.getElementById('cmfinSugTitulo').value||'').trim(),
       p_descricao:descricaoOriginal,
-      p_versao_sistema:'CMFin Financeiro V10 - Central de Sugestões na paleta da logomarca'
+      p_versao_sistema:'CMFin Financeiro V51 - Central de Sugestões com autenticação segura'
     };
     if(!dados.p_categoria||dados.p_titulo.length<3||dados.p_descricao.length<5){mensagemForm('Preencha a categoria, o título e descreva melhor a sugestão.','error');return;}
     var original=btn?btn.textContent:'';
@@ -32515,7 +32516,7 @@ Os outros lançamentos não serão alterados.`;
       dados.p_descricao=montarDescricaoComAnexos(descricaoOriginal,urlsAnexos);
       if(dados.p_descricao.length>5000) throw new Error('A descrição e os anexos ultrapassaram o limite permitido. Reduza o texto ou a quantidade de arquivos.');
       if(btn) btn.textContent='Enviando sugestão...';
-      var res=await client().rpc('cmfin_enviar_sugestao',dados);
+      var res=await client().rpc('cmfin_v51_enviar_sugestao',dados);
       if(res.error) throw res.error;
       var r=retorno(res.data);
       if(!r.ok) throw new Error(r.mensagem||'Não foi possível enviar a sugestão.');
@@ -32602,7 +32603,7 @@ Os outros lançamentos não serão alterados.`;
     var status=document.getElementById('cmfinSugFiltroStatus');
     var busca=document.getElementById('cmfinSugBusca');
     try{
-      var res=await client().rpc('cmfin_listar_sugestoes_admin',{
+      var res=await client().rpc('cmfin_v51_listar_sugestoes_admin',{
         p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca,
         p_status:status&&status.value!=='Todas'?status.value:null,
         p_busca:busca?String(busca.value||'').trim()||null:null,
@@ -32668,7 +32669,7 @@ Os outros lançamentos não serão alterados.`;
     var old=btn?btn.textContent:'';
     if(btn){btn.disabled=true;btn.textContent='Salvando...';}
     try{
-      var res=await client().rpc('cmfin_atualizar_sugestao_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca,p_id:id,p_status:status.value,p_observacao_admin:String(obs.value||'').trim()||null});
+      var res=await client().rpc('cmfin_v51_atualizar_sugestao_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca,p_id:id,p_status:status.value,p_observacao_admin:String(obs.value||'').trim()||null});
       if(res.error) throw res.error;
       var r=retorno(res.data);if(!r.ok)throw new Error(r.mensagem||'Não foi possível atualizar.');
       adminMensagem('Sugestão atualizada com sucesso.',false);
@@ -32681,7 +32682,7 @@ Os outros lançamentos não serão alterados.`;
     if(!confirm('Excluir definitivamente a sugestão'+(item&&item.titulo?' “'+item.titulo+'”':'')+'?\n\nEssa ação não poderá ser desfeita.')) return;
     var c=credenciais();
     try{
-      var res=await client().rpc('cmfin_excluir_sugestao_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca,p_id:id});
+      var res=await client().rpc('cmfin_v51_excluir_sugestao_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca,p_id:id});
       if(res.error) throw res.error;
       var r=retorno(res.data);if(!r.ok)throw new Error(r.mensagem||'Não foi possível excluir.');
       adminMensagem('Sugestão excluída definitivamente.',false);
@@ -32693,7 +32694,7 @@ Os outros lançamentos não serão alterados.`;
     if(!ehAdmin(c.sessao)){mostrarBadge(0);return;}
     if(!c.usuario||!c.senha||!c.licenca) return;
     try{
-      var res=await client().rpc('cmfin_contar_sugestoes_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca});
+      var res=await client().rpc('cmfin_v51_contar_sugestoes_admin',{p_usuario:c.usuario,p_senha:c.senha,p_licenca:c.licenca});
       if(res.error) throw res.error;
       var r=retorno(res.data);if(r.ok)mostrarBadge(r.nao_lidas||0);
     }catch(err){console.warn('CMFin Sugestões: contador indisponível.',err);}
