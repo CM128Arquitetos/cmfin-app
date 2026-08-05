@@ -1,4 +1,7 @@
-<!-- CMFin V47 - Correção segura de “Lembrar usuário e licença” - 2026-08-04 -->
+<!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
+<!-- V48: módulos explícitos CMFin.Data, CMFin.UI, CMFin.Auth, CMFin.Cloud e CMFin.Reports. -->
+<!-- V48: acesso direto à tabela cmfin_licencas removido; RPCs do Supabase são obrigatórias. -->
+<!-- V48: chamadas de armazenamento passam por CMFin.Storage; senhas nunca são persistidas no localStorage. -->
 <!-- CMFin V33 - Comprovantes de pagamento de terceiros, copiar imagem e histórico - 2026-08-02 -->
 <!-- Base: CMFin V31 - Central de Sugestões: layout administrativo e anexos - 2026-07-31 -->
 <!-- CMFin atualização: exclusão de parcelas futuras e reset da divisão automática v6 - 2026-07-16 -->
@@ -11369,7 +11372,324 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   <div class="ello-toast" id="elloToast"></div>
 
 
-  <script>
+  
+<script id="cmfin-v48-core-modules">
+(function(){
+  "use strict";
+
+  var CMFin = window.CMFin = window.CMFin || {};
+  if(CMFin.version && CMFin.version >= "48.0.0") return;
+
+  var rawLocal = window.localStorage;
+  var rawSession = window.sessionStorage;
+  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
+  var MAIN_KEY = "cmfin_gestao_financeira_inteligente_dados";
+  var OLD_MAIN_KEY = "ello_gestao_inteligente_dados";
+  var LEGACY_DEBTS_KEY = "cmfin_dividas_terceiros";
+
+  function safeParse(value, fallback){
+    try { return JSON.parse(value); } catch(e){ return fallback; }
+  }
+
+  function cloneSafe(value, depth){
+    depth = depth || 0;
+    if(depth > 30) return null;
+    if(value === null || value === undefined) return value;
+    if(typeof value === "string" || typeof value === "boolean") return value;
+    if(typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if(Array.isArray(value)) return value.map(function(item){ return cloneSafe(item, depth + 1); });
+    if(typeof value === "object"){
+      var out = {};
+      Object.keys(value).forEach(function(key){
+        if(key === "__proto__" || key === "prototype" || key === "constructor") return;
+        out[key] = cloneSafe(value[key], depth + 1);
+      });
+      return out;
+    }
+    return null;
+  }
+
+  function removeSensitiveFields(obj){
+    if(!obj || typeof obj !== "object") return obj;
+    if(Array.isArray(obj)){
+      obj.forEach(removeSensitiveFields);
+      return obj;
+    }
+    Object.keys(obj).forEach(function(key){
+      var low = String(key).toLowerCase();
+      if(low === "senha" || low === "password" || low === "p_senha" || low === "access_token" || low === "refresh_token"){
+        delete obj[key];
+        return;
+      }
+      removeSensitiveFields(obj[key]);
+    });
+    return obj;
+  }
+
+  function isSensitiveLocalKey(key){
+    key = String(key || "");
+    return key === AUTH_KEY ||
+      key === REMEMBER_KEY ||
+      key.indexOf("cmfin_auth_session") === 0 ||
+      key.indexOf("cmfin_remembered_access") === 0;
+  }
+
+  function prepareValue(scope, key, value){
+    value = String(value);
+    if(scope !== "local" || !isSensitiveLocalKey(key)) return value;
+    var parsed = safeParse(value, null);
+    if(!parsed || typeof parsed !== "object") return value;
+    removeSensitiveFields(parsed);
+    return JSON.stringify(parsed);
+  }
+
+  function emitStorageChange(scope, action, key){
+    try{
+      window.dispatchEvent(new CustomEvent("cmfin:storage-change", {
+        detail:{scope:scope, action:action, key:key || "", at:new Date().toISOString()}
+      }));
+    }catch(e){}
+  }
+
+  function makeStorageFacade(raw, scope){
+    var api = {
+      getItem:function(key){
+        try { return raw.getItem(String(key)); } catch(e){ console.warn("CMFin Storage getItem:", e); return null; }
+      },
+      setItem:function(key, value){
+        key = String(key);
+        try{
+          raw.setItem(key, prepareValue(scope, key, value));
+          emitStorageChange(scope, "set", key);
+          return true;
+        }catch(e){
+          console.error("CMFin Storage setItem:", e);
+          try{ window.dispatchEvent(new CustomEvent("cmfin:storage-error", {detail:{scope:scope,key:key,error:String(e && e.message || e)}})); }catch(_e){}
+          return false;
+        }
+      },
+      removeItem:function(key){
+        key = String(key);
+        try{ raw.removeItem(key); emitStorageChange(scope, "remove", key); return true; }
+        catch(e){ console.warn("CMFin Storage removeItem:", e); return false; }
+      },
+      clear:function(){
+        try{ raw.clear(); emitStorageChange(scope, "clear", ""); return true; }
+        catch(e){ console.warn("CMFin Storage clear:", e); return false; }
+      },
+      key:function(index){
+        try{ return raw.key(index); }catch(e){ return null; }
+      },
+      getJSON:function(key, fallback){
+        var rawValue = api.getItem(key);
+        return rawValue == null ? fallback : safeParse(rawValue, fallback);
+      },
+      setJSON:function(key, value){
+        return api.setItem(key, JSON.stringify(cloneSafe(value, 0)));
+      },
+      raw:raw
+    };
+    Object.defineProperty(api, "length", {
+      enumerable:true,
+      configurable:false,
+      get:function(){ try{return raw.length;}catch(e){return 0;} }
+    });
+    return api;
+  }
+
+  var Storage = CMFin.Storage = {
+    local:makeStorageFacade(rawLocal, "local"),
+    session:makeStorageFacade(rawSession, "session"),
+    parse:safeParse,
+    cloneSafe:cloneSafe
+  };
+
+  var UI = CMFin.UI = {
+    escapeHTML:function(value){
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch){
+        return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch];
+      });
+    },
+    safeURL:function(value, allowData){
+      var url = String(value == null ? "" : value).trim();
+      if(!url) return "";
+      if(/^javascript:/i.test(url) || /^vbscript:/i.test(url)) return "";
+      if(/^data:/i.test(url) && !allowData) return "";
+      return url;
+    },
+    setText:function(target, value){
+      var el = typeof target === "string" ? document.querySelector(target) : target;
+      if(el) el.textContent = value == null ? "" : String(value);
+      return el;
+    },
+    clear:function(target){
+      var el = typeof target === "string" ? document.querySelector(target) : target;
+      if(el) while(el.firstChild) el.removeChild(el.firstChild);
+      return el;
+    },
+    create:function(tag, attrs, text){
+      var el = document.createElement(tag);
+      Object.keys(attrs || {}).forEach(function(key){
+        var val = attrs[key];
+        if(key === "class") el.className = String(val || "");
+        else if(key === "text") el.textContent = String(val == null ? "" : val);
+        else if(key.indexOf("on") === 0) return;
+        else if(key === "href" || key === "src") el.setAttribute(key, UI.safeURL(val, key === "src"));
+        else el.setAttribute(key, String(val));
+      });
+      if(text !== undefined) el.textContent = String(text == null ? "" : text);
+      return el;
+    }
+  };
+
+  var Data = CMFin.Data = {
+    MAIN_KEY:MAIN_KEY,
+    OLD_MAIN_KEY:OLD_MAIN_KEY,
+    LEGACY_DEBTS_KEY:LEGACY_DEBTS_KEY,
+    normalizeSnapshot:function(value){ return cloneSafe(value, 0); },
+    getMainBase:function(){
+      var raw = Storage.local.getItem(MAIN_KEY) || Storage.local.getItem(OLD_MAIN_KEY);
+      var parsed = safeParse(raw || "null", null);
+      return parsed && typeof parsed === "object" ? cloneSafe(parsed, 0) : null;
+    },
+    setMainBase:function(base){
+      return Storage.local.setJSON(MAIN_KEY, cloneSafe(base, 0));
+    },
+    getPersonalDebts:function(){
+      var base = Data.getMainBase();
+      var list = base && base.modos && base.modos.pessoal && base.modos.pessoal.dividasTerceiros;
+      if(Array.isArray(list)) return cloneSafe(list, 0);
+      var legacy = Storage.local.getJSON(LEGACY_DEBTS_KEY, []);
+      if(Array.isArray(legacy)){
+        Data.setPersonalDebts(legacy);
+        return cloneSafe(legacy, 0);
+      }
+      return [];
+    },
+    setPersonalDebts:function(list){
+      list = Array.isArray(list) ? cloneSafe(list, 0) : [];
+      var base = Data.getMainBase() || {versaoEstrutura:2,modoAtual:"pessoal",modos:{pessoal:{},empresarial:{}}};
+      base.versaoEstrutura = Math.max(2, Number(base.versaoEstrutura || 0));
+      base.modos = base.modos || {};
+      base.modos.pessoal = base.modos.pessoal || {};
+      base.modos.empresarial = base.modos.empresarial || {};
+      base.modos.pessoal.dividasTerceiros = list;
+      Data.setMainBase(base);
+      // Espelho temporário para módulos legados; a fonte principal é a base unificada.
+      Storage.local.setJSON(LEGACY_DEBTS_KEY, list);
+      return list;
+    },
+    migrate:function(){
+      var base = Data.getMainBase();
+      var legacy = Storage.local.getJSON(LEGACY_DEBTS_KEY, null);
+      if(Array.isArray(legacy) && (!base || !base.modos || !base.modos.pessoal || !Array.isArray(base.modos.pessoal.dividasTerceiros))){
+        Data.setPersonalDebts(legacy);
+      }
+    }
+  };
+
+  var Auth = CMFin.Auth = {
+    AUTH_KEY:AUTH_KEY,
+    REMEMBER_KEY:REMEMBER_KEY,
+    getSession:function(){ return Storage.session.getJSON(AUTH_KEY, null); },
+    setSession:function(session){ return Storage.session.setJSON(AUTH_KEY, session || {}); },
+    getRemembered:function(){ return Storage.local.getJSON(REMEMBER_KEY, null); },
+    clear:function(){
+      Storage.session.removeItem(AUTH_KEY);
+      Storage.local.removeItem(AUTH_KEY);
+    },
+    scrubLegacy:function(){
+      var remembered = Storage.local.getJSON(REMEMBER_KEY, null);
+      if(remembered && typeof remembered === "object"){
+        removeSensitiveFields(remembered);
+        Storage.local.setJSON(REMEMBER_KEY, remembered);
+      }
+      var legacySession = Storage.local.getJSON(AUTH_KEY, null);
+      if(legacySession && typeof legacySession === "object"){
+        removeSensitiveFields(legacySession);
+        Storage.local.setJSON(AUTH_KEY, legacySession);
+      }
+    }
+  };
+
+  var Cloud = CMFin.Cloud = {
+    timer:null,
+    paused:false,
+    autoEnabled:false,
+    schedule:function(reason, delay){
+      if(Cloud.paused || !Cloud.autoEnabled) return;
+      clearTimeout(Cloud.timer);
+      Cloud.timer = setTimeout(function(){
+        if(typeof window.cmfinSalvarDadosNuvem === "function"){
+          Promise.resolve(window.cmfinSalvarDadosNuvem(true)).catch(function(e){
+            console.warn("CMFin Cloud schedule:", reason || "alteração", e);
+          });
+        }
+      }, Number(delay || 1400));
+    },
+    collectLocalData:function(ignore){
+      var out = {};
+      for(var i=0;i<Storage.local.length;i++){
+        var key = Storage.local.key(i);
+        if(!key || (ignore && ignore(key))) continue;
+        out[key] = Storage.local.getItem(key);
+      }
+      return out;
+    },
+    pause:function(){ Cloud.paused = true; clearTimeout(Cloud.timer); },
+    resume:function(){ Cloud.paused = false; },
+    enableAuto:function(){ Cloud.autoEnabled = true; Cloud.paused = false; },
+    disableAuto:function(){ Cloud.autoEnabled = false; clearTimeout(Cloud.timer); }
+  };
+
+  var Reports = CMFin.Reports = {
+    safeFilename:function(name, ext){
+      var base = String(name || "relatorio")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "relatorio";
+      ext = String(ext || "").replace(/^\./, "").replace(/[^a-zA-Z0-9]/g, "");
+      return ext ? base + "." + ext : base;
+    },
+    text:function(value){ return UI.escapeHTML(value); }
+  };
+
+  CMFin.Security = {
+    cloneSafe:cloneSafe,
+    removeSensitiveFields:removeSensitiveFields,
+    isSensitiveLocalKey:isSensitiveLocalKey
+  };
+
+  CMFin.Modules = {
+    dados:Data,
+    interface:UI,
+    autenticacao:Auth,
+    nuvem:Cloud,
+    relatorios:Reports
+  };
+  CMFin.version = "48.0.0";
+
+  Auth.scrubLegacy();
+  Data.migrate();
+
+  window.addEventListener("cmfin:storage-change", function(ev){
+    var detail = ev && ev.detail || {};
+    if(detail.scope !== "local" || isSensitiveLocalKey(detail.key)) return;
+    Cloud.schedule("armazenamento:" + (detail.key || "geral"), 1600);
+  });
+
+  function start(){
+    // O CMFin mantém a sincronização manual para evitar que um reset local
+    // substitua automaticamente um backup válido da nuvem.
+    Cloud.disableAuto();
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
+  else start();
+})();
+</script>
+
+<script>
     const STORAGE_KEY = "cmfin_gestao_financeira_inteligente_dados";
     const STORAGE_KEY_OLD = "ello_gestao_inteligente_dados";
 
@@ -11811,7 +12131,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       let dividasTerceirosSnapshot = [];
       if (modoAtual === "pessoal") {
         try {
-          const salvoDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "null");
+          const salvoDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "null");
           if (Array.isArray(salvoDividas)) dividasTerceirosSnapshot = salvoDividas;
           else {
             const baseAtual = carregarBaseStorage();
@@ -11831,7 +12151,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function aplicarSnapshot(dados) {
-      const base = dados || criarDadosVazios();
+      const base = CMFin.Data.normalizeSnapshot(dados || criarDadosVazios());
 
       categorias = base.categorias || [...categoriasPadrao];
       configuracoes = base.configuracoes || { distribuicao: { essenciais: 30, investimentos: 30, lazer: 40 } };
@@ -11853,12 +12173,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if (modoAtual === "pessoal" && Object.prototype.hasOwnProperty.call(base, "dividasTerceiros")) {
         const listaDividas = Array.isArray(base.dividasTerceiros) ? base.dividasTerceiros : [];
-        try { localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividas)); } catch (e) {}
+        try { CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividas)); } catch (e) {}
       }
     }
 
     function carregarBaseStorage() {
-      const salvo = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD);
+      const salvo = CMFin.Storage.local.getItem(STORAGE_KEY) || CMFin.Storage.local.getItem(STORAGE_KEY_OLD);
       if (!salvo) {
         return {
           versaoEstrutura: 2,
@@ -11902,7 +12222,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function salvarBaseStorage(base) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+      CMFin.Storage.local.setItem(STORAGE_KEY, JSON.stringify(base));
     }
 
     function salvarDados() {
@@ -12103,7 +12423,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
       if (modoNormalizado === "pessoal") {
         try {
-          const listaDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "[]");
+          const listaDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "[]");
           dadosPacote.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
         } catch (e) {
           dadosPacote.dividasTerceiros = Array.isArray(dadosPacote.dividasTerceiros) ? dadosPacote.dividasTerceiros : [];
@@ -12213,7 +12533,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         salvarBaseStorage(base);
 
         if (Array.isArray(base.modos.pessoal.dividasTerceiros)) {
-          try { localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(base.modos.pessoal.dividasTerceiros)); } catch (e) {}
+          try { CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(base.modos.pessoal.dividasTerceiros)); } catch (e) {}
         }
 
         aplicarSnapshot(base.modos[modoAtual] || criarDadosVazios());
@@ -13051,13 +13371,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       `;
     }
 
-    function escaparHtml(valor) {
-      return String(valor || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    function escaparHtml(valor){
+      return CMFin.UI.escapeHTML(valor);
     }
 
     function corMarcaFinanceira(nome) {
@@ -14700,7 +15015,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     async function buscarCotacaoBrapi(ticker) {
-      const token = localStorage.getItem("ELLO_BRAPI_TOKEN") || "";
+      const token = CMFin.Storage.local.getItem("ELLO_BRAPI_TOKEN") || "";
       const url = `https://brapi.dev/api/quote/${encodeURIComponent(ticker)}?range=1d&interval=1d${token ? `&token=${encodeURIComponent(token)}` : ""}`;
       const resp = await fetch(url, { cache: "no-store" });
       if (!resp.ok) throw new Error("BRAPI indisponível");
@@ -23395,9 +23710,9 @@ Os outros lançamentos não serão alterados.`;
   function addMes(m,q){try{return adicionarMeses(m,q)}catch(e){const [a,mm]=String(m).split('-').map(Number);const d=new Date(a,mm-1+q,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}}
   function mesAtualTela(){return document.getElementById('dashboardMes')?.value||INICIO}
   function modo(){try{return modoAtual==='pessoal'?'pessoal':'empresarial'}catch(e){return 'empresarial'}}
-  function extrasTodos(){try{return JSON.parse(localStorage.getItem(EXTRA_KEY)||'{}')||{}}catch(e){return {}}}
+  function extrasTodos(){try{return JSON.parse(CMFin.Storage.local.getItem(EXTRA_KEY)||'{}')||{}}catch(e){return {}}}
   function extras(){const all=extrasTodos();const m=modo();all[m]=all[m]||{fechamentos:{},ajustes:[]};all[m].fechamentos=all[m].fechamentos||{};all[m].ajustes=Array.isArray(all[m].ajustes)?all[m].ajustes:[];return all[m]}
-  function salvarExtras(data){const all=extrasTodos();all[modo()]=data;localStorage.setItem(EXTRA_KEY,JSON.stringify(all))}
+  function salvarExtras(data){const all=extrasTodos();all[modo()]=data;CMFin.Storage.local.setItem(EXTRA_KEY,JSON.stringify(all))}
   function fechado(m){return !!extras().fechamentos[m]}
   function ehNao(status){const v=norm(status);return ['naoincluir','nao incluir','nao incluso','nao incluido','desconsiderado','fora do calculo'].includes(v)}
   function statusMes(item,mes,tipo){
@@ -23949,7 +24264,7 @@ Os outros lançamentos não serão alterados.`;
   function norm(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
   function ehNao(status){const v=norm(status);return ['naoincluir','nao incluir','nao incluso','nao incluido','desconsiderado','fora do calculo'].includes(v);}
   function modo(){try{return modoAtual==='pessoal'?'pessoal':'empresarial';}catch(e){return 'empresarial';}}
-  function extrasTodos(){try{return JSON.parse(localStorage.getItem(EXTRA_KEY)||'{}')||{};}catch(e){return {};}}
+  function extrasTodos(){try{return JSON.parse(CMFin.Storage.local.getItem(EXTRA_KEY)||'{}')||{};}catch(e){return {};}}
   function extras(){const all=extrasTodos();const m=modo();return all[m]||{fechamentos:{},ajustes:[]};}
   function soma(arr,campo){return (arr||[]).reduce((a,i)=>a+n(campo?i[campo]:(i.valorRecebido??i.valor)),0);}
   function statusFixo(item,mes){try{return statusFixoNoMes(item,mes);}catch(e){return item?.status||'Pendente';}}
@@ -24052,7 +24367,7 @@ Os outros lançamentos não serão alterados.`;
   function reservaMes(mes){try{return n((configuracoes?.cofre?.planos||{})[mes]?.reserva);}catch(e){return 0;}}
   function ajusteLiquidoMes(mes){
     try{
-      const all=JSON.parse(localStorage.getItem('ello_cofre_empresa_pro_v1')||'{}')||{};
+      const all=JSON.parse(CMFin.Storage.local.getItem('ello_cofre_empresa_pro_v1')||'{}')||{};
       const modoAtualSeguro=(typeof modoAtual!=='undefined' && modoAtual==='pessoal')?'pessoal':'empresarial';
       const arr=Array.isArray(all?.[modoAtualSeguro]?.ajustes)?all[modoAtualSeguro].ajustes:[];
       return arr.filter(a=>a.mes===mes&&!ehNao(a.status)).reduce((acc,a)=>acc+(a.tipo==='Saída'?-n(a.valor):n(a.valor)),0);
@@ -24402,18 +24717,18 @@ Os outros lançamentos não serão alterados.`;
   const AUTO_BACKUP_KEY_OLD='ELLO_AUTO_BACKUP_PRE_IMPORT_V1';
 
   function getPrefs(){
-    try{return JSON.parse(localStorage.getItem(UI_KEY)||localStorage.getItem(UI_KEY_OLD)||'{}');}
+    try{return JSON.parse(CMFin.Storage.local.getItem(UI_KEY)||CMFin.Storage.local.getItem(UI_KEY_OLD)||'{}');}
     catch(e){return {};}
   }
   function savePrefs(p){
-    localStorage.setItem(UI_KEY, JSON.stringify(p||{}));
+    CMFin.Storage.local.setItem(UI_KEY, JSON.stringify(p||{}));
   }
   function brl(v){
     try{return moeda(v||0);}
     catch(e){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
   }
   function esc(s){
-    return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    return CMFin.UI.escapeHTML(s);
   }
   function norm(v){
     return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -24485,7 +24800,7 @@ Os outros lançamentos não serão alterados.`;
   };
 
   window.elloBaixarBackupPreImportacao=function(){
-    const v=localStorage.getItem(AUTO_BACKUP_KEY)||localStorage.getItem(AUTO_BACKUP_KEY_OLD);
+    const v=CMFin.Storage.local.getItem(AUTO_BACKUP_KEY)||CMFin.Storage.local.getItem(AUTO_BACKUP_KEY_OLD);
     if(!v){alert('Ainda não existe backup pré-importação salvo.');return;}
     download('CMFin-backup-pre-importacao.json', v);
   };
@@ -24503,7 +24818,7 @@ Os outros lançamentos não serão alterados.`;
           input.value='';
           return;
         }
-        localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(snapshot(),null,2));
+        CMFin.Storage.local.setItem(AUTO_BACKUP_KEY, JSON.stringify(snapshot(),null,2));
 
         if(Array.isArray(dados.categorias)) categorias=dados.categorias;
         if(dados.configuracoes) configuracoes=dados.configuracoes;
@@ -26601,8 +26916,8 @@ Os outros lançamentos não serão alterados.`;
   function rcDocTipo(tipo){const mapa={pix:'Comprovante Pix',nota_fiscal:'Nota fiscal',recibo:'Recibo',boleto:'Boleto',contrato:'Contrato',pagamento:'Comprovante de pagamento',contador:'Arquivo para contador',outro:'Outro documento'};return mapa[tipo]||tipo||'-';}
   function rcDocsModo(){try{const base=carregarBaseStorage();return Array.isArray(base?.modos?.[modoAtual]?.documentosFinanceiros)?base.modos[modoAtual].documentosFinanceiros:[];}catch(e){return [];}}
   function rcObsKey(){return 'ello_relatorio_contador_obs_v1_'+modoAtual+'_'+(document.getElementById('contadorMes')?.value||rcMesAtual());}
-  function rcSalvarObs(){try{localStorage.setItem(rcObsKey(),document.getElementById('contadorObservacoes')?.value||'');}catch(e){}}
-  function rcCarregarObs(){try{const el=document.getElementById('contadorObservacoes'); if(el) el.value=localStorage.getItem(rcObsKey())||'';}catch(e){}}
+  function rcSalvarObs(){try{CMFin.Storage.local.setItem(rcObsKey(),document.getElementById('contadorObservacoes')?.value||'');}catch(e){}}
+  function rcCarregarObs(){try{const el=document.getElementById('contadorObservacoes'); if(el) el.value=CMFin.Storage.local.getItem(rcObsKey())||'';}catch(e){}}
   function rcLinha(nome,tipo,valor,data,status,ref){return {nome:nome||'-',tipo:tipo||'-',valor:rcValor(valor),data:data||'',status:status||'',ref:ref||''};}
   function rcSomar(lista){return lista.reduce((a,i)=>a+rcValor(i.valor),0);}
   function rcTabela(lista, vazio){
@@ -27566,7 +27881,7 @@ Os outros lançamentos não serão alterados.`;
     }catch(e){}
 
     try{
-      const base = JSON.parse(localStorage.getItem('ello_gestao_inteligente_dados') || '{}');
+      const base = JSON.parse(CMFin.Storage.local.getItem('ello_gestao_inteligente_dados') || '{}');
       return base.modoAtual === 'empresarial' ? 'empresarial' : 'pessoal';
     }catch(e){}
 
@@ -28928,7 +29243,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function esc(s){
-    return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return CMFin.UI.escapeHTML(s);
   }
 
   function lerDadosMes(){
@@ -29806,11 +30121,12 @@ Os outros lançamentos não serão alterados.`;
     var base = Math.max.apply(null, [1].concat(rows.map(function(r){return Math.abs(r.value);} )));
     list.innerHTML = rows.map(function(r){
       var pct = clamp(Math.abs(r.value) / base * 100, 0, 100).toFixed(2);
-      var safeLabel = r.label.replace(/"/g,'&quot;');
+      var safeLabel = CMFin.UI.escapeHTML(r.label);
+      var safeValue = CMFin.UI.escapeHTML(r.valueText);
       return '<div class="dre-flow-clean-row '+r.cls+'">'
-        + '<span class="dre-flow-clean-label" title="'+safeLabel+'">'+r.label+'</span>'
+        + '<span class="dre-flow-clean-label" title="'+safeLabel+'">'+safeLabel+'</span>'
         + '<div class="dre-flow-clean-bar"><i style="width:'+pct+'%"></i></div>'
-        + '<em class="dre-flow-clean-value">'+r.valueText+'</em>'
+        + '<em class="dre-flow-clean-value">'+safeValue+'</em>'
         + '</div>';
     }).join('');
   }
@@ -29879,10 +30195,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function getDeviceId(){
-    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    var id = CMFin.Storage.local.getItem(CMFIN_DEVICE_KEY);
     if(!id){
       id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
-      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+      CMFin.Storage.local.setItem(CMFIN_DEVICE_KEY, id);
     }
     return id;
   }
@@ -29894,12 +30210,12 @@ Os outros lançamentos não serão alterados.`;
 
   function getAcessoLembrado(){
     try {
-      var salvo = JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_ACCESS_KEY) || "null");
+      var salvo = JSON.parse(CMFin.Storage.local.getItem(CMFIN_REMEMBERED_ACCESS_KEY) || "null");
       // Migração defensiva: versões antigas podiam ter gravado a senha.
       // O recurso atual lembra somente usuário e licença.
       if(salvo && Object.prototype.hasOwnProperty.call(salvo, "senha")){
         delete salvo.senha;
-        localStorage.setItem(CMFIN_REMEMBERED_ACCESS_KEY, JSON.stringify(salvo));
+        CMFin.Storage.local.setItem(CMFIN_REMEMBERED_ACCESS_KEY, JSON.stringify(salvo));
       }
       return salvo;
     }
@@ -29907,7 +30223,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function salvarAcessoLembrado(u){
-    localStorage.setItem(CMFIN_REMEMBERED_ACCESS_KEY, JSON.stringify({
+    CMFin.Storage.local.setItem(CMFIN_REMEMBERED_ACCESS_KEY, JSON.stringify({
       usuario: u.usuario,
       cliente: u.cliente || u.usuario,
       licenca: u.licenca,
@@ -29926,7 +30242,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function limparAcessoLembrado(){
-    localStorage.removeItem(CMFIN_REMEMBERED_ACCESS_KEY);
+    CMFin.Storage.local.removeItem(CMFIN_REMEMBERED_ACCESS_KEY);
   }
 
   function sessaoMinima(s){
@@ -29936,8 +30252,8 @@ Os outros lançamentos não serão alterados.`;
   function salvarSessao(u){
     // A sessão autenticada (que contém a senha necessária à revalidação)
     // existe somente durante a sessão atual do navegador.
-    var storage = sessionStorage;
-    try{ localStorage.removeItem(CMFIN_AUTH_KEY); }catch(e){}
+    var storage = CMFin.Storage.session;
+    try{ CMFin.Storage.local.removeItem(CMFIN_AUTH_KEY); }catch(e){}
     storage.setItem(CMFIN_AUTH_KEY, JSON.stringify({
       autenticado: true,
       usuario: u.usuario,
@@ -29957,15 +30273,15 @@ Os outros lançamentos não serão alterados.`;
       loginEm: new Date().toISOString(),
       ultimoCheckOnline: new Date().toISOString()
     }));
-    localStorage.setItem(CMFIN_LAST_USER_KEY, u.usuario || "");
+    CMFin.Storage.local.setItem(CMFIN_LAST_USER_KEY, u.usuario || "");
     try{
       window.dispatchEvent(new CustomEvent("cmfin:sessao-atualizada", { detail: { usuario: u.usuario || "", licenca: u.licenca || "" } }));
     }catch(e){}
   }
 
   function limparSessao(){
-    localStorage.removeItem(CMFIN_AUTH_KEY);
-    sessionStorage.removeItem(CMFIN_AUTH_KEY);
+    CMFin.Storage.local.removeItem(CMFIN_AUTH_KEY);
+    CMFin.Storage.session.removeItem(CMFIN_AUTH_KEY);
   }
 
   function liberarSistema(){
@@ -30071,138 +30387,9 @@ Os outros lançamentos não serão alterados.`;
     }).filter(function(item){ return !!item.id; });
   }
 
-  async function validarLicencaDiretoTabela(usuario, senha, licenca, mensagemOriginal){
-    var client = getSupabaseClient();
-    var deviceId = getDeviceId();
-    var hoje = hojeISO();
-
-    var query = client
-      .from("cmfin_licencas")
-      .select("id,licenca,cliente,usuario,senha,status,validade,device_id,ativada_em,ultimo_login,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,dispositivos_autorizados,senha_temporaria,senha_alterada_em")
-      .eq("usuario", normalizar(usuario))
-      .eq("senha", normalizar(senha))
-      .eq("licenca", normalizarLicenca(licenca))
-      .maybeSingle();
-
-    var { data: row, error } = await query;
-    if(error){
-      console.warn("Falha no fallback direto da tabela cmfin_licencas:", error);
-      return { ok:false, mensagem: mensagemOriginal || "Não foi possível validar a licença no servidor." };
-    }
-    if(!row) return { ok:false, mensagem:"Usuário, senha ou licença inválidos." };
-
-    if(cmfinStatusBloqueado(row)){
-      return { ok:false, mensagem:"Acesso bloqueado pelo administrador." };
-    }
-
-    var ehAdmin = cmfinEhAdmin(row);
-    if(!ehAdmin && row.validade && String(row.validade).slice(0,10) < hoje){
-      return { ok:false, mensagem:"Licença vencida. Entre em contato para renovar o acesso." };
-    }
-    if(!ehAdmin && !row.validade){
-      return { ok:false, mensagem:"Licença sem validade definida. Entre em contato com o suporte." };
-    }
-
-    var limite = ehAdmin ? Number(row.limite_dispositivos || 999) : Number(row.limite_dispositivos || 1);
-    if(!Number.isFinite(limite) || limite < 1) limite = ehAdmin ? 999 : 1;
-
-    var dispositivos = cmfinListaDispositivos(row);
-    var jaExiste = dispositivos.some(function(d){ return d.id === deviceId; });
-
-    // Compatibilidade com o controle antigo de apenas um device_id.
-    if(!jaExiste && row.device_id && row.device_id === deviceId){
-      jaExiste = true;
-      dispositivos.push({ id: deviceId, nome: "Dispositivo principal", criado_em: row.ativada_em || new Date().toISOString(), ultimo_login: new Date().toISOString() });
-    }
-
-    if(!jaExiste){
-      if(dispositivos.length >= limite){
-        return { ok:false, mensagem:"Limite de dispositivos atingido para esta licença." };
-      }
-      dispositivos.push({
-        id: deviceId,
-        nome: ehAdmin ? "Dispositivo do administrador" : "Dispositivo autorizado",
-        criado_em: new Date().toISOString(),
-        ultimo_login: new Date().toISOString()
-      });
-    }else{
-      dispositivos = dispositivos.map(function(d){
-        if(d.id !== deviceId) return d;
-        d.ultimo_login = new Date().toISOString();
-        return d;
-      });
-    }
-
-    var updatePayload = {
-      status: "ativada",
-      ultimo_login: new Date().toISOString(),
-      device_id: row.device_id || deviceId,
-      dispositivos_autorizados: dispositivos
-    };
-    if(!row.ativada_em) updatePayload.ativada_em = new Date().toISOString();
-
-    var { error: upErr } = await client.from("cmfin_licencas").update(updatePayload).eq("id", row.id);
-    if(upErr){
-      console.warn("Licença validada, mas não foi possível atualizar dispositivos:", upErr);
-    }
-
-    return {
-      ok: true,
-      usuario: row.usuario,
-      cliente: row.cliente || row.usuario,
-      licenca: row.licenca,
-      validade: ehAdmin ? null : (row.validade || null),
-      tipo_usuario: row.tipo_usuario || (ehAdmin ? "admin" : "usuario"),
-      acesso_vitalicio: !!row.acesso_vitalicio || ehAdmin,
-      bloqueado: !!row.bloqueado,
-      acesso_pessoal: cmfinBoolPadraoTrue(row.acesso_pessoal),
-      acesso_empresarial: cmfinBoolPadraoTrue(row.acesso_empresarial),
-      limite_dispositivos: limite,
-      senha_temporaria: cmfinBool(row.senha_temporaria),
-      senha_alterada_em: row.senha_alterada_em || null
-    };
-  }
-
   async function confirmarCamposLicencaAtualizados(client, r, usuario, senha, licenca){
-    // V22: sempre confirma no Supabase os campos críticos que controlam primeiro acesso e módulos.
-    // Isso evita depender de RPC antiga/cache que não devolve senha_temporaria, acesso_pessoal ou acesso_empresarial.
-    if(!client || !r || !r.ok) return r;
-    var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
-    var q = null;
-    try{
-      q = await client.from("cmfin_licencas").select(selects)
-        .eq("usuario", normalizar(usuario))
-        .eq("licenca", normalizarLicenca(licenca))
-        .maybeSingle();
-      if((!q || !q.data) && senha){
-        q = await client.from("cmfin_licencas").select(selects)
-          .eq("usuario", normalizar(usuario))
-          .eq("senha", normalizar(senha))
-          .eq("licenca", normalizarLicenca(licenca))
-          .maybeSingle();
-      }
-      if((!q || !q.data) && normalizarLicenca(licenca)){
-        q = await client.from("cmfin_licencas").select(selects)
-          .eq("licenca", normalizarLicenca(licenca))
-          .maybeSingle();
-      }
-      if(q && q.data){
-        r.usuario = q.data.usuario || r.usuario || normalizar(usuario);
-        r.cliente = q.data.cliente || r.cliente || q.data.usuario || normalizar(usuario);
-        r.licenca = q.data.licenca || r.licenca || normalizarLicenca(licenca);
-        r.validade = q.data.validade || r.validade || null;
-        r.tipo_usuario = q.data.tipo_usuario || r.tipo_usuario || "usuario";
-        r.acesso_vitalicio = cmfinBool(q.data.acesso_vitalicio);
-        r.bloqueado = cmfinBool(q.data.bloqueado);
-        r.acesso_pessoal = cmfinBoolPadraoTrue(q.data.acesso_pessoal);
-        r.acesso_empresarial = cmfinBoolPadraoTrue(q.data.acesso_empresarial);
-        r.limite_dispositivos = Number(q.data.limite_dispositivos || r.limite_dispositivos || 1);
-        r.senha_temporaria = cmfinBool(q.data.senha_temporaria);
-        r.senha_alterada_em = q.data.senha_alterada_em || null;
-      }
-    }catch(e){
-      console.warn("V22: não foi possível confirmar campos críticos da licença:", e);
-    }
+    // V48: os campos críticos devem vir da RPC de autenticação.
+    // O navegador não consulta diretamente a tabela de licenças.
     return r;
   }
 
@@ -30211,30 +30398,29 @@ Os outros lançamentos não serão alterados.`;
     var fallback = { usuario: normalizar(usuario), licenca: normalizarLicenca(licenca) };
 
     try{
-      var { data, error } = await client.rpc("cmfin_ativar_licenca", {
+      var resposta = await client.rpc("cmfin_ativar_licenca", {
         p_usuario: normalizar(usuario),
         p_senha: normalizar(senha),
         p_licenca: normalizarLicenca(licenca),
         p_device_id: getDeviceId()
       });
 
-      if(!error){
-        var r = cmfinNormalizarRetornoLicenca(data, fallback);
-
-        // V22: confirma, a cada entrada, primeiro acesso e módulos direto na tabela.
-        r = await confirmarCamposLicencaAtualizados(client, r, usuario, senha, licenca);
-
-        if(r.ok || !normalizar(senha)) return r;
-        // Se a função antiga negar por validade/dispositivo, tenta a nova regra direto na tabela.
-        var direto = await validarLicencaDiretoTabela(usuario, senha, licenca, r.mensagem);
-        return direto || r;
+      if(resposta.error){
+        console.error("Erro Supabase RPC:", resposta.error);
+        return {
+          ok:false,
+          mensagem:"Não foi possível validar a licença com segurança. Verifique se a função cmfin_ativar_licenca está instalada e tente novamente."
+        };
       }
 
-      console.error("Erro Supabase RPC:", error);
-      return await validarLicencaDiretoTabela(usuario, senha, licenca, "Erro ao consultar o servidor de licenças.");
+      var r = cmfinNormalizarRetornoLicenca(resposta.data, fallback);
+      return await confirmarCamposLicencaAtualizados(client, r, usuario, senha, licenca);
     }catch(err){
       console.error("Erro geral na validação CMFin:", err);
-      return await validarLicencaDiretoTabela(usuario, senha, licenca, "Erro ao consultar o servidor de licenças.");
+      return {
+        ok:false,
+        mensagem:"Não foi possível consultar o servidor de licenças. Verifique sua internet e tente novamente."
+      };
     }
   }
 
@@ -30273,7 +30459,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function atualizarBadgeLicenca(){
-    var s = getSessao(sessionStorage) || getSessao(localStorage);
+    var s = getSessao(CMFin.Storage.session) || getSessao(CMFin.Storage.local);
     if(!sessaoMinima(s)) return;
 
     var b = document.getElementById("cmfinLicenseBadge");
@@ -30387,17 +30573,9 @@ Os outros lançamentos não serão alterados.`;
 
           var data = null;
           if(res.error){
-            console.warn("Erro RPC primeiro acesso, tentando update direto:", res.error);
-            var up = await client.from("cmfin_licencas").update({
-              senha: novaSenha,
-              senha_temporaria: false,
-              senha_alterada_em: new Date().toISOString()
-            }).eq("usuario", u.usuario).eq("licenca", normalizarLicenca(u.licenca)).eq("senha", senhaTemporaria);
-            if(up.error){
-              mostrarErroPrimeiro("Erro ao salvar a nova senha: " + (up.error.message || res.error.message || "verifique o Supabase."));
-              return;
-            }
-            data = { ok:true };
+            console.warn("Erro RPC primeiro acesso:", res.error);
+            mostrarErroPrimeiro("Não foi possível alterar a senha com segurança. Verifique a função cmfin_alterar_senha_primeiro_acesso no Supabase.");
+            return;
           }else{
             data = Array.isArray(res.data) ? res.data[0] : res.data;
             if(typeof data === "string"){
@@ -30448,10 +30626,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   async function revalidarSessaoSalva(){
-    var sessao = getSessao(sessionStorage);
+    var sessao = getSessao(CMFin.Storage.session);
 
     // Compatibilidade: migra uma sessão legada do localStorage somente para esta sessão.
-    if(!sessaoMinima(sessao)) sessao = getSessao(localStorage);
+    if(!sessaoMinima(sessao)) sessao = getSessao(CMFin.Storage.local);
 
     if(!sessaoMinima(sessao)) return false;
 
@@ -30493,9 +30671,9 @@ Os outros lançamentos não serão alterados.`;
         senha_alterada_em: resultado.senha_alterada_em || null
       });
 
-      var sessaoAtualizada = getSessao(sessionStorage);
+      var sessaoAtualizada = getSessao(CMFin.Storage.session);
       if(sessaoAtualizada && cmfinBool(sessaoAtualizada.senha_temporaria)){
-        await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, sessionStorage, !!getAcessoLembrado());
+        await abrirPrimeiroAcessoSenha(sessaoAtualizada, sessao.senha, CMFin.Storage.session, !!getAcessoLembrado());
         return true;
       }
 
@@ -30520,7 +30698,7 @@ Os outros lançamentos não serão alterados.`;
     var form = document.getElementById("cmfinLoginForm");
 
     var acessoLembrado = getAcessoLembrado();
-    if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || localStorage.getItem(CMFIN_LAST_USER_KEY) || "";
+    if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || CMFin.Storage.local.getItem(CMFIN_LAST_USER_KEY) || "";
     if(licencaEl && !licencaEl.value && acessoLembrado && acessoLembrado.licenca) licencaEl.value = acessoLembrado.licenca || "";
 
     var footer = document.querySelector(".cmfin-login-footer");
@@ -30576,7 +30754,7 @@ Os outros lançamentos não serão alterados.`;
 
           if(cmfinBool(r.senha_temporaria)){
             setCarregando(false);
-            await abrirPrimeiroAcessoSenha(u, senhaDigitada, sessionStorage, !!(lembrarEl && lembrarEl.checked));
+            await abrirPrimeiroAcessoSenha(u, senhaDigitada, CMFin.Storage.session, !!(lembrarEl && lembrarEl.checked));
             return;
           }
 
@@ -30662,7 +30840,7 @@ Os outros lançamentos não serão alterados.`;
 
   async function importarComputador(){
     fecharMenu();
-    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    try{ CMFin.Storage.session.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
     setTimeout(function(){
       if(typeof window.importarDadosEscolhendoArquivo === "function") window.importarDadosEscolhendoArquivo();
       else {
@@ -30689,7 +30867,7 @@ Os outros lançamentos não serão alterados.`;
 
   async function importarNuvem(){
     fecharMenu();
-    try{ sessionStorage.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
+    try{ CMFin.Storage.session.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
     toast("Importando dados da nuvem...", "info");
     try{
       if(typeof window.cmfinCarregarDadosNuvem !== "function"){
@@ -31251,361 +31429,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 <!-- CMFin V19: guarda externa obrigatória para senha temporária no primeiro acesso -->
-<script id="cmfin-v23-sincroniza-sessao-supabase-js">
-(function(){
-  "use strict";
-  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
-  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
-  var URL = "https://ahpefoaspcxgntrquhej.supabase.co";
-  var KEY = "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
-  var rodando = false;
 
-  function norm(v){ return String(v || "").trim(); }
-  function normLic(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
-  function bool(v){
-    if(v === true || v === 1) return true;
-    var t = String(v == null ? "" : v).trim().toLowerCase();
-    return t === "true" || t === "1" || t === "sim" || t === "yes" || t === "s";
-  }
-  function boolAcesso(v){
-    if(v === undefined || v === null || v === "") return true;
-    var t = String(v).trim().toLowerCase();
-    return !(v === false || v === 0 || t === "false" || t === "0" || t === "nao" || t === "não" || t === "n" || t === "no");
-  }
-  function client(){
-    if(!window.supabase || !window.supabase.createClient) return null;
-    if(!window.cmfinSupabaseClientV23) window.cmfinSupabaseClientV23 = window.supabase.createClient(URL, KEY);
-    return window.cmfinSupabaseClientV23;
-  }
-  function lerSessao(){
-    var pares = [{storage:sessionStorage, nome:"session"},{storage:localStorage, nome:"local"}];
-    for(var i=0;i<pares.length;i++){
-      try{
-        var raw = pares[i].storage.getItem(AUTH_KEY);
-        if(!raw) continue;
-        var s = JSON.parse(raw);
-        if(s && s.autenticado && (s.usuario || s.cliente) && s.licenca) return {sessao:s, storage:pares[i].storage};
-      }catch(e){}
-    }
-    return null;
-  }
-  function salvar(pair, row){
-    if(!pair || !row) return;
-    var s = pair.sessao || {};
-    s.usuario = row.usuario || s.usuario;
-    s.cliente = row.cliente || s.cliente || row.usuario || s.usuario;
-    s.licenca = row.licenca || s.licenca;
-    s.validade = row.validade || s.validade || null;
-    s.tipo_usuario = row.tipo_usuario || s.tipo_usuario || "usuario";
-    s.acesso_vitalicio = bool(row.acesso_vitalicio);
-    s.bloqueado = bool(row.bloqueado);
-    s.acesso_pessoal = boolAcesso(row.acesso_pessoal);
-    s.acesso_empresarial = boolAcesso(row.acesso_empresarial);
-    s.limite_dispositivos = Number(row.limite_dispositivos || s.limite_dispositivos || 1);
-    s.senha_temporaria = bool(row.senha_temporaria);
-    s.senha_alterada_em = row.senha_alterada_em || null;
-    s.ultimoCheckOnline = new Date().toISOString();
-    try{ pair.storage.setItem(AUTH_KEY, JSON.stringify(s)); }catch(e){}
-    try{
-      var raw = localStorage.getItem(REMEMBER_KEY);
-      if(raw){
-        var l = JSON.parse(raw);
-        if(normLic(l.licenca) === normLic(s.licenca) && norm(l.usuario).toLowerCase() === norm(s.usuario).toLowerCase()){
-          l.acesso_pessoal = s.acesso_pessoal;
-          l.acesso_empresarial = s.acesso_empresarial;
-          l.senha_temporaria = s.senha_temporaria;
-          l.senha_alterada_em = s.senha_alterada_em;
-          l.cliente = s.cliente;
-          l.validade = s.validade;
-          localStorage.setItem(REMEMBER_KEY, JSON.stringify(l));
-        }
-      }
-    }catch(e){}
-    try{ window.dispatchEvent(new CustomEvent("cmfin:sessao-atualizada", { detail: { usuario:s.usuario || "", licenca:s.licenca || "", senha_temporaria:s.senha_temporaria } })); }catch(e){}
-  }
-  async function sincronizar(){
-    if(rodando) return;
-    var pair = lerSessao();
-    var c = client();
-    if(!pair || !c) return;
-    rodando = true;
-    try{
-      var s = pair.sessao;
-      var selects = "usuario,cliente,licenca,status,validade,tipo_usuario,acesso_vitalicio,bloqueado,acesso_pessoal,acesso_empresarial,limite_dispositivos,senha_temporaria,senha_alterada_em";
-      var q = null;
-      if(s.usuario && s.licenca){
-        q = await c.from("cmfin_licencas").select(selects).eq("usuario", norm(s.usuario)).eq("licenca", normLic(s.licenca)).maybeSingle();
-      }
-      if((!q || !q.data) && s.licenca){
-        q = await c.from("cmfin_licencas").select(selects).eq("licenca", normLic(s.licenca)).maybeSingle();
-      }
-      if(q && q.data) salvar(pair, q.data);
-    }catch(e){ console.warn("V23: falha ao sincronizar sessão/licença no Supabase", e); }
-    finally{ rodando = false; }
-  }
-  window.cmfinSincronizarSessaoSupabaseV23 = sincronizar;
-  function start(){
-    setTimeout(sincronizar, 250);
-    setTimeout(sincronizar, 1200);
-    setTimeout(sincronizar, 2600);
-  }
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
-  window.addEventListener("load", function(){ setTimeout(sincronizar, 700); });
-})();
-</script>
-
-<script id="cmfin-v19-forcar-primeiro-acesso-js">
-(function(){
-  "use strict";
-
-  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
-  var REMEMBER_KEY = "cmfin_remembered_access_supabase_v1";
-  var URL = "https://ahpefoaspcxgntrquhej.supabase.co";
-  var KEY = "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
-  var verificando = false;
-  var modalAberto = false;
-
-  function norm(v){ return String(v || "").trim(); }
-  function normLic(v){ return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
-  function isTrue(v){ return v === true || v === "true" || v === 1 || v === "1"; }
-
-  function getClient(){
-    if(!window.supabase || !window.supabase.createClient) return null;
-    if(!window.cmfinSupabaseClientV19){
-      window.cmfinSupabaseClientV19 = window.supabase.createClient(URL, KEY);
-    }
-    return window.cmfinSupabaseClientV19;
-  }
-
-  function getSessionPair(){
-    var stores = [sessionStorage, localStorage];
-    for(var i=0;i<stores.length;i++){
-      try{
-        var raw = stores[i].getItem(AUTH_KEY);
-        if(!raw) continue;
-        var s = JSON.parse(raw);
-        if(s && s.autenticado && s.usuario && s.licenca){
-          return { sessao:s, storage:stores[i] };
-        }
-      }catch(e){}
-    }
-    return null;
-  }
-
-  function updateStoredSession(u, storage){
-    try{
-      var raw = storage.getItem(AUTH_KEY);
-      var s = raw ? JSON.parse(raw) : {};
-      s.senha = u.senha;
-      s.senha_temporaria = false;
-      s.senha_alterada_em = new Date().toISOString();
-      storage.setItem(AUTH_KEY, JSON.stringify(s));
-    }catch(e){}
-    try{
-      var rawL = localStorage.getItem(REMEMBER_KEY);
-      if(rawL){
-        var l = JSON.parse(rawL);
-        if(normLic(l.licenca) === normLic(u.licenca) && norm(l.usuario).toLowerCase() === norm(u.usuario).toLowerCase()){
-          delete l.senha;
-          l.senha_temporaria = false;
-          l.senha_alterada_em = new Date().toISOString();
-          localStorage.setItem(REMEMBER_KEY, JSON.stringify(l));
-        }
-      }
-    }catch(e){}
-  }
-
-  async function consultarPrimeiroAcesso(sessao){
-    var client = getClient();
-    if(!client || !sessao || !sessao.usuario || !sessao.licenca) return null;
-
-    // 1) Preferência: RPC security definer, não depende de policy/columns abertas no front.
-    try{
-      var r = await client.rpc("cmfin_precisa_trocar_senha", {
-        p_usuario: norm(sessao.usuario),
-        p_licenca: normLic(sessao.licenca)
-      });
-      if(!r.error && r.data){
-        var d = Array.isArray(r.data) ? r.data[0] : r.data;
-        if(typeof d === "string") { try{ d = JSON.parse(d); }catch(e){} }
-        if(d && d.ok !== false){
-          return {
-            precisa: isTrue(d.senha_temporaria),
-            usuario: d.usuario || sessao.usuario,
-            cliente: d.cliente || sessao.cliente || sessao.usuario,
-            licenca: d.licenca || sessao.licenca
-          };
-        }
-      }
-    }catch(e){ console.warn("V19: RPC cmfin_precisa_trocar_senha indisponível, tentando tabela.", e); }
-
-    // 2) Fallback direto na tabela, caso a policy permita.
-    try{
-      var q = await client
-        .from("cmfin_licencas")
-        .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
-        .eq("usuario", norm(sessao.usuario))
-        .eq("licenca", normLic(sessao.licenca))
-        .maybeSingle();
-      if((!q || !q.data) && normLic(sessao.licenca)){
-        q = await client
-          .from("cmfin_licencas")
-          .select("usuario,cliente,licenca,senha_temporaria,senha_alterada_em,acesso_pessoal,acesso_empresarial")
-          .eq("licenca", normLic(sessao.licenca))
-          .maybeSingle();
-      }
-      if(!q.error && q.data){
-        return {
-          precisa: isTrue(q.data.senha_temporaria),
-          usuario: q.data.usuario || sessao.usuario,
-          cliente: q.data.cliente || sessao.cliente || sessao.usuario,
-          licenca: q.data.licenca || sessao.licenca
-        };
-      }
-    }catch(e){ console.warn("V19: fallback tabela falhou.", e); }
-
-    // 3) Último recurso: o valor já gravado na sessão pelo login.
-    return { precisa: isTrue(sessao.senha_temporaria), usuario:sessao.usuario, cliente:sessao.cliente || sessao.usuario, licenca:sessao.licenca };
-  }
-
-  function validarSenha(nova){
-    if(!nova || nova.length < 8) return "A nova senha deve ter pelo menos 8 caracteres.";
-    if(!/[A-Z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra maiúscula.";
-    if(!/[a-z]/.test(nova)) return "A nova senha deve ter pelo menos uma letra minúscula.";
-    if(!/[0-9]/.test(nova)) return "A nova senha deve ter pelo menos um número.";
-    if(!/[^A-Za-z0-9]/.test(nova)) return "A nova senha deve ter pelo menos um caractere especial.";
-    return "";
-  }
-
-  function ensureCss(){
-    if(document.getElementById("cmfinV19FirstPassCss")) return;
-    var st=document.createElement("style");
-    st.id="cmfinV19FirstPassCss";
-    st.textContent = `
-      .cmfin-v19-first-pass{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.84);backdrop-filter:blur(18px)}
-      .cmfin-v19-card{width:min(470px,100%);border-radius:28px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(135deg,#06110f,#0d201b);box-shadow:0 34px 95px rgba(0,0,0,.55);padding:30px;color:#fff;font-family:Inter,"Segoe UI",Arial,sans-serif}
-      .cmfin-v19-kicker{display:inline-flex;margin-bottom:14px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.72)}
-      .cmfin-v19-card h2{margin:0 0 8px;font-size:25px;line-height:1.1;letter-spacing:-.035em}.cmfin-v19-card p{margin:0 0 20px;color:rgba(255,255,255,.66);font-size:13px;line-height:1.55;font-weight:650}
-      .cmfin-v19-field{display:grid;gap:7px;margin-bottom:13px}.cmfin-v19-field label{font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.72)}
-      .cmfin-v19-field input{width:100%;height:52px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:0 14px;outline:none;font-size:14px;font-weight:750}.cmfin-v19-field input:focus{border-color:rgba(239,68,68,.75);box-shadow:0 0 0 4px rgba(239,68,68,.12)}
-      .cmfin-v19-note{padding:12px 13px;border-radius:15px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:rgba(255,255,255,.64);font-size:12px;line-height:1.45;font-weight:650;margin:12px 0 15px}.cmfin-v19-error{display:none;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(239,68,68,.32);border-radius:14px;background:rgba(239,68,68,.12);color:#fecaca;font-size:12px;font-weight:800;line-height:1.38}.cmfin-v19-error.show{display:block}
-      .cmfin-v19-actions{display:flex;justify-content:flex-end}.cmfin-v19-btn{height:50px;border:0;border-radius:16px;padding:0 17px;cursor:pointer;font-weight:950;background:linear-gradient(135deg,#ef4444,#991b1b);color:#fff;box-shadow:0 18px 34px rgba(185,28,28,.25)}.cmfin-v19-btn:disabled{opacity:.65;cursor:not-allowed}
-    `;
-    document.head.appendChild(st);
-  }
-
-  function abrirModal(sessao, info, storage){
-    if(modalAberto) return;
-    modalAberto = true;
-    ensureCss();
-    document.body.classList.add("cmfin-lock");
-    var old = document.getElementById("cmfinV19FirstPassOverlay");
-    if(old) old.remove();
-    var ov = document.createElement("div");
-    ov.id = "cmfinV19FirstPassOverlay";
-    ov.className = "cmfin-v19-first-pass";
-    ov.innerHTML = ''+
-      '<div class="cmfin-v19-card" role="dialog" aria-modal="true">'+
-      '<div class="cmfin-v19-kicker">Primeiro acesso obrigatório</div>'+ 
-      '<h2>Crie sua senha de acesso</h2>'+ 
-      '<p>Esta conta está marcada como nova. Defina uma senha definitiva para continuar usando o CMFin.</p>'+ 
-      '<form data-v19-form>'+ 
-      '<div class="cmfin-v19-field"><label>Nova senha</label><input name="nova" type="password" autocomplete="new-password" required></div>'+ 
-      '<div class="cmfin-v19-field"><label>Confirmar nova senha</label><input name="confirmar" type="password" autocomplete="new-password" required></div>'+ 
-      '<div class="cmfin-v19-note">Use no mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial. A nova senha não pode ser igual à senha temporária.</div>'+ 
-      '<div class="cmfin-v19-error" data-v19-erro></div>'+ 
-      '<div class="cmfin-v19-actions"><button class="cmfin-v19-btn" type="submit">Salvar senha e entrar</button></div>'+ 
-      '</form></div>';
-    document.body.appendChild(ov);
-    setTimeout(function(){ try{ ov.querySelector('input[name="nova"]').focus(); }catch(e){} },80);
-
-    var form = ov.querySelector('[data-v19-form]');
-    var erro = ov.querySelector('[data-v19-erro]');
-    function show(msg){ erro.textContent = msg; erro.classList.add('show'); }
-
-    form.addEventListener('submit', async function(ev){
-      ev.preventDefault();
-      erro.classList.remove('show');
-      var fd = new FormData(form);
-      var nova = String(fd.get('nova') || '').trim();
-      var confirmar = String(fd.get('confirmar') || '').trim();
-      var problema = validarSenha(nova);
-      if(problema) return show(problema);
-      if(nova !== confirmar) return show('A confirmação não confere com a nova senha.');
-      if(sessao.senha && nova === sessao.senha) return show('A nova senha não pode ser igual à senha temporária.');
-
-      var btn = form.querySelector('button');
-      var txt = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Salvando...';
-      try{
-        var client = getClient();
-        var res = await client.rpc('cmfin_alterar_senha_primeiro_acesso', {
-          p_usuario: info.usuario || sessao.usuario,
-          p_senha_atual: sessao.senha || '',
-          p_licenca: normLic(info.licenca || sessao.licenca),
-          p_nova_senha: nova
-        });
-        var d = null;
-        if(res.error){
-          console.warn('V19 RPC primeiro acesso falhou, tentando update direto:', res.error);
-          var up = await client.from('cmfin_licencas').update({
-            senha: nova,
-            senha_temporaria: false,
-            senha_alterada_em: new Date().toISOString()
-          }).eq('usuario', info.usuario || sessao.usuario).eq('licenca', normLic(info.licenca || sessao.licenca)).eq('senha', sessao.senha || '');
-          if(up.error){ return show('Erro ao salvar a nova senha: ' + (up.error.message || res.error.message || 'verifique o Supabase.')); }
-          d = {ok:true};
-        }else{
-          d = Array.isArray(res.data) ? res.data[0] : res.data;
-          if(typeof d === 'string'){ try{ d = JSON.parse(d); }catch(e){} }
-          if(!d || !d.ok){ return show((d && d.mensagem) || 'Não foi possível salvar a nova senha.'); }
-        }
-        updateStoredSession({usuario: info.usuario || sessao.usuario, licenca: info.licenca || sessao.licenca, senha:nova}, storage);
-        ov.remove();
-        modalAberto = false;
-        document.body.classList.remove('cmfin-lock');
-        try{ location.reload(); }catch(e){}
-      }catch(e){
-        console.warn('V19 primeiro acesso:', e);
-        show('Erro ao salvar a nova senha. Verifique a internet e tente novamente.');
-      }finally{
-        btn.disabled = false; btn.textContent = txt;
-      }
-    });
-  }
-
-  async function verificar(){
-    if(verificando || modalAberto) return;
-    var pair = getSessionPair();
-    if(!pair) return;
-    verificando = true;
-    try{
-      var info = await consultarPrimeiroAcesso(pair.sessao);
-      if(info && info.precisa === true){
-        abrirModal(pair.sessao, info, pair.storage);
-      }
-    }catch(e){ console.warn('V19 verificar primeiro acesso:', e); }
-    finally{ verificando = false; }
-  }
-
-  function start(){
-    try{ document.addEventListener("cmfin:sessao-atualizada", function(){ setTimeout(verificar, 150); }); }catch(e){}
-    setTimeout(verificar, 350);
-    setTimeout(verificar, 1200);
-    setTimeout(verificar, 2600);
-    var n = 0;
-    var int = setInterval(function(){
-      n++;
-      verificar();
-      if(n > 30 || modalAberto) clearInterval(int);
-    }, 1000);
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
-})();
-</script>
 
 
 
@@ -31717,28 +31541,14 @@ Os outros lançamentos não serão alterados.`;
     return item.status || "Pendente";
   }
   function garantirDados(){
-    try{
-      if(typeof dados === "object" && dados){
-        if(!Array.isArray(dados.dividasTerceiros)) dados.dividasTerceiros=[];
-        return dados.dividasTerceiros;
-      }
-    }catch(e){}
-    var arr=[];
-    try{ arr=JSON.parse(localStorage.getItem("cmfin_dividas_terceiros")||"[]")||[]; }catch(e){}
-    return arr;
+    return CMFin.Data.getPersonalDebts();
   }
   function gravar(arr){
-    try{
-      if(typeof dados === "object" && dados){
-        dados.dividasTerceiros = arr;
-        if(typeof salvarDados === "function") salvarDados();
-        return;
-      }
-    }catch(e){}
-    localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(arr));
+    CMFin.Data.setPersonalDebts(Array.isArray(arr) ? arr : []);
+    try{ if(typeof salvarDados === "function") salvarDados(); }catch(e){}
   }
   function esc(s){
-    return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});
+    return CMFin.UI.escapeHTML(s);
   }
   function arquivoInputParaBase64(input){
     return new Promise(function(resolve){
@@ -31946,70 +31756,8 @@ Os outros lançamentos não serão alterados.`;
 </script>
 
 
-<style id="cmfin-dividas-icon-style-v43">
-  .nav button[data-module="dividasTerceiros"] .icon,
-  #navDividasTerceiros .icon{
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
-    display: inline-grid !important;
-    place-items: center !important;
-    border-radius: 10px !important;
-    background: rgba(255,255,255,.08) !important;
-    border: 1px solid rgba(255,255,255,.10) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.12) !important;
-    color: rgba(255,255,255,.92) !important;
-    font-size: 14px !important;
-    line-height: 1 !important;
-    text-align: center !important;
-    flex: 0 0 30px !important;
-  }
-
-  .nav button.active[data-module="dividasTerceiros"] .icon,
-  #navDividasTerceiros.active .icon{
-    background: rgba(17,82,70,.08) !important;
-    border: 1px solid rgba(17,82,70,.14) !important;
-    color: var(--brand-green) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 18px rgba(17,82,70,.10) !important;
-  }
-</style>
 
 
-<script id="cmfin-dividas-icon-fix-v43">
-(function(){
-  function padronizarBotaoDividas(){
-    var btn = document.getElementById("navDividasTerceiros") ||
-              document.querySelector('.nav button[data-module="dividasTerceiros"]');
-    if(!btn) return;
-    btn.id = "navDividasTerceiros";
-    btn.setAttribute("data-module", "dividasTerceiros");
-    btn.setAttribute("onclick", "mudarModulo('dividasTerceiros')");
-    btn.innerHTML = '<span class="icon">⚠</span>Dívidas com Terceiros';
-  }
-
-  document.addEventListener("DOMContentLoaded", function(){
-    padronizarBotaoDividas();
-    setTimeout(padronizarBotaoDividas, 150);
-    setTimeout(padronizarBotaoDividas, 600);
-  });
-
-  window.addEventListener("load", function(){
-    padronizarBotaoDividas();
-    setTimeout(padronizarBotaoDividas, 400);
-  });
-
-  var mudarOriginal = window.mudarModulo;
-  if(typeof mudarOriginal === "function" && !mudarOriginal.__cmfinDividasIconV43){
-    window.mudarModulo = function(){
-      var r = mudarOriginal.apply(this, arguments);
-      setTimeout(padronizarBotaoDividas, 60);
-      return r;
-    };
-    window.mudarModulo.__cmfinDividasIconV43 = true;
-    try { mudarModulo = window.mudarModulo; } catch(e) {}
-  }
-})();
-</script>
 
 
 <style id="cmfin-icon-dividas-v47">
@@ -32448,7 +32196,7 @@ Os outros lançamentos não serão alterados.`;
   var ANEXOS_FIM='[[/CMFIN_ANEXOS_V1]]';
 
   function esc(valor){
-    return String(valor==null?'':valor).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});
+    return CMFin.UI.escapeHTML(valor);
   }
   function bool(v){
     if(v===true||v===1) return true;
@@ -32459,8 +32207,8 @@ Os outros lançamentos não serão alterados.`;
     try{return JSON.parse(storage.getItem(key)||'null');}catch(_){return null;}
   }
   function sessaoAtual(){
-    var principal=parseStorage(sessionStorage,AUTH_KEY)||parseStorage(localStorage,AUTH_KEY)||{};
-    var lembrado=parseStorage(localStorage,REMEMBER_KEY)||{};
+    var principal=parseStorage(CMFin.Storage.session,AUTH_KEY)||parseStorage(CMFin.Storage.local,AUTH_KEY)||{};
+    var lembrado=parseStorage(CMFin.Storage.local,REMEMBER_KEY)||{};
     return Object.assign({},lembrado,principal);
   }
   function ehAdmin(s){
@@ -32947,372 +32695,6 @@ Os outros lançamentos não serão alterados.`;
 
 
 <!-- PATCH CMFin v11 — Simulador de parcelas no Saldo Restante Geral -->
-<style id="cmfin-saldo-geral-simulador-v11-style">
-  #modalSaldoGeralTerceiros .terc-saldo-geral-modal{
-    width:min(1160px,calc(100vw - 28px));
-    max-width:1160px;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho,
-  #modalSaldoGeralTerceiros .terc-saldo-compra{
-    grid-template-columns:minmax(190px,1.55fr) minmax(130px,.9fr) minmax(132px,.78fr) minmax(105px,.68fr) minmax(110px,.72fr) minmax(108px,.68fr);
-    gap:10px;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-compra{
-    transition:opacity .18s ease,background .18s ease;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-compra.is-excluida{
-    opacity:.55;
-    background:#f8fafc;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-compra.is-excluida .terc-saldo-valor{
-    color:#94a3b8;
-    text-decoration:line-through;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-pessoa.is-sem-itens{
-    opacity:.72;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-adiantar{
-    display:grid;
-    gap:4px;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-adiantar select{
-    width:100%;
-    height:36px;
-    padding:0 30px 0 10px;
-    border:1px solid #cadbd7;
-    border-radius:11px;
-    background:#fff;
-    color:#16332d;
-    font-size:12px;
-    font-weight:850;
-    outline:none;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-adiantar select:focus{
-    border-color:#0f766e;
-    box-shadow:0 0 0 3px rgba(15,118,110,.11);
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-adiantar small{
-    color:#64748b;
-    font-size:9.5px;
-    line-height:1.25;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn{
-    width:100%;
-    min-height:36px;
-    padding:7px 9px;
-    border:1px solid #b9d8d2;
-    border-radius:11px;
-    background:#effaf7;
-    color:#087f70;
-    font-size:10.5px;
-    font-weight:900;
-    line-height:1.15;
-    cursor:pointer;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn:hover{
-    background:#e3f5f1;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-incluir-btn.is-excluido{
-    border-color:#dbe2e8;
-    background:#f8fafc;
-    color:#64748b;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-simulacao-tag{
-    display:inline-flex;
-    align-items:center;
-    margin-left:7px;
-    padding:4px 7px;
-    border-radius:999px;
-    background:#e8f6f3;
-    color:#087f70;
-    font-size:9px;
-    font-weight:900;
-    letter-spacing:.05em;
-    text-transform:uppercase;
-    vertical-align:middle;
-  }
-  #modalSaldoGeralTerceiros .terc-saldo-geral-note strong{
-    color:#16332d;
-  }
-  @media(max-width:900px){
-    #modalSaldoGeralTerceiros .terc-saldo-tabela-cabecalho{display:none;}
-    #modalSaldoGeralTerceiros .terc-saldo-compra{
-      grid-template-columns:1fr 1fr;
-      gap:10px 12px;
-    }
-    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:1/-1;}
-    #modalSaldoGeralTerceiros .terc-saldo-valor{text-align:left;}
-  }
-  @media(max-width:560px){
-    #modalSaldoGeralTerceiros .terc-saldo-compra{grid-template-columns:1fr;}
-    #modalSaldoGeralTerceiros .terc-saldo-compra-desc{grid-column:auto;}
-  }
-</style>
-<script id="cmfin-saldo-geral-simulador-v11-script">
-(function(){
-  if(window.__cmfinSaldoGeralSimuladorV11) return;
-  window.__cmfinSaldoGeralSimuladorV11=true;
-
-  function dadosTerceiros(){
-    if(Array.isArray(window.terceiros)) return window.terceiros;
-    try{if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros;}catch(_){ }
-    return [];
-  }
-  function n(valor){var numero=Number(valor);return Number.isFinite(numero)?numero:0;}
-  function mesItem(item){return String(item&&item.vencimento||'').slice(0,7);}
-  function valorParcela(item){
-    if(!item) return 0;
-    try{if(typeof valorTotalTerceiro==='function'){var v=n(valorTotalTerceiro(item));if(v>=0)return v;}}catch(_){ }
-    if(n(item.valorParcela)>0) return n(item.valorParcela);
-    if(item.valorTotal!==undefined&&item.valorTotal!==null) return n(item.valorTotal);
-    return n(item.valor);
-  }
-  function statusItem(item,mes){
-    try{if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes);}catch(_){ }
-    return item&&item.status||'Pendente';
-  }
-  function formaItem(item){
-    try{if(typeof formaCartaoTerceiro==='function') return formaCartaoTerceiro(item);}catch(_){ }
-    return item&&item.cartao||item&&item.formaPagamento||'-';
-  }
-  function apareceNoMes(item,mes){
-    try{if(typeof terceiroApareceNoMes==='function') return terceiroApareceNoMes(item,mes);}catch(_){ }
-    return mesItem(item)===mes;
-  }
-  function referenciaAtual(){
-    try{
-      if(typeof obterMesReferenciaFiltro==='function'){
-        var ref=obterMesReferenciaFiltro('filtroTerc');
-        if(/^\d{4}-\d{2}$/.test(String(ref||''))) return ref;
-      }
-    }catch(_){ }
-    var ano=document.getElementById('filtroTercAno')?.value||'';
-    var mes=document.getElementById('filtroTercMes')?.value||'';
-    if(ano&&mes) return String(ano)+'-'+String(mes).padStart(2,'0');
-    var agora=new Date();
-    return agora.getFullYear()+'-'+String(agora.getMonth()+1).padStart(2,'0');
-  }
-  function formatarMes(mes){
-    if(!/^\d{4}-\d{2}$/.test(String(mes||''))) return '-';
-    try{if(typeof nomeMes==='function') return nomeMes(mes);}catch(_){ }
-    var partes=String(mes).split('-');
-    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    return (nomes[Number(partes[1])-1]||partes[1])+' de '+partes[0];
-  }
-  function dinheiro(valor){
-    try{if(typeof moeda==='function') return moeda(valor);}catch(_){ }
-    return n(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  }
-  function escapar(valor){
-    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
-    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
-  }
-  function iniciais(nome){
-    return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
-  }
-  function filtroAtual(id,padrao){var el=document.getElementById(id);return el?el.value:padrao;}
-  function rotuloFiltro(id,padrao){
-    var el=document.getElementById(id);if(!el)return padrao;
-    var opt=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;
-    return opt?opt.textContent.trim():padrao;
-  }
-  function rotuloParcela(item){
-    return item.parcela||((item.numeroParcela||'-')+'/'+(item.totalParcelas||'-'));
-  }
-  function somarPrimeiras(lista,qtd){
-    return lista.slice(0,Math.max(0,qtd)).reduce(function(s,item){return s+n(item.valor);},0);
-  }
-  function compraResumo(compraId,referencia,dados){
-    var grupo=dados.filter(function(item){
-      return item&&String(item.compraId)===String(compraId)&&(item.tipo||'Parcelado')==='Parcelado';
-    }).sort(function(a,b){
-      return mesItem(a).localeCompare(mesItem(b))||n(a.numeroParcela)-n(b.numeroParcela);
-    });
-    if(!grupo.length) return null;
-    var pendentes=grupo.filter(function(item){
-      var mes=mesItem(item);
-      return mes&&mes>=referencia&&statusItem(item,mes)!=='Recebido';
-    }).map(function(item){
-      return {mes:mesItem(item),parcela:rotuloParcela(item),valor:valorParcela(item)};
-    });
-    if(!pendentes.length) return null;
-    var base=grupo[0];
-    return {
-      compraId:String(compraId),
-      pessoa:base.pessoa||'Terceiro',
-      descricao:base.descricao||'Compra parcelada',
-      categoria:base.categoria||'Outros',
-      forma:formaItem(base),
-      pendentes:pendentes,
-      quantidade:pendentes.length,
-      selecionadas:pendentes.length,
-      incluir:true,
-      valorParcela:pendentes[0].valor,
-      total:somarPrimeiras(pendentes,pendentes.length)
-    };
-  }
-  function estado(){return window.__cmfinSaldoGeralEstadoV11||null;}
-  function itemPorToken(token){var e=estado();return e&&e.itens?e.itens[token]:null;}
-  function faixaSelecionada(item){
-    if(!item||!item.pendentes.length) return {faixa:'-',periodo:'-'};
-    var qtd=Math.max(1,Math.min(item.selecionadas,item.pendentes.length));
-    var primeira=item.pendentes[0];
-    var ultima=item.pendentes[qtd-1];
-    return {
-      faixa:primeira.parcela===ultima.parcela?primeira.parcela:(primeira.parcela+' → '+ultima.parcela),
-      periodo:formatarMes(primeira.mes)+(primeira.mes===ultima.mes?'':(' → '+formatarMes(ultima.mes)))
-    };
-  }
-  function recalcular(){
-    var e=estado();if(!e)return;
-    var totalGeral=0,parcelas=0,comprasIncluidas=0;
-    var pessoasAtivas={};
-    Object.keys(e.itens).forEach(function(token){
-      var item=e.itens[token];
-      item.selecionadas=Math.max(1,Math.min(n(item.selecionadas)||1,item.pendentes.length));
-      item.totalSimulado=item.incluir?somarPrimeiras(item.pendentes,item.selecionadas):0;
-      if(item.incluir){
-        totalGeral+=item.totalSimulado;
-        parcelas+=item.selecionadas;
-        comprasIncluidas++;
-        pessoasAtivas[item.pessoa]=true;
-      }
-      var linha=document.querySelector('[data-cmfin-saldo-token="'+token+'"]');
-      if(linha) linha.classList.toggle('is-excluida',!item.incluir);
-      var faixa=faixaSelecionada(item);
-      var faixaEl=document.getElementById('cmfinSaldoFaixa_'+token);
-      if(faixaEl) faixaEl.innerHTML='<strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo);
-      var qtdEl=document.getElementById('cmfinSaldoQtd_'+token);
-      if(qtdEl) qtdEl.textContent=item.selecionadas+' de '+item.pendentes.length+' parcela'+(item.pendentes.length===1?'':'s');
-      var totalEl=document.getElementById('cmfinSaldoSubtotal_'+token);
-      if(totalEl) totalEl.textContent=dinheiro(item.totalSimulado);
-      var botao=document.getElementById('cmfinSaldoIncluir_'+token);
-      if(botao){
-        botao.classList.toggle('is-excluido',!item.incluir);
-        botao.textContent=item.incluir?'Não incluir':'Incluir novamente';
-      }
-      var seletor=document.getElementById('cmfinSaldoSelect_'+token);
-      if(seletor) seletor.disabled=!item.incluir;
-    });
-
-    Object.keys(e.pessoas).forEach(function(pessoaToken){
-      var pessoa=e.pessoas[pessoaToken];
-      var lista=pessoa.tokens.map(function(token){return e.itens[token];});
-      var ativas=lista.filter(function(item){return item.incluir;});
-      var total=ativas.reduce(function(s,item){return s+item.totalSimulado;},0);
-      var qtd=ativas.reduce(function(s,item){return s+item.selecionadas;},0);
-      var secao=document.getElementById('cmfinSaldoPessoa_'+pessoaToken);
-      if(secao) secao.classList.toggle('is-sem-itens',!ativas.length);
-      var resumo=document.getElementById('cmfinSaldoPessoaResumo_'+pessoaToken);
-      if(resumo) resumo.textContent=ativas.length+' compra'+(ativas.length===1?'':'s')+' · '+qtd+' parcela'+(qtd===1?'':'s')+' selecionada'+(qtd===1?'':'s');
-      var totalEl=document.getElementById('cmfinSaldoPessoaTotal_'+pessoaToken);
-      if(totalEl) totalEl.textContent=dinheiro(total);
-    });
-
-    var pessoasEl=document.getElementById('cmfinSaldoKpiPessoas');
-    var comprasEl=document.getElementById('cmfinSaldoKpiCompras');
-    var parcelasEl=document.getElementById('cmfinSaldoKpiParcelas');
-    var totalEl=document.getElementById('cmfinSaldoKpiTotal');
-    if(pessoasEl)pessoasEl.textContent=Object.keys(pessoasAtivas).length;
-    if(comprasEl)comprasEl.textContent=comprasIncluidas;
-    if(parcelasEl)parcelasEl.textContent=parcelas;
-    if(totalEl)totalEl.textContent=dinheiro(totalGeral);
-  }
-
-  window.cmfinSaldoGeralDefinirParcelas=function(token,valor){
-    var item=itemPorToken(token);if(!item)return;
-    item.selecionadas=Math.max(1,Math.min(n(valor)||1,item.pendentes.length));
-    recalcular();
-  };
-  window.cmfinSaldoGeralAlternarInclusao=function(token){
-    var item=itemPorToken(token);if(!item)return;
-    item.incluir=!item.incluir;
-    recalcular();
-  };
-
-  window.cmfinAbrirSaldoGeralTerceiros=function(){
-    var conteudo=document.getElementById('tercSaldoGeralConteudo');
-    if(!conteudo)return;
-    var dados=dadosTerceiros();
-    var referencia=referenciaAtual();
-    var pessoa=filtroAtual('filtroTercPessoa','todos');
-    var cartao=filtroAtual('filtroTercCartao','todos');
-    var categoria=filtroAtual('filtroTercCategoria','todos');
-
-    var bases=dados.filter(function(item){
-      if(!item||(item.tipo||'Parcelado')!=='Parcelado')return false;
-      if(!apareceNoMes(item,referencia))return false;
-      if(pessoa!=='todos'&&String(item.pessoa||'')!==String(pessoa))return false;
-      if(cartao!=='todos'&&String(item.cartao||'')!==String(cartao)&&String(formaItem(item)||'')!==String(cartao))return false;
-      if(categoria!=='todos'&&String(item.categoria||'Outros')!==String(categoria))return false;
-      return true;
-    });
-    var ids=[];
-    bases.forEach(function(item){var id=String(item.compraId);if(ids.indexOf(id)===-1)ids.push(id);});
-    var compras=ids.map(function(id){return compraResumo(id,referencia,dados);}).filter(Boolean);
-    compras.sort(function(a,b){
-      return String(a.pessoa).localeCompare(String(b.pessoa),'pt-BR')||b.total-a.total||String(a.descricao).localeCompare(String(b.descricao),'pt-BR');
-    });
-
-    var filtros='Mês inicial: <strong>'+escapar(formatarMes(referencia))+'</strong> · Pessoa: <strong>'+escapar(rotuloFiltro('filtroTercPessoa','Todas'))+'</strong> · Banco/Cartão: <strong>'+escapar(rotuloFiltro('filtroTercCartao','Todos'))+'</strong> · Categoria: <strong>'+escapar(rotuloFiltro('filtroTercCategoria','Todas'))+'</strong>';
-
-    if(!compras.length){
-      window.__cmfinSaldoGeralEstadoV11=null;
-      conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi"><span>Compras parceladas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong>0</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong>'+escapar(dinheiro(0))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'</div><div class="terc-saldo-geral-vazio">Não existem compras parceladas com saldo pendente a partir do mês selecionado para os filtros atuais.</div>';
-      if(typeof abrirModal==='function')abrirModal('modalSaldoGeralTerceiros');else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
-      return;
-    }
-
-    var e={itens:{},pessoas:{}};
-    compras.forEach(function(compra,indice){
-      var token='c'+indice;
-      compra.token=token;
-      e.itens[token]=compra;
-    });
-    var nomes=[];
-    compras.forEach(function(compra){if(nomes.indexOf(compra.pessoa)===-1)nomes.push(compra.pessoa);});
-    nomes.sort(function(a,b){return a.localeCompare(b,'pt-BR');});
-    nomes.forEach(function(nome,indice){
-      var pessoaToken='p'+indice;
-      e.pessoas[pessoaToken]={nome:nome,tokens:compras.filter(function(c){return c.pessoa===nome;}).map(function(c){return c.token;})};
-    });
-    window.__cmfinSaldoGeralEstadoV11=e;
-
-    var grupos=Object.keys(e.pessoas).map(function(pessoaToken){
-      var pessoaDados=e.pessoas[pessoaToken];
-      var lista=pessoaDados.tokens.map(function(token){return e.itens[token];});
-      var linhas=lista.map(function(c){
-        var opcoes='';
-        for(var i=1;i<=c.pendentes.length;i++){
-          opcoes+='<option value="'+i+'"'+(i===c.pendentes.length?' selected':'')+'>'+i+' parcela'+(i===1?'':'s')+'</option>';
-        }
-        var faixa=faixaSelecionada(c);
-        return '<div class="terc-saldo-compra" data-cmfin-saldo-token="'+c.token+'">'+
-          '<div class="terc-saldo-compra-desc"><strong>'+escapar(c.descricao)+'</strong><span>'+escapar(c.forma)+' · '+escapar(c.categoria)+'</span><button class="terc-saldo-incluir-btn" id="cmfinSaldoIncluir_'+c.token+'" type="button" onclick="cmfinSaldoGeralAlternarInclusao(\''+c.token+'\')">Não incluir</button></div>'+
-          '<div class="terc-saldo-dado" id="cmfinSaldoFaixa_'+c.token+'"><strong>'+escapar(faixa.faixa)+'</strong><br>'+escapar(faixa.periodo)+'</div>'+
-          '<div class="terc-saldo-adiantar"><select id="cmfinSaldoSelect_'+c.token+'" onchange="cmfinSaldoGeralDefinirParcelas(\''+c.token+'\',this.value)">'+opcoes+'</select><small id="cmfinSaldoQtd_'+c.token+'">'+c.pendentes.length+' de '+c.pendentes.length+' parcelas</small></div>'+
-          '<div class="terc-saldo-dado"><strong>'+escapar(dinheiro(c.valorParcela))+'</strong></div>'+
-          '<div class="terc-saldo-valor" id="cmfinSaldoSubtotal_'+c.token+'">'+escapar(dinheiro(c.total))+'</div>'+
-          
-        '</div>';
-      }).join('');
-      var totalPessoa=lista.reduce(function(s,c){return s+c.total;},0);
-      var qtdParcelas=lista.reduce(function(s,c){return s+c.pendentes.length;},0);
-      return '<section class="terc-saldo-pessoa" id="cmfinSaldoPessoa_'+pessoaToken+'">'+
-        '<div class="terc-saldo-pessoa-head"><div class="terc-saldo-pessoa-ident"><div class="terc-saldo-pessoa-avatar">'+escapar(iniciais(pessoaDados.nome))+'</div><div><strong>'+escapar(pessoaDados.nome)+'</strong><span id="cmfinSaldoPessoaResumo_'+pessoaToken+'">'+lista.length+' compra'+(lista.length===1?'':'s')+' · '+qtdParcelas+' parcelas selecionadas</span></div></div><div class="terc-saldo-pessoa-total"><span>Total da pessoa</span><strong id="cmfinSaldoPessoaTotal_'+pessoaToken+'">'+escapar(dinheiro(totalPessoa))+'</strong></div></div>'+
-        '<div class="terc-saldo-tabela-cabecalho"><div>Compra</div><div>Faixa / período</div><div>Adiantar</div><div>Valor da parcela</div><div style="text-align:right">Subtotal</div></div>'+linhas+
-      '</section>';
-    }).join('');
-
-    var totalGeral=compras.reduce(function(s,c){return s+c.total;},0);
-    var parcelas=compras.reduce(function(s,c){return s+c.pendentes.length;},0);
-    conteudo.innerHTML='<div class="terc-saldo-geral-kpis"><div class="terc-saldo-geral-kpi"><span>Pessoas</span><strong id="cmfinSaldoKpiPessoas">'+nomes.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Compras incluídas</span><strong id="cmfinSaldoKpiCompras">'+compras.length+'</strong></div><div class="terc-saldo-geral-kpi"><span>Parcelas selecionadas</span><strong id="cmfinSaldoKpiParcelas">'+parcelas+'</strong></div><div class="terc-saldo-geral-kpi total"><span>Saldo simulado</span><strong id="cmfinSaldoKpiTotal">'+escapar(dinheiro(totalGeral))+'</strong></div></div><div class="terc-saldo-geral-filtros">'+filtros+'<span class="terc-saldo-simulacao-tag">Simulação</span></div><div class="terc-saldo-geral-lista">'+grupos+'</div><div class="terc-saldo-geral-note"><strong>Como usar:</strong> escolha quantas parcelas deseja adiantar em cada compra. Use <strong>Não incluir</strong> para retirar um lançamento do cálculo. O total é atualizado automaticamente e nenhuma baixa ou alteração é feita nos registros.</div>';
-
-    recalcular();
-    if(typeof abrirModal==='function')abrirModal('modalSaldoGeralTerceiros');else document.getElementById('modalSaldoGeralTerceiros').style.display='flex';
-  };
-})();
-</script>
 
 
 
@@ -33674,22 +33056,22 @@ Os outros lançamentos não serão alterados.`;
 
   function lerLista(){
     try{
-      var lista = JSON.parse(localStorage.getItem(DTC_KEY) || "[]");
+      var lista = JSON.parse(CMFin.Storage.local.getItem(DTC_KEY) || "[]");
       return Array.isArray(lista) ? lista : [];
     }catch(e){ return []; }
   }
 
   function sincronizarNoPrincipal(){
     try{
-      var chave = localStorage.getItem(MAIN_KEY) ? MAIN_KEY : MAIN_KEY_OLD;
-      var raw = localStorage.getItem(chave);
+      var chave = CMFin.Storage.local.getItem(MAIN_KEY) ? MAIN_KEY : MAIN_KEY_OLD;
+      var raw = CMFin.Storage.local.getItem(chave);
       if(!raw) return;
       var base = JSON.parse(raw);
       if(!base || typeof base !== "object") return;
       base.modos = base.modos || {};
       base.modos.pessoal = base.modos.pessoal || {};
       base.modos.pessoal.dividasTerceiros = lerLista();
-      localStorage.setItem(MAIN_KEY, JSON.stringify(base));
+      CMFin.Storage.local.setItem(MAIN_KEY, JSON.stringify(base));
     }catch(e){}
   }
 
@@ -33910,9 +33292,7 @@ Os outros lançamentos não serão alterados.`;
     return Number.isFinite(numero) ? numero : 0;
   }
   function esc(valor){
-    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
-    });
+    return CMFin.UI.escapeHTML(valor);
   }
   function dinheiro(valor){
     try{ if(typeof moeda === "function") return moeda(valor); }catch(_){ }
@@ -34547,10 +33927,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function getDeviceId(){
-    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    var id = CMFin.Storage.local.getItem(CMFIN_DEVICE_KEY);
     if(!id){
       id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
-      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+      CMFin.Storage.local.setItem(CMFIN_DEVICE_KEY, id);
     }
     return id;
   }
@@ -34558,8 +33938,8 @@ Os outros lançamentos não serão alterados.`;
   function getSessaoCloud(){
     try {
       return JSON.parse(
-        localStorage.getItem(CMFIN_AUTH_KEY) ||
-        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) ||
         "null"
       );
     } catch(e){
@@ -34589,8 +33969,8 @@ Os outros lançamentos não serão alterados.`;
 
   function descobrirChavesCMFin(){
     var keys = [];
-    for(var i = 0; i < localStorage.length; i++){
-      var k = localStorage.key(i);
+    for(var i = 0; i < CMFin.Storage.local.length; i++){
+      var k = CMFin.Storage.local.key(i);
       if(!shouldIgnoreKey(k)) keys.push(k);
     }
     CMFIN_CLOUD_KEYS_CACHE = keys;
@@ -34604,7 +33984,7 @@ Os outros lançamentos não serão alterados.`;
     for(var i = 0; i < keys.length; i++){
       var k = keys[i];
       if(shouldIgnoreKey(k)) continue;
-      try { dados[k] = localStorage.getItem(k); } catch(e){}
+      try { dados[k] = CMFin.Storage.local.getItem(k); } catch(e){}
     }
 
     return {
@@ -34624,22 +34004,22 @@ Os outros lançamentos não serão alterados.`;
       var incoming = dados.localStorage || {};
       // Remove chaves antigas do CMFin que não vieram no backup, mas preserva login/licença/dispositivo.
       var atuais = [];
-      for(var i = 0; i < localStorage.length; i++){
-        atuais.push(localStorage.key(i));
+      for(var i = 0; i < CMFin.Storage.local.length; i++){
+        atuais.push(CMFin.Storage.local.key(i));
       }
       atuais.forEach(function(k){
         if(shouldIgnoreKey(k)) return;
         if(!Object.prototype.hasOwnProperty.call(incoming, k)){
-          try { localStorage.removeItem(k); } catch(e){}
+          try { CMFin.Storage.local.removeItem(k); } catch(e){}
         }
       });
 
       Object.keys(incoming).forEach(function(k){
         if(shouldIgnoreKey(k)) return;
-        try { localStorage.setItem(k, incoming[k]); } catch(e){}
+        try { CMFin.Storage.local.setItem(k, incoming[k]); } catch(e){}
       });
 
-      sessionStorage.setItem("cmfin_cloud_last_import_ok", new Date().toISOString());
+      CMFin.Storage.session.setItem("cmfin_cloud_last_import_ok", new Date().toISOString());
     }catch(_applyErr){
       console.warn("Falha ao aplicar dados da nuvem:", _applyErr);
       CMFIN_CLOUD_LOADING = false;
@@ -34730,7 +34110,7 @@ Os outros lançamentos não serão alterados.`;
         /* Ajuste V9: importar da nuvem sem sair/reconectar.
            Os dados são aplicados no localStorage e a interface é redesenhada acima,
            mantendo a sessão ativa e a página estabilizada. */
-        sessionStorage.setItem("cmfin_cloud_loaded_once", "1");
+        CMFin.Storage.session.setItem("cmfin_cloud_loaded_once", "1");
       }else{
         atualizarBadgeCloud("Nenhum backup online encontrado para esta licença.", "erro");
         CMFIN_CLOUD_READY = true;
@@ -34807,8 +34187,8 @@ Os outros lançamentos não serão alterados.`;
     CMFIN_CLOUD_TIMER = setTimeout(function(){ salvarDadosNuvem(true); }, delay || 1800);
   }
 
-  var originalSetItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function(key, value){
+  var originalSetItem = CMFin.Storage.local.setItem.bind(CMFin.Storage.local);
+  CMFin.Storage.local.setItem = function(key, value){
     var r = originalSetItem(key, value);
     if(!shouldIgnoreKey(key)) CMFIN_CLOUD_KEYS_CACHE = null;
     // Nuvem manual: nenhuma alteração local agenda salvamento automático.
@@ -34816,8 +34196,8 @@ Os outros lançamentos não serão alterados.`;
     return r;
   };
 
-  var originalRemoveItem = localStorage.removeItem.bind(localStorage);
-  localStorage.removeItem = function(key){
+  var originalRemoveItem = CMFin.Storage.local.removeItem.bind(CMFin.Storage.local);
+  CMFin.Storage.local.removeItem = function(key){
     var r = originalRemoveItem(key);
     if(!shouldIgnoreKey(key)) CMFIN_CLOUD_KEYS_CACHE = null;
     // Nuvem manual: remover dados localmente não salva automaticamente na Supabase.
@@ -34875,22 +34255,22 @@ Os outros lançamentos não serão alterados.`;
   function getSessao(){
     try{
       return JSON.parse(
-        localStorage.getItem(CMFIN_AUTH_KEY) ||
-        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) ||
         "null"
       );
     }catch(e){ return null; }
   }
 
   function getStatus(){
-    try{ return JSON.parse(localStorage.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}"); }
+    try{ return JSON.parse(CMFin.Storage.local.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}"); }
     catch(e){ return {}; }
   }
 
   function setStatus(update){
     var atual = getStatus();
     var novo = Object.assign({}, atual, update || {});
-    localStorage.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
+    CMFin.Storage.local.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
     renderCloudPanelValues();
     return novo;
   }
@@ -35142,9 +34522,9 @@ Os outros lançamentos não serão alterados.`;
   function exportarBackup(){
     try{
       var backup = {};
-      for(var i=0;i<localStorage.length;i++){
-        var key = localStorage.key(i);
-        backup[key] = localStorage.getItem(key);
+      for(var i=0;i<CMFin.Storage.local.length;i++){
+        var key = CMFin.Storage.local.key(i);
+        backup[key] = CMFin.Storage.local.getItem(key);
       }
 
       var blob = new Blob([JSON.stringify({
@@ -35432,8 +34812,8 @@ Os outros lançamentos não serão alterados.`;
   function getSessao(){
     try{
       return JSON.parse(
-        localStorage.getItem(CMFIN_AUTH_KEY) ||
-        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) ||
         "null"
       );
     }catch(e){
@@ -35443,17 +34823,17 @@ Os outros lançamentos não serão alterados.`;
 
   function getAcessoLembrado(){
     try{
-      return JSON.parse(localStorage.getItem("cmfin_remembered_access_supabase_v1") || "null");
+      return JSON.parse(CMFin.Storage.local.getItem("cmfin_remembered_access_supabase_v1") || "null");
     }catch(e){
       return null;
     }
   }
 
   function getDeviceId(){
-    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    var id = CMFin.Storage.local.getItem(CMFIN_DEVICE_KEY);
     if(!id){
       id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
-      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+      CMFin.Storage.local.setItem(CMFIN_DEVICE_KEY, id);
     }
     return id;
   }
@@ -35468,10 +34848,10 @@ Os outros lançamentos não serão alterados.`;
 
   function coletarLocalStorage(){
     var dados = {};
-    for(var i=0;i<localStorage.length;i++){
-      var k = localStorage.key(i);
+    for(var i=0;i<CMFin.Storage.local.length;i++){
+      var k = CMFin.Storage.local.key(i);
       if(shouldIgnore(k)) continue;
-      try{ dados[k] = localStorage.getItem(k); }catch(e){}
+      try{ dados[k] = CMFin.Storage.local.getItem(k); }catch(e){}
     }
 
     return {
@@ -35484,9 +34864,9 @@ Os outros lançamentos não serão alterados.`;
 
   function setStatus(update){
     try{
-      var atual = JSON.parse(localStorage.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}");
+      var atual = JSON.parse(CMFin.Storage.local.getItem(CMFIN_CLOUD_STATUS_KEY) || "{}");
       var novo = Object.assign({}, atual, update || {});
-      localStorage.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
+      CMFin.Storage.local.setItem(CMFIN_CLOUD_STATUS_KEY, JSON.stringify(novo));
     }catch(e){}
   }
 
@@ -35909,10 +35289,10 @@ Os outros lançamentos não serão alterados.`;
 
   function getAllData(){
     var dados = {};
-    for(var i=0;i<localStorage.length;i++){
-      var k = localStorage.key(i);
+    for(var i=0;i<CMFin.Storage.local.length;i++){
+      var k = CMFin.Storage.local.key(i);
       if(shouldIgnore(k)) continue;
-      try{ dados[k] = localStorage.getItem(k); }catch(e){}
+      try{ dados[k] = CMFin.Storage.local.getItem(k); }catch(e){}
     }
     return dados;
   }
@@ -35922,15 +35302,15 @@ Os outros lançamentos não serão alterados.`;
     if(!modulo) return {};
 
     var dados = {};
-    for(var i=0;i<localStorage.length;i++){
-      var k = localStorage.key(i);
+    for(var i=0;i<CMFin.Storage.local.length;i++){
+      var k = CMFin.Storage.local.key(i);
       if(shouldIgnore(k)) continue;
 
       var lk = String(k).toLowerCase();
       var match = modulo.termos.some(function(t){ return lk.indexOf(t.toLowerCase()) >= 0; });
 
       if(match){
-        try{ dados[k] = localStorage.getItem(k); }catch(e){}
+        try{ dados[k] = CMFin.Storage.local.getItem(k); }catch(e){}
       }
     }
 
@@ -35998,7 +35378,7 @@ Os outros lançamentos não serão alterados.`;
     Object.keys(dados).forEach(function(k){
       if(shouldIgnore(k)) return;
       try{
-        localStorage.setItem(k, dados[k]);
+        CMFin.Storage.local.setItem(k, dados[k]);
         count++;
       }catch(e){}
     });
@@ -36445,7 +35825,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function carregarBaseStorage(){
-    var salvo = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD);
+    var salvo = CMFin.Storage.local.getItem(STORAGE_KEY) || CMFin.Storage.local.getItem(STORAGE_KEY_OLD);
     if(!salvo){
       return {
         versaoEstrutura:2,
@@ -36472,7 +35852,7 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function salvarBaseStorage(base){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+    CMFin.Storage.local.setItem(STORAGE_KEY, JSON.stringify(base));
   }
 
   function modoNome(modo){
@@ -36488,7 +35868,7 @@ Os outros lançamentos não serão alterados.`;
 
       if(modo === "pessoal"){
         try{
-          var listaDividas = JSON.parse(localStorage.getItem("cmfin_dividas_terceiros") || "[]");
+          var listaDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "[]");
           dados.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
         }catch(e){
           dados.dividasTerceiros = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
@@ -36557,7 +35937,7 @@ Os outros lançamentos não serão alterados.`;
 
           if(modo === "pessoal" && Object.prototype.hasOwnProperty.call(dados, "dividasTerceiros")){
             try{
-              localStorage.setItem("cmfin_dividas_terceiros", JSON.stringify(Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : []));
+              CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : []));
             }catch(e){}
           }
 
@@ -36776,10 +36156,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function getDeviceId(){
-    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    var id = CMFin.Storage.local.getItem(CMFIN_DEVICE_KEY);
     if(!id){
       id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
-      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+      CMFin.Storage.local.setItem(CMFIN_DEVICE_KEY, id);
     }
     return id;
   }
@@ -36787,15 +36167,15 @@ Os outros lançamentos não serão alterados.`;
   function getSessao(){
     try{
       return JSON.parse(
-        localStorage.getItem(CMFIN_AUTH_KEY) ||
-        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) ||
         "null"
       );
     }catch(e){ return null; }
   }
 
   function getLembrado(){
-    try{ return JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_KEY) || "null"); }
+    try{ return JSON.parse(CMFin.Storage.local.getItem(CMFIN_REMEMBERED_KEY) || "null"); }
     catch(e){ return null; }
   }
 
@@ -36804,15 +36184,15 @@ Os outros lançamentos não serão alterados.`;
       var s = getSessao();
       if(s){
         s.senha = novaSenha;
-        sessionStorage.setItem(CMFIN_AUTH_KEY, JSON.stringify(s));
-        localStorage.removeItem(CMFIN_AUTH_KEY);
+        CMFin.Storage.session.setItem(CMFIN_AUTH_KEY, JSON.stringify(s));
+        CMFin.Storage.local.removeItem(CMFIN_AUTH_KEY);
       }
 
       var l = getLembrado();
       if(l){
         delete l.senha;
         l.lembradoEm = new Date().toISOString();
-        localStorage.setItem(CMFIN_REMEMBERED_KEY, JSON.stringify(l));
+        CMFin.Storage.local.setItem(CMFIN_REMEMBERED_KEY, JSON.stringify(l));
       }
     }catch(e){}
   }
@@ -37219,10 +36599,10 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function getDeviceId(){
-    var id = localStorage.getItem(CMFIN_DEVICE_KEY);
+    var id = CMFin.Storage.local.getItem(CMFIN_DEVICE_KEY);
     if(!id){
       id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
-      localStorage.setItem(CMFIN_DEVICE_KEY, id);
+      CMFin.Storage.local.setItem(CMFIN_DEVICE_KEY, id);
     }
     return id;
   }
@@ -37230,15 +36610,15 @@ Os outros lançamentos não serão alterados.`;
   function getSessao(){
     try{
       return JSON.parse(
-        localStorage.getItem(CMFIN_AUTH_KEY) ||
-        sessionStorage.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) ||
+        CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) ||
         "null"
       );
     }catch(e){ return null; }
   }
 
   function getLembrado(){
-    try{ return JSON.parse(localStorage.getItem(CMFIN_REMEMBERED_KEY) || "null"); }
+    try{ return JSON.parse(CMFin.Storage.local.getItem(CMFIN_REMEMBERED_KEY) || "null"); }
     catch(e){ return null; }
   }
 
@@ -37848,7 +37228,7 @@ Os outros lançamentos não serão alterados.`;
 
   function carregarBase(){
     try{
-      var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD) || "{}";
+      var raw = CMFin.Storage.local.getItem(STORAGE_KEY) || CMFin.Storage.local.getItem(STORAGE_KEY_OLD) || "{}";
       var d = JSON.parse(raw);
       return d || {};
     }catch(e){
@@ -37886,7 +37266,7 @@ Os outros lançamentos não serão alterados.`;
 
   function getPerfil(){
     try{
-      var p = JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}");
+      var p = JSON.parse(CMFin.Storage.local.getItem(PERFIL_KEY) || "{}");
       p.pessoal = p.pessoal || {};
       p.empresarial = p.empresarial || {};
       return p;
@@ -37899,7 +37279,7 @@ Os outros lançamentos não serão alterados.`;
     var p = getPerfil();
     p[modo] = dados || {};
     p.atualizadoEm = new Date().toISOString();
-    localStorage.setItem(PERFIL_KEY, JSON.stringify(p));
+    CMFin.Storage.local.setItem(PERFIL_KEY, JSON.stringify(p));
   }
 
   function getPerfilModo(modo){
@@ -38701,7 +38081,7 @@ Os outros lançamentos não serão alterados.`;
 
   function carregarBase(){
     try{
-      var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD) || "{}";
+      var raw = CMFin.Storage.local.getItem(STORAGE_KEY) || CMFin.Storage.local.getItem(STORAGE_KEY_OLD) || "{}";
       return JSON.parse(raw) || {};
     }catch(e){
       return {};
@@ -38741,7 +38121,7 @@ Os outros lançamentos não serão alterados.`;
 
   function getPerfil(){
     try{
-      var p = JSON.parse(localStorage.getItem(PERFIL_KEY_V2) || "{}");
+      var p = JSON.parse(CMFin.Storage.local.getItem(PERFIL_KEY_V2) || "{}");
       if(p && (p.pessoal || p.empresarial)){
         p.pessoal = p.pessoal || {};
         p.empresarial = p.empresarial || {};
@@ -38750,7 +38130,7 @@ Os outros lançamentos não serão alterados.`;
     }catch(e){}
 
     try{
-      var old = JSON.parse(localStorage.getItem(PERFIL_KEY_V1) || "{}");
+      var old = JSON.parse(CMFin.Storage.local.getItem(PERFIL_KEY_V1) || "{}");
       old.pessoal = old.pessoal || {};
       old.empresarial = old.empresarial || {};
       return old;
@@ -40403,7 +39783,7 @@ Os outros lançamentos não serão alterados.`;
 
   function getSessao(){
     try{
-      return JSON.parse(sessionStorage.getItem(CMFIN_AUTH_KEY) || localStorage.getItem(CMFIN_AUTH_KEY) || "null") || {};
+      return JSON.parse(CMFin.Storage.session.getItem(CMFIN_AUTH_KEY) || CMFin.Storage.local.getItem(CMFIN_AUTH_KEY) || "null") || {};
     }catch(e){ return {}; }
   }
 
@@ -41322,14 +40702,12 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function esc(valor){
-    return String(valor == null ? "" : valor).replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"}[c];
-    });
+    return CMFin.UI.escapeHTML(valor);
   }
 
   function lerBasePrincipal(){
     try{
-      var raw = localStorage.getItem(MAIN_KEY);
+      var raw = CMFin.Storage.local.getItem(MAIN_KEY);
       return raw ? (JSON.parse(raw) || {}) : {};
     }catch(e){
       return {};
@@ -41338,7 +40716,7 @@ Os outros lançamentos não serão alterados.`;
 
   function lerDividas(){
     try{
-      var raw = localStorage.getItem(DTC_KEY);
+      var raw = CMFin.Storage.local.getItem(DTC_KEY);
       if(raw !== null){
         var dedicado = JSON.parse(raw || "[]");
         return Array.isArray(dedicado) ? dedicado : [];
@@ -41349,7 +40727,7 @@ Os outros lançamentos não serão alterados.`;
       var base = lerBasePrincipal();
       var migradas = base && base.modos && base.modos.pessoal && base.modos.pessoal.dividasTerceiros;
       if(Array.isArray(migradas)){
-        localStorage.setItem(DTC_KEY, JSON.stringify(migradas));
+        CMFin.Storage.local.setItem(DTC_KEY, JSON.stringify(migradas));
         return migradas;
       }
     }catch(e){}
@@ -41360,7 +40738,7 @@ Os outros lançamentos não serão alterados.`;
   function gravarDividas(lista){
     if(!Array.isArray(lista)) throw new Error("Lista de dívidas inválida.");
 
-    localStorage.setItem(DTC_KEY, JSON.stringify(lista));
+    CMFin.Storage.local.setItem(DTC_KEY, JSON.stringify(lista));
 
     // Espelha somente este módulo na base principal, sem alterar os demais dados.
     try{
@@ -41370,7 +40748,7 @@ Os outros lançamentos não serão alterados.`;
           base.modos.pessoal = {};
         }
         base.modos.pessoal.dividasTerceiros = lista;
-        localStorage.setItem(MAIN_KEY, JSON.stringify(base));
+        CMFin.Storage.local.setItem(MAIN_KEY, JSON.stringify(base));
       }
     }catch(e){
       console.warn("CMFin: não foi possível espelhar as dívidas na base principal.", e);
@@ -41937,9 +41315,7 @@ Os outros lançamentos não serão alterados.`;
   function id(nome){ return document.getElementById(nome); }
 
   function esc(valor){
-    return String(valor == null ? "" : valor).replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"}[c];
-    });
+    return CMFin.UI.escapeHTML(valor);
   }
 
   function brl(valor){
@@ -41948,7 +41324,7 @@ Os outros lançamentos não serão alterados.`;
 
   function lerJson(chave, fallback){
     try{
-      var raw = localStorage.getItem(chave);
+      var raw = CMFin.Storage.local.getItem(chave);
       if(raw == null) return fallback;
       var parsed = JSON.parse(raw);
       return parsed == null ? fallback : parsed;
@@ -42316,7 +41692,7 @@ Os outros lançamentos não serão alterados.`;
     return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   }
   function esc(txt){
-    return String(txt==null?'':txt).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
+    return CMFin.UI.escapeHTML(txt);
   }
   function chave(tipo,id,mes){
     return [modoAtualSeguro(),tipo,String(id),tipo==='fixos'?String(mes||''):''].join('|');
@@ -42815,8 +42191,7 @@ Os outros lançamentos não serão alterados.`;
     return numeroSeguro(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   }
   function escapar(valor){
-    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
-    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+    return CMFin.UI.escapeHTML(valor);
   }
   function statusItem(item,mes){
     try{if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes);}catch(_){ }
@@ -43305,8 +42680,7 @@ Os outros lançamentos não serão alterados.`;
     return numeroSeguro(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   }
   function escapar(valor){
-    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
-    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+    return CMFin.UI.escapeHTML(valor);
   }
   function iniciais(nome){
     return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
@@ -44106,8 +43480,7 @@ Os outros lançamentos não serão alterados.`;
     return n(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   }
   function escapar(valor){
-    try{if(typeof escaparHtml==='function') return escaparHtml(String(valor??''));}catch(_){ }
-    return String(valor??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});
+    return CMFin.UI.escapeHTML(valor);
   }
   function iniciais(nome){
     return String(nome||'T').trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p.charAt(0).toUpperCase();}).join('')||'T';
@@ -44946,9 +44319,7 @@ Os outros lançamentos não serão alterados.`;
     return numero(valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   }
   function escapar(valor){
-    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
-    });
+    return CMFin.UI.escapeHTML(valor);
   }
   function nomeCompetencia(mes){
     try{ if(typeof nomeMes === "function") return nomeMes(mes); }catch(_){ }
@@ -45413,19 +44784,19 @@ Os outros lançamentos não serão alterados.`;
 
   function hardenLegacyCredentials(){
     try{
-      var localSession = parse(localStorage.getItem(AUTH_KEY), null);
+      var localSession = parse(CMFin.Storage.local.getItem(AUTH_KEY), null);
       if(localSession){
         // Preserve the active login only for this browser tab/session.
-        if(!sessionStorage.getItem(AUTH_KEY)){
-          sessionStorage.setItem(AUTH_KEY, JSON.stringify(localSession));
+        if(!CMFin.Storage.session.getItem(AUTH_KEY)){
+          CMFin.Storage.session.setItem(AUTH_KEY, JSON.stringify(localSession));
         }
-        localStorage.removeItem(AUTH_KEY);
+        CMFin.Storage.local.removeItem(AUTH_KEY);
       }
 
-      var remembered = parse(localStorage.getItem(REMEMBERED_KEY), null);
+      var remembered = parse(CMFin.Storage.local.getItem(REMEMBERED_KEY), null);
       if(remembered && Object.prototype.hasOwnProperty.call(remembered, "senha")){
         delete remembered.senha;
-        localStorage.setItem(REMEMBERED_KEY, JSON.stringify(remembered));
+        CMFin.Storage.local.setItem(REMEMBERED_KEY, JSON.stringify(remembered));
       }
     }catch(_e){}
   }
@@ -45433,7 +44804,7 @@ Os outros lançamentos não serão alterados.`;
   function currentMode(){
     try{
       if(typeof window.modoAtual === "string" && window.modoAtual) return window.modoAtual;
-      var base = parse(localStorage.getItem("cmfin_dados_v2"), null) || parse(localStorage.getItem("cmfin_dados"), null);
+      var base = parse(CMFin.Storage.local.getItem("cmfin_dados_v2"), null) || parse(CMFin.Storage.local.getItem("cmfin_dados"), null);
       return base && base.modoAtual ? String(base.modoAtual) : "geral";
     }catch(_e){ return "geral"; }
   }
@@ -45461,11 +44832,11 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function readDrafts(){
-    return parse(localStorage.getItem(DRAFT_KEY), {}) || {};
+    return parse(CMFin.Storage.local.getItem(DRAFT_KEY), {}) || {};
   }
 
   function writeDrafts(data){
-    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(data || {})); }catch(_e){}
+    try{ CMFin.Storage.local.setItem(DRAFT_KEY, JSON.stringify(data || {})); }catch(_e){}
   }
 
   function valueOf(el){
@@ -46015,9 +45386,7 @@ Os outros lançamentos não serão alterados.`;
     return n(valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   }
   function esc(valor){
-    return String(valor == null ? "" : valor).replace(/[&<>"']/g,function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
-    });
+    return CMFin.UI.escapeHTML(valor);
   }
   function dataBR(valor){
     if(!valor) return "-";
