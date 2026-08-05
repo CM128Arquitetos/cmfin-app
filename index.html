@@ -30407,9 +30407,14 @@ Os outros lançamentos não serão alterados.`;
 
       if(resposta.error){
         console.error("Erro Supabase RPC:", resposta.error);
+        var codigo = String(resposta.error.code || "");
+        var detalhe = String(resposta.error.message || resposta.error.details || "").toLowerCase();
+        var funcaoAusente = codigo === "PGRST202" || codigo === "42883" || detalhe.includes("could not find the function") || detalhe.includes("function public.cmfin_ativar_licenca") || detalhe.includes("schema cache");
         return {
           ok:false,
-          mensagem:"Não foi possível validar a licença com segurança. Verifique se a função cmfin_ativar_licenca está instalada e tente novamente."
+          mensagem: funcaoAusente
+            ? "Configuração do servidor pendente. Execute o arquivo SQL de autenticação segura no Supabase e tente novamente."
+            : "O servidor de licenças recusou a validação. Tente novamente ou consulte o administrador."
         };
       }
 
@@ -36422,13 +36427,13 @@ Os outros lançamentos não serão alterados.`;
       + '    </div>'
       + '    <div class="cmfin-password-field">'
       + '      <label>Nova senha</label>'
-      + '      <input type="password" name="novaSenha" autocomplete="new-password" minlength="6" required />'
+      + '      <input type="password" name="novaSenha" autocomplete="new-password" minlength="8" required />'
       + '    </div>'
       + '    <div class="cmfin-password-field">'
       + '      <label>Confirmar nova senha</label>'
-      + '      <input type="password" name="confirmarSenha" autocomplete="new-password" minlength="6" required />'
+      + '      <input type="password" name="confirmarSenha" autocomplete="new-password" minlength="8" required />'
       + '    </div>'
-      + '    <div class="cmfin-password-note">Use pelo menos 6 caracteres. Guarde sua nova senha com segurança.</div>'
+      + '    <div class="cmfin-password-note">Use no mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial.</div>'
       + '    <div class="cmfin-password-actions">'
       + '      <button type="button" class="cmfin-password-btn" data-close>Cancelar</button>'
       + '      <button type="submit" class="cmfin-password-btn primary">Salvar nova senha</button>'
@@ -36459,8 +36464,9 @@ Os outros lançamentos não serão alterados.`;
       var novaSenha = String(fd.get("novaSenha") || "").trim();
       var confirmarSenha = String(fd.get("confirmarSenha") || "").trim();
 
-      if(novaSenha.length < 6){
-        toast("A nova senha deve ter pelo menos 6 caracteres.", "erro");
+      var problemaSenha = (typeof validarForcaSenha === "function") ? validarForcaSenha(novaSenha) : (novaSenha.length < 8 ? "A nova senha deve ter pelo menos 8 caracteres." : "");
+      if(problemaSenha){
+        toast(problemaSenha, "erro");
         return;
       }
 
