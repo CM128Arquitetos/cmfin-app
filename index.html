@@ -1,4 +1,5 @@
 <!-- CMFin V58 - Reset completo do modo + Sócios/Pró-Labore dinâmicos - 2026-08-08 -->
+<!-- CMFin V59 - Conciliação mensal de caixa e competência sem retroatividade - 2026-08-09 -->
 <!-- CMFin V57 - Remove alertas de terceiros/backup e prioriza vencimentos - 2026-08-05 -->
 <!-- CMFin V53 - Análise Financeira Aprimorada e Alertas Inteligentes; base V51 - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
@@ -46758,5 +46759,341 @@ Os outros lançamentos não serão alterados.`;
   window.addEventListener('load',()=>setTimeout(iniciar,260));
 })();
 </script>
+
+<!-- CMFin V59 - Conciliação mensal de caixa, Caixa Real x Saldo Previsto, Dívidas com Terceiros e bloqueio retroativo - 2026-08-09 -->
+<style id="cmfin-v59-caixa-conciliacao-css">
+  .cmfin-v59-modal{position:fixed;inset:0;z-index:999999;background:rgba(7,20,45,.58);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:22px;}
+  .cmfin-v59-modal.open{display:flex;}
+  .cmfin-v59-dialog{width:min(720px,100%);max-height:calc(100vh - 44px);overflow:auto;background:#fff;border:1px solid #dfe7ef;border-radius:28px;box-shadow:0 28px 80px rgba(15,23,42,.26);padding:26px;}
+  .cmfin-v59-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.06em;}
+  .cmfin-v59-dialog h2{margin:14px 0 7px;color:#07142d;font-size:27px;letter-spacing:-.035em;}
+  .cmfin-v59-dialog .lead{margin:0;color:#607089;font-size:14px;line-height:1.55;}
+  .cmfin-v59-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0;}
+  .cmfin-v59-summary>div{border:1px solid #e2e8f0;border-radius:18px;padding:15px;background:#f8fafc;}
+  .cmfin-v59-summary span{display:block;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;}
+  .cmfin-v59-summary strong{display:block;font-size:21px;color:#07142d;letter-spacing:-.025em;}
+  .cmfin-v59-note{padding:13px 14px;border-radius:15px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:12px;line-height:1.5;margin:14px 0;}
+  .cmfin-v59-field{display:none;margin:15px 0 4px;}
+  .cmfin-v59-field.show{display:block;}
+  .cmfin-v59-field label{display:block;margin-bottom:7px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.06em;color:#52627a;}
+  .cmfin-v59-field input{width:100%;height:52px;border:1px solid #cbd5e1;border-radius:14px;padding:0 14px;font-size:17px;font-weight:850;color:#07142d;background:#fff;outline:none;}
+  .cmfin-v59-field input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+  .cmfin-v59-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .cmfin-v59-actions button{border:0;border-radius:13px;height:46px;padding:0 16px;font-weight:900;cursor:pointer;}
+  .cmfin-v59-actions .primary{background:#0f766e;color:#fff;}
+  .cmfin-v59-actions .secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+  .cmfin-v59-actions .ghost{background:#fff;color:#475569;border:1px solid #dbe4ee;}
+  .cmfin-v59-inline-badge{display:inline-flex;margin-left:7px;padding:4px 7px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:900;vertical-align:middle;}
+  @media(max-width:640px){.cmfin-v59-dialog{padding:20px;border-radius:22px}.cmfin-v59-summary{grid-template-columns:1fr}.cmfin-v59-actions{display:grid;grid-template-columns:1fr}.cmfin-v59-actions button{width:100%}}
+</style>
+<script id="cmfin-v59-caixa-conciliacao-js">
+(function(){
+  'use strict';
+  const EXTRA_KEY='ello_cofre_empresa_pro_v1';
+  const BASE='2026-05';
+  const VERSAO='59.0.0';
+  let modalObrigatorio=false;
+  let mesModal='';
+  let reconciliacaoEmAndamento=false;
+
+  function num(v){ const x=Number(v||0); return Number.isFinite(x)?x:0; }
+  function norm(v){ return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function pago(status){ const s=norm(status); return s==='pago'||s==='recebido'||s==='quitado'; }
+  function naoIncluir(status){ const s=norm(status); return ['naoincluir','nao incluir','nao incluso','nao incluido','desconsiderado','fora do calculo'].includes(s); }
+  function moedaV59(v){ try{return moeda(num(v));}catch(e){return num(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});} }
+  function esc(v){ try{return CMFin.UI.escapeHTML(v);}catch(e){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));} }
+  function mesHoje(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+  function addMes(m,q){ const [a,mm]=String(m||mesHoje()).split('-').map(Number); const d=new Date(a,mm-1+q,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+  function nomeMesV59(m){ try{return nomeMes(m);}catch(e){const [a,mm]=String(m).split('-');const ns=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];return `${ns[(Number(mm)||1)-1]} de ${a}`;} }
+  function modo(){ try{return modoAtual==='empresarial'?'empresarial':'pessoal';}catch(e){return window.modoAtual==='empresarial'?'empresarial':'pessoal';} }
+  function storage(){ return (window.CMFin&&CMFin.Storage&&CMFin.Storage.local)?CMFin.Storage.local:window.localStorage; }
+  function extrasTodos(){ try{return JSON.parse(storage().getItem(EXTRA_KEY)||'{}')||{};}catch(e){return {};} }
+  function extrasModo(){ const all=extrasTodos(); const m=modo(); const ex=all[m]||{}; ex.fechamentos=ex.fechamentos||{}; ex.ajustes=Array.isArray(ex.ajustes)?ex.ajustes:[]; ex.conciliacoes=ex.conciliacoes||{}; return ex; }
+  function salvarExtras(ex){ const all=extrasTodos(); all[modo()]=ex; storage().setItem(EXTRA_KEY,JSON.stringify(all)); }
+  function mesDashboard(){ return document.getElementById('dashboardMes')?.value || mesHoje(); }
+
+  function mesId(id){
+    const s=String(id==null?'':id);
+    const m=s.match(/(\d{13})/);
+    if(!m) return '';
+    const t=Number(m[1]); if(!Number.isFinite(t)||t<946684800000||t>4102444800000) return '';
+    const d=new Date(t); if(Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+  function mesIso(v){ const s=String(v||''); const m=s.match(/^(\d{4}-\d{2})/); return m?m[1]:''; }
+  function mesCadastroItem(item){
+    if(!item||typeof item!=='object') return '';
+    return mesIso(item.cmfinMesCadastro)||mesIso(item.criadoEmCMFin)||mesIso(item.criadoEm)||mesId(item.id)||mesId(item.compraId)||'';
+  }
+  function permitidoNoMes(item,mes){ const c=mesCadastroItem(item); return !c || String(mes)>=c; }
+  window.CMFinMesCadastroItem=mesCadastroItem;
+
+  // Regra global: nenhum lançamento passa a existir no CMFin antes do mês em que foi cadastrado.
+  const oldFixoAparece=window.gastoFixoApareceNoMes;
+  if(typeof oldFixoAparece==='function'){
+    window.gastoFixoApareceNoMes=function(item,mes){ const m=mes||mesDashboard(); if(!permitidoNoMes(item,m)) return false; return oldFixoAparece.call(this,item,m); };
+  }
+  function envolverLista(nome){
+    const old=window[nome]; if(typeof old!=='function'||old.__cmfinV59Retro) return;
+    const novo=function(mes){ const m=mes||mesDashboard(); const lista=old.apply(this,arguments)||[]; return lista.filter(i=>permitidoNoMes(i,m)); };
+    novo.__cmfinV59Retro=true; window[nome]=novo;
+  }
+  ['gastosFixosDoMes','gastosVariaveisDoMes','pagamentosTerceirizadosDoMes','pagamentosArquitetosDoMes'].forEach(envolverLista);
+  const oldTerceiroAparece=window.terceiroApareceNoMes;
+  if(typeof oldTerceiroAparece==='function'){
+    window.terceiroApareceNoMes=function(item,mes){ if(!permitidoNoMes(item,mes)) return false; return oldTerceiroAparece.apply(this,arguments); };
+  }
+
+  function listaFixos(mes){ try{return (gastosFixosDoMes(mes)||[]).filter(i=>permitidoNoMes(i,mes));}catch(e){try{return (gastosFixos||[]).filter(i=>permitidoNoMes(i,mes));}catch(_){return [];}} }
+  function listaVariaveis(mes){ try{return (gastosVariaveisDoMes(mes)||[]).filter(i=>permitidoNoMes(i,mes));}catch(e){try{return (gastosVariaveis||[]).filter(i=>(i.mesReferencia||i.primeiraFatura||String(i.data||'').slice(0,7))===mes&&permitidoNoMes(i,mes));}catch(_){return [];}} }
+  function listaTerceirizados(mes){ try{return (pagamentosTerceirizadosDoMes(mes)||[]).filter(i=>permitidoNoMes(i,mes));}catch(e){try{return (pagamentosTerceirizados||[]).filter(i=>(i.mesReferencia||i.primeiraFatura||String(i.data||'').slice(0,7))===mes&&permitidoNoMes(i,mes));}catch(_){return [];}} }
+  function listaArquitetos(mes){ try{return (pagamentosArquitetosDoMes(mes)||[]).filter(i=>permitidoNoMes(i,mes));}catch(e){try{return (pagamentosArquitetos||[]).filter(i=>(i.mesReferencia||i.primeiraFatura||String(i.data||'').slice(0,7))===mes&&permitidoNoMes(i,mes));}catch(_){return [];}} }
+  function statusFixo(item,mes){ try{return statusFixoNoMes(item,mes)||'Pendente';}catch(e){return item?.statusMes?.[mes]||item?.statusPorMes?.[mes]||item?.status||'Pendente';} }
+  function statusGenerico(item,mes){ return item?.statusMes?.[mes]||item?.statusPorMes?.[mes]||item?.status||'Pendente'; }
+  function somar(lista, getter){ return (lista||[]).reduce((a,i)=>a+num(getter?getter(i):(i.valorRecebido??i.valor)),0); }
+
+  function recebimentosPagos(mes){
+    try{
+      return somar((linhasRecebimentoDoMes(mes)||[]).filter(l=>!naoIncluir(l.statusLinha||l.status||l.item?.status) && num(l.valorRecebido)>0),l=>l.valorRecebido);
+    }catch(e){
+      try{return somar((recebimentos||[]).filter(i=>String(i.data||'').slice(0,7)===mes&&!naoIncluir(i.status)&&pago(i.status)));}catch(_){return 0;}
+    }
+  }
+
+  function dividasPessoais(){
+    if(modo()!=='pessoal') return [];
+    try{ if(CMFin.Data&&typeof CMFin.Data.getPersonalDebts==='function') return CMFin.Data.getPersonalDebts()||[]; }catch(e){}
+    try{return JSON.parse(storage().getItem('cmfin_dividas_terceiros')||'[]')||[];}catch(e){return [];}
+  }
+  function vencimentoDivida(item){ return mesIso(item?.vencimento)||mesIso(item?.data)||mesCadastroItem(item)||mesHoje(); }
+  function historicoDivida(item){ return Array.isArray(item?.historicoPagamentos)?item.historicoPagamentos:[]; }
+  function pagoDividasNoMes(mes){
+    let total=0;
+    dividasPessoais().forEach(item=>{
+      if(!permitidoNoMes(item,mes)) return;
+      const hist=historicoDivida(item);
+      if(hist.length){
+        total+=hist.filter(h=>(mesIso(h.mes)||mesIso(h.data))===mes).reduce((a,h)=>a+num(h.valor),0);
+        return;
+      }
+      // Registros antigos: o valor que já estava pago ao entrar no V59 vira saldo inicial da dívida e não saída retroativa.
+      const inicial=num(item.valorPagoInicialCMFin);
+      const atual=num(item.valorPago);
+      const delta=Math.max(0,atual-inicial);
+      if(delta<=0) return;
+      const mp=mesIso(item.pagoEm)||mesIso(item.atualizadoEm)||vencimentoDivida(item);
+      if(mp===mes) total+=delta;
+    });
+    return total;
+  }
+  function pendenteDividasNoMes(mes){
+    if(modo()!=='pessoal') return 0;
+    return dividasPessoais().reduce((a,item)=>{
+      if(!permitidoNoMes(item,mes)) return a;
+      const venc=vencimentoDivida(item); if(venc>mes) return a;
+      return a+Math.max(0,num(item.valorTotal)-num(item.valorPago));
+    },0);
+  }
+
+  function ajustesMes(mes){ return extrasModo().ajustes.filter(a=>a.mes===mes&&!naoIncluir(a.status)); }
+  function fluxoMes(mes){
+    const rec=recebimentosPagos(mes);
+    const fixos=listaFixos(mes), vars=listaVariaveis(mes), terc=listaTerceirizados(mes), arq=listaArquitetos(mes);
+    const fixPago=somar(fixos.filter(i=>!naoIncluir(statusFixo(i,mes))&&pago(statusFixo(i,mes))));
+    const varPago=somar(vars.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
+    const tercPago=somar(terc.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
+    const arqPago=somar(arq.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
+    const divPago=pagoDividasNoMes(mes);
+    const pendFix=somar(fixos.filter(i=>!naoIncluir(statusFixo(i,mes))&&!pago(statusFixo(i,mes))));
+    const pendVar=somar(vars.filter(i=>!naoIncluir(statusGenerico(i,mes))&&!pago(statusGenerico(i,mes))));
+    const pendTerc=somar(terc.filter(i=>!naoIncluir(statusGenerico(i,mes))&&!pago(statusGenerico(i,mes))));
+    const pendArq=somar(arq.filter(i=>!naoIncluir(statusGenerico(i,mes))&&!pago(statusGenerico(i,mes))));
+    const pendDiv=pendenteDividasNoMes(mes);
+    const aj=ajustesMes(mes);
+    const ajEntrada=aj.filter(a=>norm(a.tipo)==='entrada').reduce((a,i)=>a+num(i.valor),0);
+    const ajSaida=aj.filter(a=>norm(a.tipo)==='saida').reduce((a,i)=>a+num(i.valor),0);
+    const saidasPagas=fixPago+varPago+tercPago+arqPago+divPago+ajSaida;
+    const entradas=rec+ajEntrada;
+    const pendente=pendFix+pendVar+pendTerc+pendArq+pendDiv;
+    return {recebido:rec,ajEntrada,ajSaida,entradas,fixosPagos:fixPago,variaveisPagas:varPago,terceirizadosPagos:tercPago,arquitetosPagos:arqPago,dividasTerceirosPagas:divPago,saidasPagas,pendFix,pendVar,pendTerc,pendArq,pendDiv,pendente,movimentoLiquido:entradas-saidasPagas};
+  }
+
+  function resumoMes(mesAlvo,opts){
+    opts=opts||{};
+    if(!mesAlvo||mesAlvo<BASE) return {mes:mesAlvo,saldoAnterior:0,recebido:0,entradas:0,saidasPagas:0,pendente:0,caixa:0,saldoPrevisto:0,pendFix:0,pendVar:0,pendDiv:0,movimentoLiquido:0};
+    const ex=extrasModo(); let saldo=0, r=null;
+    for(let m=BASE;m<=mesAlvo;m=addMes(m,1)){
+      const f=fluxoMes(m);
+      const conc=(opts.ignorarConciliacaoMes===m)?null:ex.conciliacoes[m];
+      const abertura=conc&&Number.isFinite(Number(conc.saldoAberturaReal))?num(conc.saldoAberturaReal):saldo;
+      const caixa=abertura+f.movimentoLiquido;
+      r={mes:m,saldoAnterior:abertura,...f,caixa,saldoPrevisto:caixa-f.pendente,conciliacao:conc||null,fechado:!!ex.fechamentos[m]};
+      saldo=caixa;
+    }
+    return r;
+  }
+
+  function fecharMesV59(mes,automatico){
+    mes=mes||mesDashboard(); if(mes<BASE) return;
+    const ex=extrasModo(), r=resumoMes(mes);
+    ex.fechamentos[mes]={...r,caixaFinal:r.caixa,motorCaixaV59:true,automatico:!!automatico,fechadoEm:new Date().toISOString()};
+    salvarExtras(ex);
+  }
+  function reabrirMesV59(mes){ mes=mes||mesDashboard(); const ex=extrasModo(); delete ex.fechamentos[mes]; salvarExtras(ex); atualizarTudoV59(); }
+  window.cmfinFecharMesV59=function(mes){ mes=mes||mesDashboard(); const r=resumoMes(mes); if(r.pendente>0&&!confirm(`${nomeMesV59(mes)} ainda possui ${moedaV59(r.pendente)} em pendências. Deseja fechar o mês mesmo assim?`))return; fecharMesV59(mes,false); atualizarTudoV59(); };
+  window.cmfinReabrirMesV59=function(mes){ mes=mes||mesDashboard(); if(!extrasModo().fechamentos[mes])return; if(!confirm(`Reabrir ${nomeMesV59(mes)}?`))return; reabrirMesV59(mes); };
+
+  function criarModal(){
+    if(document.getElementById('cmfinV59Conciliacao')) return;
+    const el=document.createElement('div'); el.id='cmfinV59Conciliacao'; el.className='cmfin-v59-modal'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
+    el.innerHTML=`<div class="cmfin-v59-dialog"><span class="cmfin-v59-kicker">✓ Conferência mensal de caixa</span><h2 id="cmfinV59Titulo">Conferir caixa</h2><p class="lead" id="cmfinV59Lead"></p><div class="cmfin-v59-summary"><div><span>Caixa calculado pelo CMFin agora</span><strong id="cmfinV59Calculado">R$ 0,00</strong></div><div><span>Pendências ainda não pagas</span><strong id="cmfinV59Pendente">R$ 0,00</strong></div></div><div class="cmfin-v59-note" id="cmfinV59Nota"></div><div class="cmfin-v59-field" id="cmfinV59Campo"><label>Quanto você realmente tem disponível agora?</label><input id="cmfinV59ValorReal" inputmode="decimal" placeholder="R$ 0,00"></div><div class="cmfin-v59-actions"><button type="button" class="primary" id="cmfinV59Confirmar">Sim, o caixa está correto</button><button type="button" class="secondary" id="cmfinV59Outro">Informar outro valor</button><button type="button" class="primary" id="cmfinV59SalvarOutro" style="display:none">Salvar caixa real</button><button type="button" class="ghost" id="cmfinV59Cancelar" style="display:none">Cancelar</button></div></div>`;
+    document.body.appendChild(el);
+    document.getElementById('cmfinV59Confirmar').onclick=()=>salvarConciliacao(true);
+    document.getElementById('cmfinV59Outro').onclick=()=>{document.getElementById('cmfinV59Campo').classList.add('show');document.getElementById('cmfinV59Outro').style.display='none';document.getElementById('cmfinV59Confirmar').style.display='none';document.getElementById('cmfinV59SalvarOutro').style.display='inline-flex';setTimeout(()=>document.getElementById('cmfinV59ValorReal')?.focus(),30);};
+    document.getElementById('cmfinV59SalvarOutro').onclick=()=>salvarConciliacao(false);
+    document.getElementById('cmfinV59Cancelar').onclick=fecharModal;
+    document.getElementById('cmfinV59ValorReal').addEventListener('blur',function(){ const v=parseMoeda(this.value); if(this.value.trim()!=='') this.value=moedaV59(v); });
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('cmfinV59Conciliacao')?.classList.contains('open')&&!modalObrigatorio)fecharModal();});
+  }
+  function parseMoeda(v){
+    let s=String(v||'').trim(); if(!s)return NaN; const neg=/^-|\(.*\)/.test(s); s=s.replace(/[^0-9,.-]/g,'');
+    if(s.includes(',')) s=s.replace(/\./g,'').replace(',','.'); else { const p=s.split('.'); if(p.length>2)s=p.join(''); }
+    let n=Number(s); if(!Number.isFinite(n))return NaN; if(neg&&n>0)n=-n; return n;
+  }
+  function abrirConciliacao(mes,obrigatorio){
+    if(reconciliacaoEmAndamento)return; criarModal(); mes=mes||mesHoje(); mesModal=mes; modalObrigatorio=!!obrigatorio;
+    const r=resumoMes(mes,{ignorarConciliacaoMes:mes}); const atual=extrasModo().conciliacoes[mes];
+    document.getElementById('cmfinV59Titulo').textContent=`Conferência de Caixa — ${nomeMesV59(mes)}`;
+    document.getElementById('cmfinV59Lead').textContent=`O CMFin separa agora dinheiro que já saiu das contas que ainda estão pendentes. Confira o saldo real disponível em bancos, PIX e dinheiro antes de continuar.`;
+    document.getElementById('cmfinV59Calculado').textContent=moedaV59(r.caixa);
+    document.getElementById('cmfinV59Pendente').textContent=moedaV59(r.pendente);
+    document.getElementById('cmfinV59Nota').innerHTML=`O valor calculado considera <b>${moedaV59(r.recebido+r.ajEntrada)}</b> de entradas efetivas e <b>${moedaV59(r.saidasPagas)}</b> de saídas efetivamente pagas no mês. Se o seu caixa real for diferente, informe o valor correto. A diferença será salva como <b>conciliação de caixa</b>, e não como receita.`;
+    document.getElementById('cmfinV59Campo').classList.remove('show');
+    document.getElementById('cmfinV59Outro').style.display='inline-flex'; document.getElementById('cmfinV59Confirmar').style.display='inline-flex'; document.getElementById('cmfinV59SalvarOutro').style.display='none';
+    document.getElementById('cmfinV59Cancelar').style.display=obrigatorio?'none':'inline-flex';
+    const inp=document.getElementById('cmfinV59ValorReal'); inp.value=atual?moedaV59(atual.saldoRealInformado??resumoMes(mes).caixa):'';
+    document.getElementById('cmfinV59Conciliacao').classList.add('open');
+  }
+  function fecharModal(){ if(modalObrigatorio)return; document.getElementById('cmfinV59Conciliacao')?.classList.remove('open'); mesModal=''; }
+  function salvarConciliacao(usarCalculado){
+    if(!mesModal)return; reconciliacaoEmAndamento=true;
+    try{
+      const mes=mesModal; const rCalc=resumoMes(mes,{ignorarConciliacaoMes:mes}); let valorAtualReal=rCalc.caixa;
+      if(!usarCalculado){ valorAtualReal=parseMoeda(document.getElementById('cmfinV59ValorReal')?.value); if(!Number.isFinite(valorAtualReal)){alert('Informe um valor válido para o caixa real.');return;} }
+      const aberturaReal=valorAtualReal-rCalc.movimentoLiquido;
+      const ex=extrasModo(); ex.conciliacoes[mes]={mes,saldoCalculadoAbertura:rCalc.saldoAnterior,saldoAberturaReal:aberturaReal,caixaCalculadoNoMomento:rCalc.caixa,saldoRealInformado:valorAtualReal,diferenca:valorAtualReal-rCalc.caixa,confirmadoEm:new Date().toISOString(),origem:usarCalculado?'calculado':'informado_usuario',motor:'v59'};
+      const anterior=addMes(mes,-1);
+      salvarExtras(ex);
+      if(anterior>=BASE){ fecharMesV59(anterior,true); }
+      document.getElementById('cmfinV59Conciliacao')?.classList.remove('open'); modalObrigatorio=false; mesModal='';
+      atualizarTudoV59();
+      if(typeof mostrarToast==='function')mostrarToast(`Caixa de ${nomeMesV59(mes)} conciliado em ${moedaV59(valorAtualReal)}.`);
+    }finally{reconciliacaoEmAndamento=false;}
+  }
+  window.cmfinAbrirConciliacaoCaixaV59=function(mes){abrirConciliacao(mes||mesDashboard(),false);};
+
+  function migrarMesCadastro(){
+    let mudou=false;
+    const grupos=[];
+    try{grupos.push(gastosFixos,gastosVariaveis,pagamentosTerceirizados,pagamentosArquitetos);}catch(e){}
+    grupos.forEach(lista=>(Array.isArray(lista)?lista:[]).forEach(item=>{if(!item.cmfinMesCadastro){const m=mesCadastroItem(item);if(m){item.cmfinMesCadastro=m;mudou=true;}}}));
+    if(mudou){try{salvarDados();}catch(e){}}
+    if(modo()==='pessoal'){
+      try{
+        const d=dividasPessoais(); let md=false;
+        d.forEach(item=>{
+          if(!item.cmfinMesCadastro){const m=mesCadastroItem(item); if(m){item.cmfinMesCadastro=m;md=true;}}
+          if(item.valorPagoInicialCMFin===undefined){item.valorPagoInicialCMFin=num(item.valorPago);md=true;}
+          if(!Array.isArray(item.historicoPagamentos)){item.historicoPagamentos=[];md=true;}
+        });
+        if(md&&CMFin.Data&&typeof CMFin.Data.setPersonalDebts==='function')CMFin.Data.setPersonalDebts(d);
+      }catch(e){}
+    }
+  }
+
+  // Dívidas com Terceiros: daqui em diante registramos a data real de pagamentos, sem inventar saídas no passado.
+  const oldDtcSalvar=window.dtcSalvarDivida;
+  if(typeof oldDtcSalvar==='function'&&!oldDtcSalvar.__cmfinV59){
+    const wrap=async function(){
+      const idEdit=document.getElementById('dtcIdEdicao')?.value||'';
+      const credor=(document.getElementById('dtcCredor')?.value||'').trim(); const descricao=(document.getElementById('dtcDescricao')?.value||'').trim();
+      const antes=dividasPessoais(); const anterior=idEdit?antes.find(x=>String(x.id)===String(idEdit)):null;
+      const oldPago=anterior?num(anterior.valorPago):0; const oldHist=anterior&&Array.isArray(anterior.historicoPagamentos)?anterior.historicoPagamentos.slice():[];
+      const result=await oldDtcSalvar.apply(this,arguments); if(result===false)return result;
+      try{
+        const lista=dividasPessoais(); let item=idEdit?lista.find(x=>String(x.id)===String(idEdit)):lista.find(x=>String(x.credor||'').trim()===credor&&String(x.descricao||'').trim()===descricao);
+        if(item){ item.cmfinMesCadastro=anterior?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje(); item.valorPagoInicialCMFin=anterior?.valorPagoInicialCMFin!==undefined?anterior.valorPagoInicialCMFin:num(item.valorPago); item.historicoPagamentos=oldHist; const delta=num(item.valorPago)-oldPago; if(anterior&&Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'alteracao_pagamento'}); if(CMFin.Data?.setPersonalDebts)CMFin.Data.setPersonalDebts(lista); }
+      }catch(e){console.warn('CMFin V59 DTC:',e);}
+      setTimeout(atualizarTudoV59,60); return result;
+    }; wrap.__cmfinV59=true; window.dtcSalvarDivida=wrap;
+  }
+  const oldDtcPago=window.dtcMarcarPago;
+  if(typeof oldDtcPago==='function'&&!oldDtcPago.__cmfinV59){
+    const wrap=function(id){
+      const antes=dividasPessoais(); const ant=antes.find(x=>String(x.id)===String(id)); const oldPago=num(ant?.valorPago); const hist=Array.isArray(ant?.historicoPagamentos)?ant.historicoPagamentos.slice():[];
+      const out=oldDtcPago.apply(this,arguments);
+      try{const lista=dividasPessoais();const item=lista.find(x=>String(x.id)===String(id));if(item){item.cmfinMesCadastro=ant?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje();item.valorPagoInicialCMFin=ant?.valorPagoInicialCMFin!==undefined?ant.valorPagoInicialCMFin:oldPago;item.historicoPagamentos=hist;const delta=num(item.valorPago)-oldPago;if(Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'quitacao'});if(CMFin.Data?.setPersonalDebts)CMFin.Data.setPersonalDebts(lista);if(typeof dtcRenderizar==='function')dtcRenderizar();}}catch(e){}
+      setTimeout(atualizarTudoV59,60);return out;
+    }; wrap.__cmfinV59=true; window.dtcMarcarPago=wrap;
+  }
+
+  function setMoney(id,v){const el=document.getElementById(id);if(el)el.textContent=moedaV59(v);}
+  function atualizarCardsPrincipais(mes,r){
+    setMoney('cardRecebimentosMes',r.recebido+r.ajEntrada); setMoney('cardGastosMes',r.saidasPagas); setMoney('cardSaldoBancos',r.caixa); setMoney('cardFaltaPagar',r.pendente); setMoney('cardFaltaPagarFixos',r.pendFix); setMoney('cardFaltaPagarVariaveis',r.pendVar);
+    const cards=document.querySelectorAll('#dashboard .executive-grid .executive-card');
+    if(cards[1]){const n=cards[1].querySelector('.executive-note');if(n)n.textContent='Somente saídas efetivamente pagas no mês.';}
+    if(cards[2]){const l=cards[2].querySelector('.executive-label');const n=cards[2].querySelector('.executive-note');if(l)l.textContent='Caixa Real Atual';if(n)n.textContent=r.conciliacao?'Saldo real conciliado + movimentos efetivamente realizados.':'Saldo de abertura + entradas recebidas − saídas pagas.';}
+    if(cards[3]){const n=cards[3].querySelector('.executive-note');if(n)n.textContent=modo()==='pessoal'?`Pendências incluídas, inclusive Dívidas com Terceiros (${moedaV59(r.pendDiv)}).`:'Total de compromissos incluídos e ainda não pagos.';}
+  }
+  function renderPainelExecutivo(mes,r){
+    const p=document.getElementById('elloDashboardPro'); if(!p)return;
+    const fechado=!!extrasModo().fechamentos[mes]; const conc=extrasModo().conciliacoes[mes];
+    p.innerHTML=`<div class="ello-dashboard-shell"><div class="ello-dashboard-head"><div><h3>Painel Executivo do Caixa <span class="cmfin-v59-inline-badge">Motor V59</span></h3></div><div class="ello-status-pill ${fechado?'locked':'open'}">${fechado?'🔒 Mês fechado':'🔓 Mês aberto'}</div></div><div class="ello-dashboard-cards"><article class="ello-fin-card primary" style="--accent:#16a34a;--soft:#ecfdf5;--line:#16a34a"><div class="top"><div><span class="label">Disponível agora</span><span class="title">Caixa Atual</span></div><div class="icon">R$</div></div><strong class="value">${moedaV59(r.caixa)}</strong><span class="desc">Somente dinheiro efetivo: saldo conciliado + recebidos − saídas pagas.</span></article><article class="ello-fin-card secondary" style="--accent:#2563eb;--soft:#eff6ff;--line:#2563eb"><div class="top"><div><span class="label">Após compromissos</span><span class="title">Saldo Previsto</span></div><div class="icon">≋</div></div><strong class="value">${moedaV59(r.saldoPrevisto)}</strong><span class="desc">Caixa Atual menos tudo que ainda falta pagar.</span></article><article class="ello-fin-card warning" style="--accent:#d97706;--soft:#fff7ed;--line:#f59e0b"><div class="top"><div><span class="label">Em aberto</span><span class="title">Pendente a Pagar</span></div><div class="icon">!</div></div><strong class="value">${moedaV59(r.pendente)}</strong><span class="desc">Fixos ${moedaV59(r.pendFix)} · Variáveis ${moedaV59(r.pendVar)}${modo()==='pessoal'?` · Dívidas ${moedaV59(r.pendDiv)}`:''}.</span></article><article class="ello-fin-card neutral" style="--accent:${fechado?'#9a3412':'#0f766e'};--soft:${fechado?'#fff7ed':'#ecfeff'};--line:${fechado?'#f59e0b':'#14b8a6'}"><div class="top"><div><span class="label">Fechamento</span><span class="title">Status do Mês</span></div><div class="icon">${fechado?'🔒':'✓'}</div></div><strong class="value" style="font-size:21px">${fechado?'Fechado':'Aberto'}</strong><span class="desc">${conc?`Caixa conciliado em ${moedaV59(r.caixa)}.`:'Caixa ainda não conciliado para este mês.'}</span><div class="ello-status-actions"><button type="button" class="mini-action secondary" onclick="cmfinAbrirConciliacaoCaixaV59('${esc(mes)}')">Conferir caixa</button>${fechado?`<button type="button" class="mini-action secondary" onclick="cmfinReabrirMesV59('${esc(mes)}')">Reabrir mês</button>`:`<button type="button" class="mini-action primary" onclick="cmfinFecharMesV59('${esc(mes)}')">Fechar mês</button>`}</div></article></div></div>`;
+  }
+  function atualizarCofre(mes,r){
+    setMoney('cofreRecebidoMes',r.saldoAnterior); setMoney('cofreSaidasPagas',r.saidasPagas); setMoney('cofreSobraMes',r.caixa); setMoney('cofreCaixaAcumulado',r.saldoPrevisto); setMoney('cofreSaldoLivre',r.saldoPrevisto); setMoney('cofreFaltaPagar',r.pendente); setMoney('cofreFixosPlanejadosResumo',r.pendFix);
+    const hero=document.querySelector('#cofre .cofre-hero p'); if(hero)hero.textContent='Caixa Real considera apenas entradas recebidas e saídas pagas. O Saldo Previsto desconta separadamente os compromissos que ainda estão pendentes.';
+    const result=document.querySelector('#cofre .cofre-result-panel .panel-header p'); if(result)result.textContent='Caixa Real = saldo conciliado + entradas efetivas − saídas pagas. Saldo Previsto = Caixa Real − pendências.';
+    const st=document.getElementById('elloStatusFechamento'); if(st)st.innerHTML=`<div class="${extrasModo().fechamentos[mes]?'ello-alerta-fechado':'ello-alerta-ok'}">${extrasModo().fechamentos[mes]?'Mês fechado e travado':'Mês aberto'} — ${nomeMesV59(mes)} · Caixa Real: <strong>${moedaV59(r.caixa)}</strong> · Saldo Previsto: <strong>${moedaV59(r.saldoPrevisto)}</strong></div>`;
+    const bf=document.getElementById('btnFecharMesPro');if(bf)bf.onclick=()=>window.cmfinFecharMesV59(mes); const br=document.getElementById('btnReabrirMesPro');if(br)br.onclick=()=>window.cmfinReabrirMesV59(mes);
+  }
+  function atualizarTudoV59(){
+    try{const mes=mesDashboard(),r=resumoMes(mes); atualizarCardsPrincipais(mes,r); renderPainelExecutivo(mes,r); atualizarCofre(mes,r); window.ELLO_COFRE_PRO=Object.assign(window.ELLO_COFRE_PRO||{},{resumoMes,extras:extrasModo,fechado:m=>!!extrasModo().fechamentos[m],versao:VERSAO});}catch(e){console.warn('CMFin V59 caixa:',e);}
+  }
+  window.CMFinCaixaV59={resumoMes,fluxoMes,mesCadastroItem,permitidoNoMes,abrirConciliacao,atualizar:atualizarTudoV59,pendenteDividasNoMes};
+
+  function precisaConciliarAtual(){ const cur=mesHoje(); return !extrasModo().conciliacoes[cur]; }
+  function verificarConciliacaoObrigatoria(){
+    if(!document.body.classList.contains('cmfin-authenticated')) return;
+    migrarMesCadastro(); atualizarTudoV59();
+    if(precisaConciliarAtual()&&!document.getElementById('cmfinV59Conciliacao')?.classList.contains('open')) abrirConciliacao(mesHoje(),true);
+  }
+
+  const oldRender=window.renderizarTudo;
+  if(typeof oldRender==='function'&&!oldRender.__cmfinV59Caixa){
+    const wrap=function(){const out=oldRender.apply(this,arguments);setTimeout(atualizarTudoV59,120);setTimeout(atualizarTudoV59,420);return out;};wrap.__cmfinV59Caixa=true;window.renderizarTudo=wrap;
+  }
+  const oldTrocar=window.trocarModo;
+  if(typeof oldTrocar==='function'&&!oldTrocar.__cmfinV59Caixa){
+    const wrap=function(){const out=oldTrocar.apply(this,arguments);setTimeout(()=>{migrarMesCadastro();atualizarTudoV59();verificarConciliacaoObrigatoria();},700);return out;};wrap.__cmfinV59Caixa=true;window.trocarModo=wrap;
+  }
+  document.addEventListener('change',e=>{if(e.target?.id==='dashboardMes'||e.target?.id==='dashboardAno')setTimeout(atualizarTudoV59,160);},true);
+  window.addEventListener('cmfin:storage-change',e=>{const k=e.detail?.key||'';if(k==='cmfin_dividas_terceiros'||k===EXTRA_KEY)setTimeout(atualizarTudoV59,140);});
+
+  try{if(window.CMFin)CMFin.version=VERSAO;}catch(e){}
+  criarModal();
+  try{
+    const obsAuth=new MutationObserver(()=>{
+      if(document.body.classList.contains('cmfin-authenticated')) setTimeout(verificarConciliacaoObrigatoria,1500);
+    });
+    obsAuth.observe(document.body,{attributes:true,attributeFilter:['class']});
+  }catch(e){}
+  setTimeout(()=>{migrarMesCadastro();atualizarTudoV59();},700);
+  setTimeout(atualizarTudoV59,1450);
+  setTimeout(verificarConciliacaoObrigatoria,2400);
+  setTimeout(verificarConciliacaoObrigatoria,5200);
+})();
+</script>
+
 </body>
 </html>
