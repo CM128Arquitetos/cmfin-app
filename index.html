@@ -1,6 +1,6 @@
 <!-- CMFin V58 - Reset completo do modo + Sócios/Pró-Labore dinâmicos - 2026-08-08 -->
 <!-- CMFin V59 - Conciliação mensal de caixa e competência sem retroatividade - 2026-08-09 -->
-<!-- CMFin V59.1 - Refinamento visual da Conferência Mensal de Caixa - 2026-08-09 -->
+<!-- CMFin V59.2 - Aviso da Conferência de Caixa em duas linhas - 2026-08-09 -->
 <!-- CMFin V57 - Remove alertas de terceiros/backup e prioriza vencimentos - 2026-08-05 -->
 <!-- CMFin V53 - Análise Financeira Aprimorada e Alertas Inteligentes; base V51 - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
@@ -46773,7 +46773,8 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-v59-summary>div{border:1px solid #e2e8f0;border-radius:18px;padding:15px;background:#f8fafc;}
   .cmfin-v59-summary span{display:block;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;}
   .cmfin-v59-summary strong{display:block;font-size:21px;color:#07142d;letter-spacing:-.025em;}
-  .cmfin-v59-note{padding:14px 16px;border-radius:15px;background:#fff5f5;border:1px solid #fecaca;color:#b91c1c;font-size:12.5px;font-weight:650;line-height:1.55;margin:14px 0;text-align:center;}
+  .cmfin-v59-note{padding:14px 12px;border-radius:15px;background:#fff5f5;border:1px solid #fecaca;color:#b91c1c;font-size:10px;font-weight:650;line-height:1.55;margin:14px 0;text-align:center;letter-spacing:-.01em;}
+  .cmfin-v59-note-line{display:block;white-space:nowrap;}
   .cmfin-v59-note b,.cmfin-v59-note strong{color:#991b1b;font-weight:950;}
   .cmfin-v59-field{display:none;margin:15px 0 4px;}
   .cmfin-v59-field.show{display:block;}
@@ -46790,7 +46791,7 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-v59-actions .secondary:hover{background:#dbeafe;}
   .cmfin-v59-actions .ghost{background:#fff;color:#475569;border:1px solid #dbe4ee;}
   .cmfin-v59-inline-badge{display:inline-flex;margin-left:7px;padding:4px 7px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:900;vertical-align:middle;}
-  @media(max-width:640px){.cmfin-v59-dialog{padding:20px;border-radius:22px}.cmfin-v59-summary{grid-template-columns:1fr}.cmfin-v59-actions{display:grid;grid-template-columns:1fr;gap:10px}.cmfin-v59-actions button{width:100%;min-width:0;min-height:50px}.cmfin-v59-note{text-align:left}}
+  @media(max-width:640px){.cmfin-v59-dialog{padding:20px;border-radius:22px}.cmfin-v59-summary{grid-template-columns:1fr}.cmfin-v59-actions{display:grid;grid-template-columns:1fr;gap:10px}.cmfin-v59-actions button{width:100%;min-width:0;min-height:50px}.cmfin-v59-note{text-align:center;font-size:11px}.cmfin-v59-note-line{white-space:normal}}
 </style>
 <script id="cmfin-v59-caixa-conciliacao-js">
 (function(){
@@ -46973,7 +46974,7 @@ Os outros lançamentos não serão alterados.`;
     document.getElementById('cmfinV59Lead').textContent=`O CMFin separa agora dinheiro que já saiu das contas que ainda estão pendentes. Confira o saldo real disponível em bancos, PIX e dinheiro antes de continuar.`;
     document.getElementById('cmfinV59Calculado').textContent=moedaV59(r.caixa);
     document.getElementById('cmfinV59Pendente').textContent=moedaV59(r.pendente);
-    document.getElementById('cmfinV59Nota').innerHTML=`O valor calculado considera <b>${moedaV59(r.recebido+r.ajEntrada)}</b> de entradas efetivas e <b>${moedaV59(r.saidasPagas)}</b> de saídas efetivamente pagas no mês. Se o seu caixa real for diferente, informe o valor correto. A diferença será salva como <b>conciliação de caixa</b>, e não como receita.`;
+    document.getElementById('cmfinV59Nota').innerHTML=`<span class="cmfin-v59-note-line">O valor calculado considera <b>${moedaV59(r.recebido+r.ajEntrada)}</b> de entradas efetivas e <b>${moedaV59(r.saidasPagas)}</b> de saídas efetivamente pagas no mês.</span><span class="cmfin-v59-note-line">Se o seu caixa real for diferente, informe o valor correto. A diferença será salva como <b>conciliação de caixa</b>, e não como receita.</span>`;
     document.getElementById('cmfinV59Campo').classList.remove('show');
     document.getElementById('cmfinV59Outro').style.display='inline-flex'; document.getElementById('cmfinV59Confirmar').style.display='inline-flex'; document.getElementById('cmfinV59SalvarOutro').style.display='none';
     document.getElementById('cmfinV59Cancelar').style.display=obrigatorio?'none':'inline-flex';
