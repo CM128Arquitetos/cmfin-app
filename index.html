@@ -1,3 +1,4 @@
+<!-- CMFin V58 - Reset completo do modo + Sócios/Pró-Labore dinâmicos - 2026-08-08 -->
 <!-- CMFin V57 - Remove alertas de terceiros/backup e prioriza vencimentos - 2026-08-05 -->
 <!-- CMFin V53 - Análise Financeira Aprimorada e Alertas Inteligentes; base V51 - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
@@ -9519,26 +9520,14 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
             <div class="prolabore-compact-layout">
               <div class="prolabore-main-col">
-                <div class="prolabore-config-grid prolabore-socios-grid">
-              <div class="prolabore-config-card">
-                <div class="prolabore-config-title">Sócio 01</div>
-                <label>Nome do sócio</label>
-                <input id="socioNome1" placeholder="Elton Menezes" />
-                <label>Pró-labore mensal</label>
-                <input id="socioProlabore1" placeholder="R$ 0,00" onblur="formatarCampoMoeda(this)" />
-                <label>% de distribuição de lucro</label>
-                <input id="socioLucro1" type="number" min="0" max="100" step="0.01" placeholder="50" />
+                <div class="prolabore-socios-toolbar">
+              <div>
+                <strong>Quadro societário</strong>
+                <span>Cadastre quantos sócios a empresa possuir. Nenhum sócio é criado automaticamente.</span>
               </div>
-              <div class="prolabore-config-card">
-                <div class="prolabore-config-title">Sócio 02</div>
-                <label>Nome do sócio</label>
-                <input id="socioNome2" placeholder="Lael Cavalcante" />
-                <label>Pró-labore mensal</label>
-                <input id="socioProlabore2" placeholder="R$ 0,00" onblur="formatarCampoMoeda(this)" />
-                <label>% de distribuição de lucro</label>
-                <input id="socioLucro2" type="number" min="0" max="100" step="0.01" placeholder="50" />
-              </div>
-                </div>
+              <button type="button" class="btn btn-secondary btn-small" onclick="prolaboreAdicionarSocio()">+ Adicionar Sócio</button>
+            </div>
+            <div class="prolabore-config-grid prolabore-socios-grid" id="prolaboreSociosConfig"></div>
 
             <div class="prolabore-flow">
               <div class="prolabore-flow-card receita"><span>01</span><strong>Receitas</strong><small id="plFluxoReceita">R$ 0,00</small></div>
@@ -11068,7 +11057,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             </button>
           </div>
         </div>
-        <div><label>Sócio</label><select id="arqPgArquiteto"><option value="">Selecione</option><option value="Elton Menezes">Elton Menezes</option><option value="Lael Cavalcante">Lael Cavalcante</option></select></div>
+        <div><label>Sócio</label><select id="arqPgArquiteto"><option value="">Selecione</option></select><div class="file-note" id="arqPgSocioAjuda">Os sócios cadastrados em Sócios e Pró-Labore aparecerão aqui.</div></div>
         <div><label>Tipo de Retirada</label><select id="arqPgTipoRetirada"><option value="Pró-Labore">Pró-Labore</option><option value="Bônus / Produção">Bônus / Produção</option><option value="Distribuição de Lucro">Distribuição de Lucro</option><option value="Adiantamento de Sócio">Adiantamento de Sócio</option><option value="Reembolso ao Sócio">Reembolso ao Sócio</option><option value="Retirada a Classificar">Retirada a Classificar</option></select></div>
         <div><label>Origem / Projeto</label><input id="arqPgServico" placeholder="Ex.: Administração mensal, Projeto Silva, Lucro Maio/2026" /></div>
         <div style="grid-column:1 / -1;"><label>Descrição / Projeto vinculado</label><textarea id="arqPgDescricaoServico" placeholder=""></textarea></div>
@@ -12440,7 +12429,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const confirmar = confirm(
         "Para abrir sempre na mesma pasta, primeiro escolha a pasta padrão de backup.\n\n" +
         "Selecione a pasta onde você salva seus backups do CMFin.\n\n" +
-        "Exemplo:\nG:\\Meu Drive\\Elton Menezes - Arquitetura & Interiores\\#Elton Menezes - Arquitetura & Interiores\\CMFIN - GESTÃO FINANCEIRA INTELIGENTE"
+        "Exemplo:\nG:\\Meu Drive\\Minha Empresa\\CMFIN - GESTÃO FINANCEIRA INTELIGENTE"
       );
 
       if (!confirmar) return null;
@@ -25143,7 +25132,10 @@ Os outros lançamentos não serão alterados.`;
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px}.metric{border-radius:24px;padding:18px;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%)}.metric-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.label{font-size:13px;font-weight:950;letter-spacing:.06em;text-transform:uppercase;color:#36535c}.helper{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.35}.pill{border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900}.pill.receita{background:#e8faf4;color:#0f8a62}.pill.saidas{background:#fff3f6;color:#d84468}.pill.fixos{background:#ebf6f1;color:#0f766e}.pill.vars{background:#eef8f3;color:#1a8f6a}.metric .val{margin-top:22px;font-size:33px;font-weight:1000;letter-spacing:-.06em}.progress{height:9px;background:#e8efec;border-radius:999px;overflow:hidden;margin-top:18px}.progress i,.bar i,.mix-bar i{display:block;height:100%;border-radius:999px}.progress.green i{background:linear-gradient(90deg,#0f766e,#38c99a)}.progress.orange i{background:linear-gradient(90deg,#cf7b16,#f0ac46)}.progress.blue i{background:linear-gradient(90deg,#0f766e,#38c99a)}.progress.purple i{background:linear-gradient(90deg,#1b8f6c,#49c69b)}
 .executive-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-top:18px}.summary-card,.sec,.mix-card,.cats-card{border-radius:28px;padding:20px;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%)}.summary-list{display:grid;gap:12px}.summary-row{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 16px;border-radius:18px;background:#f8fbfa;border:1px solid var(--line-soft)}.summary-row strong{display:block;font-size:14px}.summary-row span{display:block;color:var(--muted);font-size:12px;margin-top:4px}.summary-row b{font-size:14px;text-align:right}.sec-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px}.sec-head h2{margin:0;font-size:22px;letter-spacing:-.04em}.sec-head p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.4}.tag{padding:7px 11px;border-radius:999px;background:#f3f8f5;border:1px solid var(--line);color:#36535c;font-size:11px;text-transform:uppercase;font-weight:950;letter-spacing:.06em;white-space:nowrap}table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:18px;border:1px solid var(--line-soft)}th,td{padding:13px 12px;border-bottom:1px solid var(--line-soft);text-align:left;font-size:13px;background:#fff}th{color:#607381;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#f8fbfa}tr:last-child td{border-bottom:0}td.r,th.r{text-align:right}.pos{color:#0d946b}.neg{color:#e44269}.muted{color:#7c8b96}.total-row td{background:#fbfdff}.delta{display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:950;white-space:nowrap}.delta.up{background:#e9faf3;color:#12815e}.delta.down{background:#fff0f4;color:#d33d63}.delta.flat{background:#f1f5f9;color:#64748b}.footnote{margin-top:12px;color:#607381;font-size:12px;line-height:1.45}
 .secondary-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px;margin-top:18px}.mix-row+.mix-row{margin-top:14px}.mix-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px}.mix-head strong{font-size:14px}.mix-head span{color:#607381;font-size:12px}.mix-bar{height:11px;background:#e8efec;border-radius:999px;overflow:hidden}.mix-bar.blue i{background:linear-gradient(90deg,#0f766e,#38c99a)}.mix-bar.amber i{background:linear-gradient(90deg,#cf7b16,#f0ac46)}.mix-bar.teal i{background:linear-gradient(90deg,#0f766e,#38c99a)}.mix-bar.violet i{background:linear-gradient(90deg,#1b8f6c,#49c69b)}.cats-card{background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%)}.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cat{position:relative;border-radius:22px;padding:16px;background:#fff;border:1px solid var(--line-soft);box-shadow:var(--shadow-soft)}.cat.featured{background:linear-gradient(180deg,#f7fffd 0%,#ffffff 100%);border-color:#cce7dc}.cat-rank{position:absolute;top:12px;right:12px;font-size:11px;font-weight:900;color:#5f7c87;background:#f3f8f5;border:1px solid var(--line-soft);padding:5px 8px;border-radius:999px}.cat-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding-right:54px}.cat strong{display:block;font-size:14px}.cat span{display:block;margin-top:5px;color:#607381;font-size:12px}.cat em{font-style:normal;font-weight:1000;font-size:17px;white-space:nowrap}.bar{height:8px;background:#e8efec;border-radius:999px;overflow:hidden;margin:12px 0}.bar i{background:linear-gradient(90deg,#0d3b34,#2dd4bf)}.cat-foot{display:flex;justify-content:space-between;gap:12px;color:#7c8b96;font-size:11px}.report-footer{margin-top:18px;text-align:center;font-size:12px;color:#607381;padding:14px 10px 4px}
-@page{size:A4 landscape;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:20px}.hero-value{font-size:31px}.hero-logo-img{width:150px}.hero-chip-row,.hero-kpis,.premium-grid,.spotlights{gap:6px}.hero-sub{font-size:12px;margin-top:10px}.spot-card,.metric,.summary-card,.sec,.mix-card,.cats-card,.panel-card{padding:12px;border-radius:18px}.spot-helper,.metric .helper,.sec-head p,.footnote,.hero-chip span{font-size:10px}.spotlights,.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric .val{font-size:22px}.executive-grid,.secondary-grid{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.hero-body{grid-template-columns:1.12fr .88fr;gap:10px}.hero-chip small,.hero-kpi small,.premium-tile small,.pulse-top small{font-size:9px}.hero-chip strong,.pulse-top strong{font-size:12px}.premium-tile b{font-size:14px}.sec-head h2{font-size:18px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.report-footer{font-size:10px;margin-top:8px;padding-top:8px}.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{break-inside:avoid;page-break-inside:avoid}}</style></head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Exportar PDF</button><section class="hero"><div class="hero-grid"></div><div class="hero-orb-a"></div><div class="hero-orb-b"></div><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div class="hero-main"><img class="hero-logo-img" src="${logoData}" alt="Logo CMFin"><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><p class="hero-sub">${txtModo.subtitulo}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-chip-row"><div class="hero-chip"><small>${txtModo.insightItem1}</small><strong>${esc(topCategoria[0])}</strong><span>${topCategoriaPct} do total classificado</span></div><div class="hero-chip"><small>${txtModo.insightItem2}</small><strong>${formatPct(shareReceitaSaidas)}</strong><span>${leituraSaidas}</span></div><div class="hero-chip"><small>${txtModo.insightItem3}</small><strong>${formatPct(shareLucro)}</strong><span>${leituraSaldo}</span></div></div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Folga do mês</small><strong>${brl(economiaPotencial)}</strong></div></div></div><div class="hero-side"><div class="panel-card"><div class="panel-head"><h3>${txtModo.painelTitulo}</h3><span>CMFin</span></div><div class="premium-grid"><div class="premium-tile"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="premium-tile"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="premium-tile"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="premium-tile"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div><div class="panel-divider"></div><div class="panel-head" style="margin:0 0 8px"><h3>${txtModo.radarTitulo}</h3><span>${pulseText}</span></div><div class="pulse-stack"><div class="pulse-item"><div class="pulse-top"><div><small>Categoria líder</small><strong>${esc(topCategoria[0])}</strong></div><b>${topCategoriaPct}</b></div><div class="pulse-bar ok"><i style="width:${Math.max(8,clamp(pct(topCategoria[1],totalCat),0,100))}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saídas sobre entradas</small><strong>${leituraSaidas}</strong></div><b>${formatPct(shareReceitaSaidas)}</b></div><div class="pulse-bar ${pulseClass}"><i style="width:${Math.max(8,shareReceitaSaidas)}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saúde do resultado</small><strong>${leituraSaldo}</strong></div><b>${formatPct(shareLucro)}</b></div><div class="pulse-bar ${d.lucro>=0?'ok':'warn'}"><i style="width:${Math.max(8,shareLucro)}%"></i></div></div></div></div></div></div></section><section class="spotlights"><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.recebimentos}</div><div class="spot-icon icon-receita">R</div></div><div class="spot-value">${brl(d.receita)}</div><div class="spot-helper">${txtModo.recebimentosAjuda}</div><div class="mini-track teal"><i style="width:100%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.saidas}</div><div class="spot-icon icon-saida">S</div></div><div class="spot-value">${brl(d.saidas)}</div><div class="spot-helper">${txtModo.saidasAjuda}</div><div class="mini-track amber"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.fixos}</div><div class="spot-icon icon-fixo">F</div></div><div class="spot-value">${brl(d.fixos)}</div><div class="spot-helper">${txtModo.fixosAjuda}</div><div class="mini-track blue"><i style="width:${shareFixos}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.variaveis}</div><div class="spot-icon icon-var">V</div></div><div class="spot-value">${brl(d.variaveis)}</div><div class="spot-helper">${txtModo.variaveisAjuda}</div><div class="mini-track purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">Saldo / Resultado</div><div class="helper">${txtModo.resultadoSub}</div></div><span class="pill ${d.lucro>=0?'receita':'saidas'}">${d.lucro>=0?'Positivo':'Atenção'}</span></div><div class="val">${brl(d.lucro)}</div><div class="progress ${d.lucro>=0?'green':'orange'}"><i style="width:${Math.max(6,shareLucro)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Participação das saídas</div><div class="helper">Quanto das entradas foi consumido pelas saídas do período.</div></div><span class="pill saidas">Ratio</span></div><div class="val">${formatPct(shareReceitaSaidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Categoria líder</div><div class="helper">Categoria com maior concentração entre as saídas classificadas.</div></div><span class="pill fixos">Top</span></div><div class="val">${topCategoriaPct}</div><div class="progress blue"><i style="width:${clamp(pct(topCategoria[1],totalCat),4,100)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Folga do mês</div><div class="helper">Diferença positiva entre entradas/receita e saídas pagas.</div></div><span class="pill vars">Livre</span></div><div class="val">${brl(economiaPotencial)}</div><div class="progress purple"><i style="width:${Math.max(5,shareLucro)}%"></i></div></div></section><section class="executive-grid"><div class="summary-card"><div class="sec-head"><div><h2>Resumo Executivo</h2><p>Leitura consolidada do período em linguagem gerencial e objetiva.</p></div><span class="tag">Executive</span></div><div class="summary-list"><div class="summary-row"><div><strong>${txtModo.resultadoPrincipal}</strong><span>Resultado principal do período</span></div><b>${brl(d.lucro)}</b></div><div class="summary-row"><div><strong>${txtModo.maiorSaida}</strong><span>Maior pressão dentro das saídas do mês</span></div><b>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</b></div><div class="summary-row"><div><strong>Categoria líder</strong><span>Maior concentração dentro do histórico classificado</span></div><b>${esc(topCategoria[0])}</b></div><div class="summary-row"><div><strong>Leitura do mês</strong><span>Resumo rápido para tomada de decisão</span></div><b>${leituraSaldo}</b></div></div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFoot}</div></div></section><section class="secondary-grid"><div class="mix-card"><div class="sec-head"><div><h2>${txtModo.composicaoTitulo}</h2><p>${txtModo.composicaoSub}</p></div><span class="tag">Mix</span></div>${composicaoHtml}</div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="cats-card" style="margin-top:18px"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section><footer class="report-footer">Relatório gerado automaticamente pela plataforma CMFin • Gestão Financeira Inteligente</footer></div></body></html>`;
+@page{size:A4 landscape;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:20px}.hero-value{font-size:31px}.hero-logo-img{width:150px}.hero-chip-row,.hero-kpis,.premium-grid,.spotlights{gap:6px}.hero-sub{font-size:12px;margin-top:10px}.spot-card,.metric,.summary-card,.sec,.mix-card,.cats-card,.panel-card{padding:12px;border-radius:18px}.spot-helper,.metric .helper,.sec-head p,.footnote,.hero-chip span{font-size:10px}.spotlights,.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric .val{font-size:22px}.executive-grid,.secondary-grid{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.hero-body{grid-template-columns:1.12fr .88fr;gap:10px}.hero-chip small,.hero-kpi small,.premium-tile small,.pulse-top small{font-size:9px}.hero-chip strong,.pulse-top strong{font-size:12px}.premium-tile b{font-size:14px}.sec-head h2{font-size:18px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.report-footer{font-size:10px;margin-top:8px;padding-top:8px}.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{break-inside:avoid;page-break-inside:avoid}}</style></head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Exportar PDF</button><section class="hero"><div class="hero-grid"></div><div class="hero-orb-a"></div><div class="hero-orb-b"></div><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div class="hero-main"><img class="hero-logo-img" src="${logoData}" alt="Logo CMFin"><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><p class="hero-sub">${txtModo.subtitulo}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-chip-row"><div class="hero-chip"><small>${txtModo.insightItem1}</small><strong>${esc(topCategoria[0])}</strong><span>${topCategoriaPct} do total classificado</span></div><div class="hero-chip"><small>${txtModo.insightItem2}</small><strong>${formatPct(shareReceitaSaidas)}</strong><span>${leituraSaidas}</span></div><div class="hero-chip"><small>${txtModo.insightItem3}</small><strong>${formatPct(shareLucro)}</strong><span>${leituraSaldo}</span></div></div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Folga do mês</small><strong>${brl(economiaPotencial)}</strong></div></div></div><div class="hero-side"><div class="panel-card"><div class="panel-head"><h3>${txtModo.painelTitulo}</h3><span>CMFin</span></div><div class="premium-grid"><div class="premium-tile"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="premium-tile"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="premium-tile"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="premium-tile"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div><div class="panel-divider"></div><div class="panel-head" style="margin:0 0 8px"><h3>${txtModo.radarTitulo}</h3><span>${pulseText}</span></div><div class="pulse-stack"><div class="pulse-item"><div class="pulse-top"><div><small>Categoria líder</small><strong>${esc(topCategoria[0])}</strong></div><b>${topCategoriaPct}</b></div><div class="pulse-bar ok"><i style="width:${Math.max(8,clamp(pct(topCategoria[1],totalCat),0,100))}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saídas sobre entradas</small><strong>${leituraSaidas}</strong></div><b>${formatPct(shareReceitaSaidas)}</b></div><div class="pulse-bar ${pulseClass}"><i style="width:${Math.max(8,shareReceitaSaidas)}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saúde do resultado</small><strong>${leituraSaldo}</strong></div><b>${formatPct(shareLucro)}</b></div><div class="pulse-bar ${d.lucro>=0?'ok':'warn'}"><i style="width:${Math.max(8,shareLucro)}%"></i></div></div></div></div></div></div></section><section class="spotlights"><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.recebimentos}</div><div class="spot-icon icon-receita">R</div></div><div class="spot-value">${brl(d.receita)}</div><div class="spot-helper">${txtModo.recebimentosAjuda}</div><div class="mini-track teal"><i style="width:100%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.saidas}</div><div class="spot-icon icon-saida">S</div></div><div class="spot-value">${brl(d.saidas)}</div><div class="spot-helper">${txtModo.saidasAjuda}</div><div class="mini-track amber"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.fixos}</div><div class="spot-icon icon-fixo">F</div></div><div class="spot-value">${brl(d.fixos)}</div><div class="spot-helper">${txtModo.fixosAjuda}</div><div class="mini-track blue"><i style="width:${shareFixos}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.variaveis}</div><div class="spot-icon icon-var">V</div></div><div class="spot-value">${brl(d.variaveis)}</div><div class="spot-helper">${txtModo.variaveisAjuda}</div><div class="mini-track purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">Saldo / Resultado</div><div class="helper">${txtModo.resultadoSub}</div></div><span class="pill ${d.lucro>=0?'receita':'saidas'}">${d.lucro>=0?'Positivo':'Atenção'}</span></div><div class="val">${brl(d.lucro)}</div><div class="progress ${d.lucro>=0?'green':'orange'}"><i style="width:${Math.max(6,shareLucro)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Participação das saídas</div><div class="helper">Quanto das entradas foi consumido pelas saídas do período.</div></div><span class="pill saidas">Ratio</span></div><div class="val">${formatPct(shareReceitaSaidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Categoria líder</div><div class="helper">Categoria com maior concentração entre as saídas classificadas.</div></div><span class="pill fixos">Top</span></div><div class="val">${topCategoriaPct}</div><div class="progress blue"><i style="width:${clamp(pct(topCategoria[1],totalCat),4,100)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Folga do mês</div><div class="helper">Diferença positiva entre entradas/receita e saídas pagas.</div></div><span class="pill vars">Livre</span></div><div class="val">${brl(economiaPotencial)}</div><div class="progress purple"><i style="width:${Math.max(5,shareLucro)}%"></i></div></div></section><section class="executive-grid"><div class="summary-card"><div class="sec-head"><div><h2>Resumo Executivo</h2><p>Leitura consolidada do período em linguagem gerencial e objetiva.</p></div><span class="tag">Executive</span></div><div class="summary-list"><div class="summary-row"><div><strong>${txtModo.resultadoPrincipal}</strong><span>Resultado principal do período</span></div><b>${brl(d.lucro)}</b></div><div class="summary-row"><div><strong>${txtModo.maiorSaida}</strong><span>Maior pressão dentro das saídas do mês</span></div><b>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</b></div><div class="summary-row"><div><strong>Categoria líder</strong><span>Maior concentração dentro do histórico classificado</span></div><b>${esc(topCategoria[0])}</b></div><div class="summary-row"><div><strong>Leitura do mês</strong><span>Resumo rápido para tomada de decisão</span></div><b>${leituraSaldo}</b></div></div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFoot}</div></div></section><section class="secondary-grid"><div class="mix-card"><div class="sec-head"><div><h2>${txtModo.composicaoTitulo}</h2><p>${txtModo.composicaoSub}</p></div><span class="tag">Mix</span></div>${composicaoHtml}</div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="cats-card" style="margin-top:18px"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section><footer class="report-footer">Relatório gerado automaticamente pela plataforma CMFin • Gestão Financeira Inteligente</footer></div>
+
+
+</body></html>`;
 
     const w=window.open('','_blank');
     if(!w){
@@ -27386,10 +27378,7 @@ Os outros lançamentos não serão alterados.`;
     return {
       reservaPercentual: 20,
       caixaMinimo: 3000,
-      socios: [
-        { id: 1, nome: 'Elton Menezes', prolabore: 0, percentualLucro: 50, ativo: true },
-        { id: 2, nome: 'Lael Cavalcante', prolabore: 0, percentualLucro: 50, ativo: true }
-      ]
+      socios: []
     };
   }
   function plConfig(){
@@ -27397,7 +27386,13 @@ Os outros lançamentos não serão alterados.`;
     const atual = configuracoes.sociosProlabore || {};
     const padrao = plConfigPadrao();
     const sociosAtuais = Array.isArray(atual.socios) ? atual.socios : [];
-    const socios = [0,1].map(idx => ({ ...padrao.socios[idx], ...(sociosAtuais[idx] || {}) }));
+    const socios = sociosAtuais.map((s, idx) => ({
+      id: s && s.id != null ? s.id : (idx + 1),
+      nome: String(s?.nome || '').trim(),
+      prolabore: Number(s?.prolabore || 0),
+      percentualLucro: Number(s?.percentualLucro || 0),
+      ativo: s?.ativo !== false
+    })).filter(s => s.nome || s.prolabore || s.percentualLucro);
     configuracoes.sociosProlabore = { ...padrao, ...atual, socios };
     if (!Number(configuracoes.sociosProlabore.reservaPercentual)) configuracoes.sociosProlabore.reservaPercentual = 20;
     if (!Number(configuracoes.sociosProlabore.caixaMinimo)) configuracoes.sociosProlabore.caixaMinimo = 3000;
@@ -27518,10 +27513,10 @@ Os outros lançamentos não serão alterados.`;
   };
   window.prolaboreSalvarConfiguracao = function(){
     const cfg = plConfig();
-    cfg.socios[0].nome = document.getElementById('socioNome1')?.value?.trim() || 'Elton Menezes';
+    cfg.socios[0].nome = document.getElementById('socioNome1')?.value?.trim() || '';
     cfg.socios[0].prolabore = numMoeda(document.getElementById('socioProlabore1')?.value || '0');
     cfg.socios[0].percentualLucro = Number(document.getElementById('socioLucro1')?.value || 0);
-    cfg.socios[1].nome = document.getElementById('socioNome2')?.value?.trim() || 'Lael Cavalcante';
+    cfg.socios[1].nome = document.getElementById('socioNome2')?.value?.trim() || '';
     cfg.socios[1].prolabore = numMoeda(document.getElementById('socioProlabore2')?.value || '0');
     cfg.socios[1].percentualLucro = Number(document.getElementById('socioLucro2')?.value || 0);
     cfg.reservaPercentual = numPercentual(document.getElementById('prolaboreReservaPercentual')?.value || 0);
@@ -27637,22 +27632,20 @@ Os outros lançamentos não serão alterados.`;
   }
   function ajustarSociosETipos(){
     try{
-      if (window.configuracoes){
+      if (typeof configuracoes !== 'undefined'){
         configuracoes.sociosProlabore = configuracoes.sociosProlabore || {};
-        configuracoes.sociosProlabore.socios = [
-          { ...(configuracoes.sociosProlabore.socios?.[0] || {}), id:1, nome:'Elton Menezes', ativo:true },
-          { ...(configuracoes.sociosProlabore.socios?.[1] || {}), id:2, nome:'Lael Cavalcante', ativo:true }
-        ];
+        configuracoes.sociosProlabore.socios = Array.isArray(configuracoes.sociosProlabore.socios)
+          ? configuracoes.sociosProlabore.socios
+          : [];
       }
       if (Array.isArray(window.pagamentosArquitetos)){
         pagamentosArquitetos = pagamentosArquitetos.map(item => ({ ...item, tipoRetirada: canonTipo(item.tipoRetirada || item.categoria), categoria: canonTipo(item.tipoRetirada || item.categoria) }));
       }
       const selSocio = document.getElementById('arqPgArquiteto');
-      if (selSocio) selSocio.innerHTML = '<option value="">Selecione</option><option value="Elton Menezes">Elton Menezes</option><option value="Lael Cavalcante">Lael Cavalcante</option>';
+      if (selSocio && typeof window.cmfinAtualizarSelectSocios === 'function') window.cmfinAtualizarSelectSocios();
       const selTipo = document.getElementById('arqPgTipoRetirada');
       if (selTipo) selTipo.innerHTML = ['Pró-Labore','Bônus / Produção','Distribuição de Lucro','Adiantamento de Sócio','Reembolso ao Sócio','Retirada a Classificar'].map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
-      const n1=document.getElementById('socioNome1'); if(n1 && (!n1.value || n1.value==='Sócio 01')) n1.value='Elton Menezes';
-      const n2=document.getElementById('socioNome2'); if(n2 && (!n2.value || n2.value==='Sócio 02')) n2.value='Lael Cavalcante';
+      if (typeof window.cmfinRenderizarSociosConfig === 'function') window.cmfinRenderizarSociosConfig();
       if (typeof salvarDados === 'function') salvarDados();
     }catch(e){ console.warn('Ajuste Sócios/Tipos V7:', e); }
   }
@@ -28594,7 +28587,7 @@ Os outros lançamentos não serão alterados.`;
 </style>
 
 
-<!-- PATCH ELLO — Fluxo Inteligente de Retiradas / Pró-Labore 2 salários mínimos -->
+<!-- PATCH ELLO — Fluxo Inteligente de Retiradas / Pró-Labore (compatibilidade legada; V58 usa quadro societário dinâmico) -->
 <style id="ello-fluxo-inteligente-prolabore-css">
   #pagamentosArquitetos .prolabore-flow-card{min-height:128px !important; display:flex !important; flex-direction:column !important; justify-content:center !important;}
   #pagamentosArquitetos .prolabore-indicators > div{min-height:104px !important; display:flex !important; flex-direction:column !important; justify-content:center !important;}
@@ -28656,14 +28649,15 @@ Os outros lançamentos não serão alterados.`;
     if (!configuracoes) configuracoes = {};
     const atual = configuracoes.sociosProlabore || {};
     const sociosAtuais = Array.isArray(atual.socios) ? atual.socios : [];
-    const socios = [
-      { id:1, nome:'Elton Menezes', prolabore:PROLABORE_PADRAO_SOCIO, percentualLucro:50, ativo:true, ...(sociosAtuais[0]||{}) },
-      { id:2, nome:'Lael Cavalcante', prolabore:PROLABORE_PADRAO_SOCIO, percentualLucro:50, ativo:true, ...(sociosAtuais[1]||{}) }
-    ];
+    const socios = sociosAtuais.map((s, idx) => ({
+      id: s && s.id != null ? s.id : (idx + 1),
+      nome: String(s?.nome || '').trim(),
+      prolabore: Number(s?.prolabore || 0),
+      percentualLucro: Number(s?.percentualLucro || 0),
+      ativo: s?.ativo !== false
+    })).filter(s => s.nome || s.prolabore || s.percentualLucro);
     configuracoes.sociosProlabore = { ...atual, socios };
     if (!configuracoes.sociosProlabore.fluxoInteligenteV1){
-      configuracoes.sociosProlabore.socios[0].prolabore = PROLABORE_PADRAO_SOCIO;
-      configuracoes.sociosProlabore.socios[1].prolabore = PROLABORE_PADRAO_SOCIO;
       configuracoes.sociosProlabore.reservaPercentual = CAIXA_ESCRITORIO_PADRAO;
       configuracoes.sociosProlabore.caixaEscritorioPercentual = CAIXA_ESCRITORIO_PADRAO;
       configuracoes.sociosProlabore.salarioMinimoBase = SALARIO_MINIMO_2026;
@@ -28696,15 +28690,12 @@ Os outros lançamentos não serão alterados.`;
           <div><h4>Fluxo Inteligente de Retiradas</h4><p>Prioridade: recebimentos → gastos fixos, variáveis e equipe externa → pró-labore dos sócios → caixa do escritório → distribuição de lucro.</p></div>
         </div>
         <div class="pl-smart-grid">
-          <div class="pl-smart-card info"><small>Pró-labore mensal total</small><strong id="plSmartMetaTotal">R$ 0,00</strong><span id="plSmartMetaTxt">2 salários mínimos para cada sócio.</span></div>
+          <div class="pl-smart-card info"><small>Pró-labore mensal total</small><strong id="plSmartMetaTotal">R$ 0,00</strong><span id="plSmartMetaTxt">Soma dos pró-labores configurados para os sócios cadastrados.</span></div>
           <div class="pl-smart-card warn"><small>Falta quitar pró-labore</small><strong id="plSmartFaltaProlabore">R$ 0,00</strong><span>Enquanto houver saldo aqui, as retiradas abatem o pró-labore.</span></div>
           <div class="pl-smart-card cash"><small>Caixa do escritório</small><strong id="plSmartCaixaEscritorio">R$ 0,00</strong><span id="plSmartCaixaTxt">Percentual da sobra após pró-labore.</span></div>
           <div class="pl-smart-card ok"><small>Lucro distribuível</small><strong id="plSmartLucroDistribuivel">R$ 0,00</strong><span id="plSmartLucroTxt">Divisão conforme percentual dos sócios.</span></div>
         </div>
-        <div class="pl-socio-status">
-          <div class="pl-socio-box"><div class="top"><b id="plSocioNome1">Sócio 01</b><em id="plSocioStatus1">Pendente</em></div><div class="pl-progress"><i id="plSocioProg1"></i></div><div class="pl-socio-numbers"><span>Pago: <strong id="plSocioPago1">R$ 0,00</strong></span><span>Falta: <strong id="plSocioFalta1">R$ 0,00</strong></span></div></div>
-          <div class="pl-socio-box"><div class="top"><b id="plSocioNome2">Sócio 02</b><em id="plSocioStatus2">Pendente</em></div><div class="pl-progress"><i id="plSocioProg2"></i></div><div class="pl-socio-numbers"><span>Pago: <strong id="plSocioPago2">R$ 0,00</strong></span><span>Falta: <strong id="plSocioFalta2">R$ 0,00</strong></span></div></div>
-        </div>`;
+        <div class="pl-socio-status" id="plSociosStatus"></div>`;
       const alert = document.getElementById('prolaboreAlertaProfissional');
       if (alert && alert.parentNode) alert.parentNode.insertBefore(div, alert);
       else main.appendChild(div);
@@ -28751,8 +28742,8 @@ Os outros lançamentos não serão alterados.`;
   const antigoSalvar = window.prolaboreSalvarConfiguracao;
   window.prolaboreSalvarConfiguracao = function(){
     const c = cfg();
-    c.socios[0].nome = document.getElementById('socioNome1')?.value?.trim() || 'Elton Menezes';
-    c.socios[1].nome = document.getElementById('socioNome2')?.value?.trim() || 'Lael Cavalcante';
+    c.socios[0].nome = document.getElementById('socioNome1')?.value?.trim() || '';
+    c.socios[1].nome = document.getElementById('socioNome2')?.value?.trim() || '';
     c.socios[0].prolabore = numMoeda(document.getElementById('socioProlabore1')?.value || money(PROLABORE_PADRAO_SOCIO));
     c.socios[1].prolabore = numMoeda(document.getElementById('socioProlabore2')?.value || money(PROLABORE_PADRAO_SOCIO));
     c.socios[0].percentualLucro = Number(document.getElementById('socioLucro1')?.value || 50);
@@ -28845,7 +28836,7 @@ Os outros lançamentos não serão alterados.`;
       alerta.classList.remove('ok');
       let msg = '';
       if (resultado <= 0) msg = `Atenção: ainda não há sobra operacional no mês. Recebimentos (${money(receita)}) menos gastos fixos, variáveis e equipe externa (${money(despesas)}) resultam em ${money(resultado)}.`;
-      else if (faltaProlabore > 0.01) msg = `Pró-labore em andamento: ainda falta ${money(faltaProlabore)} para quitar os 2 salários mínimos de cada sócio. As próximas retiradas devem abater primeiro o pró-labore mensal.`;
+      else if (faltaProlabore > 0.01) msg = `Pró-labore em andamento: ainda falta ${money(faltaProlabore)} para quitar os pró-labores configurados. As próximas retiradas devem abater primeiro o pró-labore mensal.`;
       else { msg = `Pró-labore quitado: a sobra pode ser organizada em caixa do escritório (${money(caixaEscritorio)}) e lucro distribuível (${money(lucroDistribuivel)}), conforme a política configurada.`; alerta.classList.add('ok'); }
       alerta.textContent = msg;
       alerta.style.display = 'block';
@@ -46295,6 +46286,476 @@ Os outros lançamentos não serão alterados.`;
     incluirEmDRE: false,
     permitirAlertaInformativo: false
   });
+})();
+</script>
+
+
+<style id="cmfin-v58-reset-socios-dinamicos-css">
+  #pagamentosArquitetos .prolabore-socios-toolbar{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    margin:0 0 12px;padding:13px 14px;border:1px solid #dbe7f3;border-radius:16px;
+    background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);
+  }
+  #pagamentosArquitetos .prolabore-socios-toolbar strong{display:block;color:#0f172a;font-size:13px;font-weight:950}
+  #pagamentosArquitetos .prolabore-socios-toolbar span{display:block;margin-top:3px;color:#64748b;font-size:12px;line-height:1.4}
+  #pagamentosArquitetos .prolabore-socios-grid{
+    grid-template-columns:repeat(auto-fit,minmax(245px,1fr)) !important;
+  }
+  #pagamentosArquitetos .prolabore-socio-card{position:relative}
+  #pagamentosArquitetos .prolabore-socio-card .prolabore-config-title{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  #pagamentosArquitetos .prolabore-remove-socio{
+    border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:10px;
+    padding:6px 9px;font-size:11px;font-weight:900;cursor:pointer;
+  }
+  #pagamentosArquitetos .prolabore-socios-empty{
+    grid-column:1/-1;padding:22px;border:1px dashed #cbd5e1;border-radius:18px;
+    text-align:center;background:#f8fafc;color:#64748b;font-size:13px;line-height:1.5;
+  }
+  #pagamentosArquitetos .prolabore-socios-empty strong{display:block;color:#0f172a;font-size:14px;margin-bottom:4px}
+  #pagamentosArquitetos .pl-socio-status{grid-template-columns:repeat(auto-fit,minmax(240px,1fr)) !important}
+  #pagamentosArquitetos .pl-socio-empty{
+    grid-column:1/-1;padding:14px;border:1px dashed #cbd5e1;border-radius:14px;
+    background:#fff;color:#64748b;font-size:12px;text-align:center;
+  }
+  #arqPgSocioAjuda{margin-top:6px}
+  @media(max-width:780px){
+    #pagamentosArquitetos .prolabore-socios-toolbar{align-items:stretch;flex-direction:column}
+    #pagamentosArquitetos .prolabore-socios-toolbar .btn{width:100%;justify-content:center}
+  }
+</style>
+
+<script id="cmfin-v58-reset-socios-dinamicos">
+(function(){
+  'use strict';
+  if (window.__cmfinV58ResetSociosDinamicos) return;
+  window.__cmfinV58ResetSociosDinamicos = true;
+
+  const SALARIO_MINIMO_BASE = 1621;
+  const MULTIPLICADOR_REFERENCIA = 2;
+  const CAIXA_PADRAO = 30;
+
+  function esc(v){
+    try { return window.CMFin && CMFin.UI && CMFin.UI.escapeHTML ? CMFin.UI.escapeHTML(v) : String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    catch(e){ return String(v ?? ''); }
+  }
+  function money(v){
+    try { return typeof moeda === 'function' ? moeda(Number(v||0)) : Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+    catch(e){ return 'R$ 0,00'; }
+  }
+  function numMoeda(v){
+    try { return typeof limparMoeda === 'function' ? Number(limparMoeda(v)||0) : Number(String(v||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,'')) || 0; }
+    catch(e){ return 0; }
+  }
+  function normalizar(v){ return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function pago(item){ return (item?.status || 'Pendente') === 'Pago'; }
+  function soma(lista){ return (lista||[]).reduce((a,i)=>a+Number(i?.valor||0),0); }
+  function clampPct(v){ return Math.max(0, Math.min(100, Number(v||0))); }
+  function setTxt(id, valor){ const el=document.getElementById(id); if(el) el.textContent=valor; }
+  function setVal(id, valor){ const el=document.getElementById(id); if(el) el.value=valor ?? ''; }
+
+  function configSocios(){
+    if (typeof configuracoes === 'undefined' || !configuracoes) return {socios:[]};
+    const atual = configuracoes.sociosProlabore && typeof configuracoes.sociosProlabore === 'object'
+      ? configuracoes.sociosProlabore
+      : {};
+    const socios = (Array.isArray(atual.socios) ? atual.socios : []).map((s, idx)=>({
+      id: s && s.id != null ? s.id : (Date.now()+idx),
+      nome: String(s?.nome || '').trim(),
+      prolabore: Number(s?.prolabore || 0),
+      percentualLucro: clampPct(s?.percentualLucro || 0),
+      ativo: s?.ativo !== false
+    }));
+    configuracoes.sociosProlabore = {
+      reservaPercentual: Number(atual.reservaPercentual ?? atual.caixaEscritorioPercentual ?? CAIXA_PADRAO),
+      caixaEscritorioPercentual: Number(atual.caixaEscritorioPercentual ?? atual.reservaPercentual ?? CAIXA_PADRAO),
+      caixaMinimo: Number(atual.caixaMinimo || 3000),
+      salarioMinimoBase: Number(atual.salarioMinimoBase || SALARIO_MINIMO_BASE),
+      multiplicadorProlabore: Number(atual.multiplicadorProlabore || MULTIPLICADOR_REFERENCIA),
+      fluxoInteligenteV1: atual.fluxoInteligenteV1 === true,
+      ...atual,
+      socios
+    };
+    return configuracoes.sociosProlabore;
+  }
+
+  function lerSociosDaTela(){
+    const cards = Array.from(document.querySelectorAll('#prolaboreSociosConfig [data-socio-id]'));
+    if (!cards.length) return [];
+    return cards.map((card, idx)=>{
+      const idRaw = card.getAttribute('data-socio-id');
+      const nome = card.querySelector('[data-socio-field="nome"]')?.value?.trim() || '';
+      const prolabore = numMoeda(card.querySelector('[data-socio-field="prolabore"]')?.value || '0');
+      const percentualLucro = clampPct(String(card.querySelector('[data-socio-field="lucro"]')?.value || '0').replace(',','.'));
+      return {id: idRaw || (Date.now()+idx), nome, prolabore, percentualLucro, ativo:true};
+    });
+  }
+
+  function renderizarSociosConfig(){
+    const host = document.getElementById('prolaboreSociosConfig');
+    if (!host) return;
+    const cfg = configSocios();
+    const socios = cfg.socios || [];
+    if (!socios.length){
+      host.innerHTML = '<div class="prolabore-socios-empty"><strong>Nenhum sócio cadastrado</strong>Use “+ Adicionar Sócio” para montar o quadro societário desta empresa. O sistema não cria nomes ou quantidade de sócios automaticamente.</div>';
+      atualizarSelectSocios();
+      return;
+    }
+    host.innerHTML = socios.map((s,idx)=>`
+      <div class="prolabore-config-card prolabore-socio-card" data-socio-id="${esc(String(s.id))}">
+        <div class="prolabore-config-title">
+          <span>Sócio ${String(idx+1).padStart(2,'0')}</span>
+          <button type="button" class="prolabore-remove-socio" onclick="prolaboreRemoverSocio('${esc(String(s.id))}')">Remover</button>
+        </div>
+        <label>Nome do sócio</label>
+        <input data-socio-field="nome" value="${esc(s.nome)}" placeholder="Nome completo" />
+        <label>Pró-labore mensal</label>
+        <input data-socio-field="prolabore" value="${esc(money(s.prolabore))}" placeholder="R$ 0,00" onblur="if(typeof formatarCampoMoeda==='function') formatarCampoMoeda(this)" />
+        <label>% de distribuição de lucro</label>
+        <input data-socio-field="lucro" type="number" min="0" max="100" step="0.01" value="${esc(String(Number(s.percentualLucro||0)))}" placeholder="0" />
+      </div>`).join('');
+    atualizarSelectSocios();
+  }
+
+  function atualizarSelectSocios(valorExtra){
+    const sel = document.getElementById('arqPgArquiteto');
+    if (!sel) return;
+    const atual = valorExtra || sel.value || '';
+    const socios = configSocios().socios.filter(s=>s.ativo && s.nome);
+    sel.innerHTML = '<option value="">Selecione</option>' + socios.map(s=>`<option value="${esc(s.nome)}">${esc(s.nome)}</option>`).join('');
+    if (atual && !socios.some(s=>s.nome===atual)){
+      const opt=document.createElement('option'); opt.value=atual; opt.textContent=atual+' (histórico)'; sel.appendChild(opt);
+    }
+    if (atual) sel.value=atual;
+    const ajuda=document.getElementById('arqPgSocioAjuda');
+    if (ajuda) ajuda.textContent = socios.length
+      ? `${socios.length} sócio(s) disponível(is) para lançamento.`
+      : 'Cadastre ao menos um sócio em Sócios e Pró-Labore antes de registrar uma retirada.';
+  }
+
+  window.cmfinAtualizarSelectSocios = atualizarSelectSocios;
+  window.cmfinRenderizarSociosConfig = renderizarSociosConfig;
+
+  window.prolaboreAdicionarSocio = function(){
+    const cfg=configSocios();
+    const tela=lerSociosDaTela();
+    if (document.querySelector('#prolaboreSociosConfig [data-socio-id]')) cfg.socios=tela;
+    const id='socio_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    cfg.socios.push({id,nome:'',prolabore:0,percentualLucro:0,ativo:true});
+    renderizarSociosConfig();
+    setTimeout(()=>document.querySelector('#prolaboreSociosConfig [data-socio-id]:last-child [data-socio-field="nome"]')?.focus(),20);
+  };
+
+  window.prolaboreRemoverSocio = function(id){
+    const cfg=configSocios();
+    const tela=lerSociosDaTela();
+    if (tela.length) cfg.socios=tela;
+    const alvo=cfg.socios.find(s=>String(s.id)===String(id));
+    if (alvo?.nome && !confirm(`Remover o sócio "${alvo.nome}" da configuração?\n\nOs lançamentos financeiros já registrados permanecerão no histórico.`)) return;
+    cfg.socios=cfg.socios.filter(s=>String(s.id)!==String(id));
+    try{ if(typeof salvarDados==='function') salvarDados(); }catch(e){}
+    renderizarSociosConfig();
+    renderizarResumo();
+  };
+
+  function validarESalvarSocios(){
+    const cfg=configSocios();
+    const socios=lerSociosDaTela();
+    const vazio=socios.findIndex(s=>!s.nome);
+    if (vazio>=0){
+      alert(`Informe o nome do Sócio ${String(vazio+1).padStart(2,'0')} ou remova esse cadastro.`);
+      return false;
+    }
+    const nomes=new Set();
+    for(const s of socios){
+      const chave=normalizar(s.nome);
+      if(nomes.has(chave)){ alert(`O sócio "${s.nome}" está cadastrado mais de uma vez.`); return false; }
+      nomes.add(chave);
+    }
+    cfg.socios=socios;
+    return true;
+  }
+
+  window.prolaboreSalvarConfiguracao = function(){
+    if (!validarESalvarSocios()) return;
+    const cfg=configSocios();
+    const reserva=document.getElementById('plCaixaEscritorioPercentual')?.value || document.getElementById('prolaboreReservaPercentual')?.value || CAIXA_PADRAO;
+    cfg.caixaEscritorioPercentual=clampPct(String(reserva).replace(',','.').replace(/[^0-9.]/g,''));
+    cfg.reservaPercentual=cfg.caixaEscritorioPercentual;
+    cfg.caixaMinimo=numMoeda(document.getElementById('prolaboreCaixaMinimo')?.value || cfg.caixaMinimo || 0);
+    cfg.salarioMinimoBase=Number(cfg.salarioMinimoBase||SALARIO_MINIMO_BASE);
+    cfg.multiplicadorProlabore=Number(cfg.multiplicadorProlabore||MULTIPLICADOR_REFERENCIA);
+    cfg.fluxoInteligenteV1=true;
+    try{ if(typeof salvarDados==='function') salvarDados(); }catch(e){}
+    atualizarSelectSocios();
+    renderizarSociosConfig();
+    renderizarResumo();
+    if(typeof mostrarToast==='function') mostrarToast('Configuração dos sócios salva.');
+  };
+
+  function garantirPainelInteligente(){
+    const main=document.querySelector('#pagamentosArquitetos .prolabore-main-col');
+    if(main && !document.getElementById('plSmartPanel')){
+      const div=document.createElement('div');
+      div.id='plSmartPanel'; div.className='pl-smart-panel';
+      div.innerHTML=`
+        <div class="pl-smart-head"><div><h4>Fluxo Inteligente de Retiradas</h4><p>Prioridade: recebimentos → gastos fixos, variáveis e equipe externa → pró-labore dos sócios → caixa do escritório → distribuição de lucro.</p></div></div>
+        <div class="pl-smart-grid">
+          <div class="pl-smart-card info"><small>Pró-labore mensal total</small><strong id="plSmartMetaTotal">R$ 0,00</strong><span id="plSmartMetaTxt">Soma dos pró-labores cadastrados.</span></div>
+          <div class="pl-smart-card warn"><small>Falta quitar pró-labore</small><strong id="plSmartFaltaProlabore">R$ 0,00</strong><span>Enquanto houver saldo aqui, as retiradas abatem o pró-labore.</span></div>
+          <div class="pl-smart-card cash"><small>Caixa do escritório</small><strong id="plSmartCaixaEscritorio">R$ 0,00</strong><span id="plSmartCaixaTxt">Percentual da sobra após pró-labore.</span></div>
+          <div class="pl-smart-card ok"><small>Lucro distribuível</small><strong id="plSmartLucroDistribuivel">R$ 0,00</strong><span id="plSmartLucroTxt">Cadastre os percentuais dos sócios.</span></div>
+        </div>
+        <div class="pl-socio-status" id="plSociosStatus"></div>`;
+      const alert=document.getElementById('prolaboreAlertaProfissional');
+      if(alert?.parentNode) alert.parentNode.insertBefore(div,alert); else main.appendChild(div);
+    }
+    const policy=document.querySelector('#pagamentosArquitetos .prolabore-policy-card');
+    if(policy && !document.getElementById('plPolicySplit')){
+      const box=document.createElement('div');
+      box.id='plPolicySplit'; box.className='pl-policy-split';
+      box.innerHTML=`<div class="pl-policy-split-title">Distribuição após pró-labore quitado</div>
+        <label>Percentual destinado ao caixa do escritório</label>
+        <div class="pl-policy-split-row"><input id="plCaixaEscritorioPercentual" type="text" inputmode="decimal" placeholder="30" onblur="window.prolaboreSalvarConfiguracao&&window.prolaboreSalvarConfiguracao()" /><span class="suffix">%</span></div>
+        <div class="pl-policy-split-note" id="plPolicySplitNote">O restante fica disponível para distribuição de lucro entre os sócios.</div>`;
+      const guide=policy.querySelector('.prolabore-policy-guide');
+      if(guide?.parentNode) guide.parentNode.insertBefore(box,guide); else policy.appendChild(box);
+    }
+  }
+
+  window.prolaboreCarregarConfiguracao = function(){
+    garantirPainelInteligente();
+    const cfg=configSocios();
+    renderizarSociosConfig();
+    setVal('prolaboreReservaPercentual', cfg.caixaEscritorioPercentual ?? cfg.reservaPercentual ?? CAIXA_PADRAO);
+    setVal('plCaixaEscritorioPercentual', cfg.caixaEscritorioPercentual ?? cfg.reservaPercentual ?? CAIXA_PADRAO);
+    setVal('prolaboreCaixaMinimo', money(cfg.caixaMinimo||0));
+    atualizarSelectSocios();
+    atualizarPolicy();
+  };
+
+  function mesFiltro(){ try{return typeof obterMesReferenciaFiltro==='function'?obterMesReferenciaFiltro('filtroArquiteto'):(document.getElementById('dashboardMes')?.value||mesAtual());}catch(e){return new Date().toISOString().slice(0,7);} }
+  function receitaMes(mes){ try{return typeof valorRecebidoEfetivoMes==='function'?Number(valorRecebidoEfetivoMes(mes)||0):0;}catch(e){return 0;} }
+  function fixosPagosMes(mes){ try{return (gastosFixosDoMes(mes)||[]).filter(i=>(typeof statusFixoNoMes==='function'?statusFixoNoMes(i,mes):(i.status||'Pendente'))==='Pago').reduce((a,i)=>a+Number(i.valor||0),0);}catch(e){return 0;} }
+  function variaveisPagosMes(mes){ try{return (gastosVariaveisDoMes(mes)||[]).filter(pago).reduce((a,i)=>a+Number(i.valor||0),0);}catch(e){return 0;} }
+  function externosPagosMes(mes){ try{return (pagamentosTerceirizadosDoMes(mes)||[]).filter(pago).reduce((a,i)=>a+Number(i.valor||0),0);}catch(e){return 0;} }
+  function retiradasMes(mes){ try{return pagamentosArquitetosDoMes(mes)||[];}catch(e){return [];} }
+  function tipo(item){ try{return typeof tipoRetiradaSocioChave==='function'?tipoRetiradaSocioChave(item):normalizar(item?.tipoRetirada||item?.categoria||'');}catch(e){return normalizar(item?.tipoRetirada||item?.categoria||'');} }
+  function isReembolso(i){return tipo(i).includes('reembolso');}
+  function isBonus(i){const t=tipo(i);return t.includes('bonus')||t.includes('producao');}
+  function isLucro(i){return tipo(i).includes('lucro');}
+  function socioNome(i){return String(i?.arquiteto||i?.socio||i?.nome||'').trim();}
+
+  function atualizarPolicy(){
+    const cfg=configSocios();
+    const mes=mesFiltro();
+    const baseFixa=Math.max(fixosPagosMes(mes),1500);
+    const sug2=baseFixa*2, sug3=baseFixa*3;
+    const pctCaixa=clampPct(cfg.caixaEscritorioPercentual ?? cfg.reservaPercentual ?? CAIXA_PADRAO);
+    setTxt('plPolicyReservaSugestao', `${pctCaixa.toLocaleString('pt-BR')}%`);
+    setTxt('plPolicyCaixaSugestao', money(sug2));
+    setTxt('plPolicyCaixaSugestaoTexto', `Com base em gastos fixos médios de ${money(baseFixa)}/mês. Faixa segura: ${money(sug2)} a ${money(sug3)}.`);
+    const note=document.getElementById('plPolicyDynamicText');
+    if(note) note.innerHTML=`Base mensal estimada: <b>${money(baseFixa)}</b>. Sugestões rápidas: 1 mês = <b>${money(baseFixa)}</b>, 2 meses = <b>${money(sug2)}</b>, 3 meses = <b>${money(sug3)}</b>.`;
+    const footer=document.getElementById('prolaborePolicyFooterHelp');
+    if(footer) footer.innerHTML=`Política atual: <b>${pctCaixa.toLocaleString('pt-BR')}%</b> para o caixa do escritório. Caixa mínimo configurado: <b>${money(cfg.caixaMinimo||0)}</b>.`;
+    setVal('plCaixaEscritorioPercentual',pctCaixa);
+    setVal('prolaboreReservaPercentual',pctCaixa);
+  }
+  window.prolaboreAtualizarPolicyCard=atualizarPolicy;
+  window.prolaboreAplicarReservaPadrao=function(){
+    const cfg=configSocios(); cfg.caixaEscritorioPercentual=CAIXA_PADRAO; cfg.reservaPercentual=CAIXA_PADRAO;
+    setVal('plCaixaEscritorioPercentual',CAIXA_PADRAO); setVal('prolaboreReservaPercentual',CAIXA_PADRAO);
+    try{if(typeof salvarDados==='function')salvarDados();}catch(e){}
+    renderizarResumo();
+  };
+
+  function renderizarStatusSocios(status){
+    const host=document.getElementById('plSociosStatus');
+    if(!host) return;
+    if(!status.length){
+      host.innerHTML='<div class="pl-socio-empty">Nenhum sócio cadastrado. Adicione os sócios para acompanhar pró-labore pago e pendente individualmente.</div>';
+      return;
+    }
+    host.innerHTML=status.map(st=>{
+      const estado=st.falta<=0.01?'Quitado':(st.pagoPro>0?'Parcial':'Pendente');
+      return `<div class="pl-socio-box"><div class="top"><b>${esc(st.nome)}</b><em>${estado}</em></div><div class="pl-progress"><i style="width:${Math.max(0,Math.min(100,st.pct)).toFixed(2)}%"></i></div><div class="pl-socio-numbers"><span>Pago: <strong>${esc(money(st.pagoPro))}</strong></span><span>Falta: <strong>${esc(money(st.falta))}</strong></span></div></div>`;
+    }).join('');
+  }
+
+  function renderizarResumo(){
+    garantirPainelInteligente();
+    const cfg=configSocios();
+    const socios=cfg.socios.filter(s=>s.ativo && s.nome);
+    const mes=mesFiltro();
+    const receita=receitaMes(mes);
+    const despesas=fixosPagosMes(mes)+variaveisPagosMes(mes)+externosPagosMes(mes);
+    const resultado=receita-despesas;
+    const previsto=socios.reduce((a,s)=>a+Number(s.prolabore||0),0);
+    const retiradas=retiradasMes(mes).filter(pago);
+    const remuneratorias=retiradas.filter(i=>!isReembolso(i));
+    const totalRetirado=soma(retiradas);
+    const totalRemuneratorio=soma(remuneratorias);
+    const bonusPago=soma(retiradas.filter(isBonus));
+    const lucroPagoExplicito=soma(retiradas.filter(isLucro));
+    const status=socios.map(s=>{
+      const recebido=soma(remuneratorias.filter(i=>normalizar(socioNome(i))===normalizar(s.nome)));
+      const meta=Number(s.prolabore||0);
+      const pagoPro=Math.min(recebido,meta);
+      const falta=Math.max(meta-pagoPro,0);
+      return {nome:s.nome,meta,pagoPro,falta,pct:meta>0?Math.min(100,pagoPro/meta*100):100};
+    });
+    const prolaborePago=status.reduce((a,s)=>a+s.pagoPro,0);
+    const faltaProlabore=Math.max(previsto-prolaborePago,0);
+    const sobraDepoisProlabore=Math.max(resultado-previsto,0);
+    const pctCaixa=clampPct(cfg.caixaEscritorioPercentual ?? cfg.reservaPercentual ?? CAIXA_PADRAO);
+    const caixa=sobraDepoisProlabore*(pctCaixa/100);
+    const lucroDistribuivel=Math.max(sobraDepoisProlabore-caixa,0);
+    const saldoAposRetiradas=resultado-totalRetirado;
+    const lucroPago=Math.max(totalRemuneratorio-prolaborePago,lucroPagoExplicito);
+
+    setTxt('plFluxoReceita',money(receita)); setTxt('plFluxoDespesas',money(despesas)); setTxt('plFluxoResultado',money(resultado));
+    setTxt('plFluxoPrevisto',money(previsto)); setTxt('plFluxoReserva',money(caixa)); setTxt('plFluxoLucro',money(lucroDistribuivel));
+    setTxt('plProlaborePago',money(prolaborePago)); setTxt('plProlaborePendente',money(faltaProlabore)); setTxt('plBonusPago',money(bonusPago));
+    setTxt('plLucroPago',money(lucroPago)); setTxt('plTotalRetirado',money(totalRetirado)); setTxt('plSaldoAposRetiradas',money(saldoAposRetiradas));
+    setTxt('arqPgPago',money(prolaborePago)); setTxt('arqPgBonus',money(bonusPago)); setTxt('arqPgLucro',money(lucroPago));
+    setTxt('plSmartMetaTotal',money(previsto));
+    setTxt('plSmartMetaTxt', socios.length ? `Soma dos pró-labores cadastrados para ${socios.length} sócio(s).` : 'Cadastre os sócios e seus pró-labores mensais.');
+    setTxt('plSmartFaltaProlabore',money(faltaProlabore)); setTxt('plSmartCaixaEscritorio',money(caixa));
+    setTxt('plSmartCaixaTxt',`${pctCaixa.toLocaleString('pt-BR')}% da sobra após quitar o pró-labore.`);
+    setTxt('plSmartLucroDistribuivel',money(lucroDistribuivel));
+    setTxt('plSmartLucroTxt',socios.length?socios.map(s=>`${s.nome}: ${Number(s.percentualLucro||0).toLocaleString('pt-BR')}%`).join(' · '):'Nenhum percentual societário cadastrado.');
+    setTxt('plPolicySplitNote',`${pctCaixa.toLocaleString('pt-BR')}% vai para o caixa do escritório e ${(100-pctCaixa).toLocaleString('pt-BR')}% fica disponível para distribuição de lucro, depois do pró-labore.`);
+    renderizarStatusSocios(status);
+    atualizarPolicy();
+
+    const alerta=document.getElementById('prolaboreAlertaProfissional');
+    if(alerta){
+      alerta.classList.remove('ok');
+      let msg='';
+      if(!socios.length) msg='Cadastre ao menos um sócio para ativar o controle de pró-labore e distribuição de lucros.';
+      else if(resultado<=0) msg=`Atenção: ainda não há sobra operacional no mês. Recebimentos (${money(receita)}) menos despesas consideradas (${money(despesas)}) resultam em ${money(resultado)}.`;
+      else if(faltaProlabore>0.01) msg=`Pró-labore em andamento: ainda falta ${money(faltaProlabore)} para quitar os pró-labores configurados dos ${socios.length} sócio(s).`;
+      else {msg=`Pró-labore quitado: a sobra pode ser organizada em caixa do escritório (${money(caixa)}) e lucro distribuível (${money(lucroDistribuivel)}).`;alerta.classList.add('ok');}
+      alerta.textContent=msg; alerta.style.display='block';
+    }
+  }
+  window.prolaboreRenderizarResumo=renderizarResumo;
+
+  window.prolaboreGerarLancamentosDoMes=function(){
+    if(!validarESalvarSocios()) return;
+    const cfg=configSocios();
+    try{if(typeof salvarDados==='function')salvarDados();}catch(e){}
+    const socios=cfg.socios.filter(s=>s.ativo && s.nome && Number(s.prolabore||0)>0);
+    if(!socios.length){ alert('Cadastre ao menos um sócio com pró-labore maior que zero.'); return; }
+    const mes=mesFiltro(), existentes=retiradasMes(mes);
+    let criados=0;
+    socios.forEach((s,idx)=>{
+      const ja=existentes.some(i=>tipo(i).includes('pro-labore')&&normalizar(socioNome(i))===normalizar(s.nome));
+      if(ja)return;
+      pagamentosArquitetos.push({
+        id:Date.now()+idx,arquiteto:s.nome,servico:'Pró-labore mensal',
+        descricaoServico:'Lançamento automático conforme configuração mensal dos sócios.',
+        tipoRetirada:'Pró-Labore',categoria:'Pró-Labore',banco:'',forma:'Pix',
+        data:(typeof hoje==='function'?hoje():new Date().toISOString().slice(0,10)),
+        mesReferencia:mes,valor:Number(s.prolabore||0),status:'Pendente',
+        observacao:'Gerado pelo módulo profissional de pró-labore.',ordemManual:Date.now()+idx
+      }); criados++;
+    });
+    try{if(typeof salvarDados==='function')salvarDados();}catch(e){}
+    try{if(typeof renderizarTudo==='function')renderizarTudo();}catch(e){}
+    if(typeof mostrarToast==='function')mostrarToast(criados?`${criados} pró-labore(s) lançado(s) como pendente(s).`:'Os pró-labores deste mês já estavam lançados.');
+  };
+
+  function limparChavesPrefixo(prefixo){
+    try{
+      const st=CMFin.Storage.local, apagar=[];
+      for(let i=0;i<st.length;i++){const k=st.key(i);if(k&&k.indexOf(prefixo)===0)apagar.push(k);}
+      apagar.forEach(k=>st.removeItem(k));
+    }catch(e){}
+  }
+  function limparDadosAuxiliaresDoModo(modo){
+    try{
+      const st=CMFin.Storage.local;
+      const cofre=JSON.parse(st.getItem('ello_cofre_empresa_pro_v1')||'{}')||{};
+      if(Object.prototype.hasOwnProperty.call(cofre,modo)){delete cofre[modo];Object.keys(cofre).length?st.setItem('ello_cofre_empresa_pro_v1',JSON.stringify(cofre)):st.removeItem('ello_cofre_empresa_pro_v1');}
+    }catch(e){}
+    try{
+      const st=CMFin.Storage.local;
+      const perfis=JSON.parse(st.getItem('cmfin_perfil_por_modo_v2')||'{}')||{};
+      perfis[modo]={}; perfis.atualizadoEm=new Date().toISOString();
+      st.setItem('cmfin_perfil_por_modo_v2',JSON.stringify(perfis));
+    }catch(e){}
+    try{
+      const st=CMFin.Storage.local;
+      const drafts=JSON.parse(st.getItem('cmfin_form_drafts_v32')||'{}')||{};
+      Object.keys(drafts).forEach(k=>{if(k.includes(`|${modo}|`))delete drafts[k];});
+      Object.keys(drafts).length?st.setItem('cmfin_form_drafts_v32',JSON.stringify(drafts)):st.removeItem('cmfin_form_drafts_v32');
+    }catch(e){}
+    limparChavesPrefixo(`ello_relatorio_contador_obs_v1_${modo}_`);
+    try{CMFin.Storage.local.removeItem(`cmfin_alertas_estado_v1_${modo}`);}catch(e){}
+    if(modo==='pessoal'){try{CMFin.Storage.local.setItem('cmfin_dividas_terceiros','[]');}catch(e){}}
+  }
+
+  window.resetarDados=function(){
+    const nomeModo=modoAtual==='empresarial'?'Empresarial':'Pessoal';
+    if(!confirm(`Deseja mesmo resetar todos os dados do Modo ${nomeModo}?\n\nSerão apagados lançamentos, bancos, objetivos, documentos, sócios/pró-labore, configurações do modo, perfil do modo, Cofre e dados auxiliares. Login e licença serão preservados.`)) return;
+    try{
+      if(typeof aplicarSnapshot==='function'&&typeof criarDadosVazios==='function') aplicarSnapshot(criarDadosVazios());
+      if(typeof configuracoes!=='undefined'){
+        configuracoes=configuracoes||{};
+        delete configuracoes.sociosProlabore;
+      }
+      if(typeof pagamentosArquitetos!=='undefined') pagamentosArquitetos=[];
+      limparDadosAuxiliaresDoModo(modoAtual);
+      if(typeof salvarDados==='function') salvarDados();
+      if(typeof preencherCategorias==='function') preencherCategorias();
+      if(typeof atualizarSelects==='function') atualizarSelects();
+      if(typeof carregarConfiguracaoDistribuicaoNaTela==='function') carregarConfiguracaoDistribuicaoNaTela();
+      renderizarSociosConfig(); atualizarSelectSocios();
+      if(typeof atualizarUIModo==='function') atualizarUIModo();
+      if(typeof renderizarTudo==='function') renderizarTudo();
+      if(typeof mostrarToast==='function') mostrarToast(`Modo ${nomeModo} resetado. Login e licença foram preservados.`);
+      else alert(`Modo ${nomeModo} resetado com sucesso.`);
+    }catch(e){
+      console.error('CMFin V58 reset:',e);
+      alert('Não foi possível concluir o reset. Verifique o console para detalhes.');
+    }
+  };
+
+  const abrirAnterior=window.abrirModalPagamentoArquiteto;
+  if(typeof abrirAnterior==='function'){
+    window.abrirModalPagamentoArquiteto=function(){
+      atualizarSelectSocios();
+      if(!configSocios().socios.some(s=>s.ativo&&s.nome)){
+        alert('Cadastre ao menos um sócio antes de registrar uma retirada ou pró-labore.');
+        try{if(typeof mudarModulo==='function')mudarModulo('pagamentosArquitetos');}catch(e){}
+        renderizarSociosConfig();
+        return;
+      }
+      return abrirAnterior.apply(this,arguments);
+    };
+  }
+  const editarAnterior=window.editarPagamentoArquiteto;
+  if(typeof editarAnterior==='function'){
+    window.editarPagamentoArquiteto=function(id){
+      const item=(typeof pagamentosArquitetos!=='undefined'?pagamentosArquitetos:[]).find(i=>String(i.id)===String(id));
+      atualizarSelectSocios(item?.arquiteto||'');
+      return editarAnterior.apply(this,arguments);
+    };
+  }
+
+  function iniciar(){
+    garantirPainelInteligente();
+    configSocios();
+    renderizarSociosConfig();
+    atualizarSelectSocios();
+    renderizarResumo();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+  window.addEventListener('load',()=>setTimeout(iniciar,260));
 })();
 </script>
 </body>
