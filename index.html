@@ -16,7 +16,7 @@
 <!-- CMFin V57 - Remove alertas de terceiros/backup e prioriza vencimentos - 2026-08-05 -->
 <!-- CMFin V53 - Análise Financeira Aprimorada e Alertas Inteligentes; base V51 - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
-<!-- V59.18: sincronização automática multidispositivo com Supabase, preservando backup manual. -->
+<!-- V59.19: sincronização automática multidispositivo + diagnóstico claro de compatibilidade do Supabase. -->
 <!-- V48: módulos explícitos CMFin.Data, CMFin.UI, CMFin.Auth, CMFin.Cloud e CMFin.Reports. -->
 <!-- V48: acesso direto à tabela cmfin_licencas removido; RPCs do Supabase são obrigatórias. -->
 <!-- V48: chamadas de armazenamento passam por CMFin.Storage; senhas nunca são persistidas no localStorage. -->
@@ -35090,8 +35090,8 @@ Os outros lançamentos não serão alterados.`;
     + '  </div>'
     + '  <div class="cmfin-cloud-mini-grid">'
     + '    <div class="cmfin-cloud-mini-card"><small>Status</small><strong data-cloud-field="status">Sincronização automática</strong></div>'
-    + '    <div class="cmfin-cloud-mini-card"><small>Último salvamento</small><strong data-cloud-field="ultimoSalvamento">Ainda não registrado</strong></div>'
-    + '    <div class="cmfin-cloud-mini-card"><small>Último carregamento</small><strong data-cloud-field="ultimoCarregamento">Ainda não registrado</strong></div>'
+    + '    <div class="cmfin-cloud-mini-card"><small>Último salvamento confirmado</small><strong data-cloud-field="ultimoSalvamento">Ainda não registrado</strong></div>'
+    + '    <div class="cmfin-cloud-mini-card"><small>Último carregamento confirmado</small><strong data-cloud-field="ultimoCarregamento">Ainda não registrado</strong></div>'
     + '    <div class="cmfin-cloud-mini-card"><small>Licença</small><strong data-cloud-field="licenca">-</strong></div>'
     + '  </div>'
     + '  <div class="cmfin-cloud-mini-actions">'
@@ -35404,7 +35404,13 @@ Os outros lançamentos não serão alterados.`;
 
       if(res.error){
         console.warn("CMFin manual cloud save error:", res.error);
-        toast("Falha ao salvar na nuvem: " + (res.error.message || "erro no Supabase"), "erro");
+        var msgErro = String(res.error.message || res.error.details || "erro no Supabase");
+        if(/public\.licencas|relation [\"']?licencas/i.test(msgErro)){
+          setStatus({ status:"Configuração do Supabase pendente", pill:"Ajustar Supabase" });
+          toast("A RPC de nuvem ainda aponta para a tabela antiga de licenças. Execute o patch V59.19 no Supabase.", "erro");
+        }else{
+          toast("Falha ao salvar na nuvem: " + msgErro, "erro");
+        }
         return false;
       }
 
@@ -48497,9 +48503,16 @@ Os outros lançamentos não serão alterados.`;
       var probe = await probeCloud(s);
       if(!probe.ok){
         disableAuto();
-        setStatus({ status:"Nuvem temporariamente indisponível", pill:"Aguardando conexão" });
-        setAutoState({ inicializado:false, licenca:currentLicense, ativo:false, falhaEm:new Date().toISOString() });
-        toast("Não foi possível conferir a nuvem agora. Seus dados locais foram preservados e não serão enviados às cegas.", "warn");
+        var cloudErr = String((probe.error && (probe.error.message || probe.error.details || probe.error.hint)) || (probe.data && (probe.data.mensagem || probe.data.message)) || "");
+        var legacyLicenseError = /public\.licencas|relation [\"']?public\.licencas|relation [\"']?licencas/i.test(cloudErr);
+        if(legacyLicenseError){
+          setStatus({ status:"Configuração do Supabase pendente", pill:"Ajustar Supabase" });
+          toast("A nuvem respondeu, mas as RPCs ainda apontam para a tabela antiga de licenças. Execute o patch V59.19 no Supabase.", "error");
+        }else{
+          setStatus({ status:"Nuvem temporariamente indisponível", pill:"Aguardando conexão" });
+          toast("Não foi possível conferir a nuvem agora. Seus dados locais foram preservados e não serão enviados às cegas.", "warn");
+        }
+        setAutoState({ inicializado:false, licenca:currentLicense, ativo:false, falhaEm:new Date().toISOString(), erro:cloudErr.slice(0,280) });
         return false;
       }
 
