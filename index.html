@@ -35407,7 +35407,7 @@ Os outros lançamentos não serão alterados.`;
         var msgErro = String(res.error.message || res.error.details || "erro no Supabase");
         if(/public\.licencas|relation [\"']?licencas/i.test(msgErro)){
           setStatus({ status:"Configuração do Supabase pendente", pill:"Ajustar Supabase" });
-          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL complementar da V59.20.", "erro");
+          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL corretivo da V59.21.", "erro");
         }else{
           toast("Falha ao salvar na nuvem: " + msgErro, "erro");
         }
@@ -48270,7 +48270,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<!-- CMFin V59.20 - Sincronização automática multidispositivo / Nuvem V2 -->
+<!-- CMFin V59.21 - Sincronização automática multidispositivo / autenticação unificada -->
 <script id="cmfin-v5918-auto-cloud-multidevice">
 (function(){
   "use strict";
@@ -48509,10 +48509,10 @@ Os outros lançamentos não serão alterados.`;
         var rpcMissingV2 = /cmfin_(carregar|salvar)_dados_v2|could not find the function|PGRST202|42883/i.test(cloudErr);
         if(legacyLicenseError || rpcMissingV2){
           setStatus({ status:"Sincronização V2 não instalada", pill:"Ajustar Supabase" });
-          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL complementar da V59.20.", "error");
+          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL corretivo da V59.21.", "error");
         }else if(authCloudError){
-          setStatus({ status:"Credenciais da nuvem recusadas", pill:"Revalidar acesso" });
-          toast("O login foi aceito, mas a nuvem recusou as credenciais. Saia e entre novamente; se persistir, execute o SQL V59.20.", "error");
+          setStatus({ status:"Autenticação da nuvem não confirmada", pill:"Revalidar acesso" });
+          toast("O login foi aceito, mas a nuvem recusou as credenciais. Saia e entre novamente; se persistir, execute o SQL corretivo V59.21.", "error");
         }else{
           setStatus({ status:"Nuvem temporariamente indisponível", pill:"Aguardando conexão" });
           toast("Não foi possível conferir a nuvem agora. Seus dados locais foram preservados e não serão enviados às cegas.", "warn");
@@ -48606,4 +48606,4 @@ Os outros lançamentos não serão alterados.`;
 </body>
 </html>
 
-<!-- CMFin V59.20: sincronização em nuvem usa RPCs cmfin_carregar_dados_v2 / cmfin_salvar_dados_v2 e tabela privada cmfin_dados_nuvem_v2. -->
+<!-- CMFin V59.21: sincronização em nuvem usa as RPCs V2, mas a validação reaproveita a autenticação oficial cmfin_ativar_licenca do login. -->
