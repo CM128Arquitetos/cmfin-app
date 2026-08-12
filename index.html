@@ -48995,6 +48995,104 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+
+<!-- CMFin V59.23 - Correção da prévia "Divisão automática" em Terceiros quando o valor informado é mensal - 2026-08-12 -->
+<script id="cmfin-v5923-correcao-divisao-terceiros-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5923CorrecaoDivisaoTerceiros) return;
+  window.__cmfinV5923CorrecaoDivisaoTerceiros=true;
+
+  function el(id){ return document.getElementById(id); }
+  function numero(v){ var n=Number(v); return Number.isFinite(n)?n:0; }
+  function lerMoeda(valor){
+    try{ if(typeof window.limparMoeda==='function') return numero(window.limparMoeda(valor)); }catch(_){ }
+    try{ if(typeof limparMoeda==='function') return numero(limparMoeda(valor)); }catch(_){ }
+    var s=String(valor||'').trim().replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
+    return numero(s);
+  }
+  function dinheiro(v){
+    try{ if(typeof window.moeda==='function') return window.moeda(numero(v)); }catch(_){ }
+    try{ if(typeof moeda==='function') return moeda(numero(v)); }catch(_){ }
+    return numero(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function parcelas(){ return Math.max(1,Math.floor(numero(el('tercParcelas')?.value||1))); }
+  function parcelado(){ return (el('tercTipo')?.value||'Parcelado')==='Parcelado'; }
+  function modo(){ return el('tercModoValorParcelado')?.value==='mensal'?'mensal':'total'; }
+
+  function atualizarCorreto(){
+    var box=el('cmfinDivisaoTerceiro');
+    if(!box) return;
+
+    box.classList.remove('is-visible','cmfin-edit-note');
+    if(!parcelado()){
+      box.innerHTML='';
+      return;
+    }
+
+    var informado=lerMoeda(el('tercValor')?.value||'');
+    var qtd=parcelas();
+    if(!(informado>0)||!(qtd>1)){
+      box.innerHTML='';
+      return;
+    }
+
+    var mensal=modo()==='mensal'?informado:(informado/qtd);
+    var total=modo()==='mensal'?(informado*qtd):informado;
+    var titulo=modo()==='mensal'?'Cálculo automático':'Divisão automática';
+
+    box.classList.add('is-visible');
+    box.innerHTML=''
+      +'<div class="cmfin-auto-parcela-copy">'
+      +'<span>'+titulo+'</span>'
+      +'<small>Total: '+dinheiro(total)+'</small>'
+      +'</div>'
+      +'<div class="cmfin-auto-parcela-value">'+qtd+'× de '+dinheiro(mensal)+' por mês</div>';
+  }
+
+  // Substitui a função global para chamadas posteriores do próprio CMFin.
+  window.cmfinAtualizarDivisaoTerceiro=atualizarCorreto;
+  try{ cmfinAtualizarDivisaoTerceiro=atualizarCorreto; }catch(_){ }
+
+  // Os listeners da versão antiga guardaram referência para a função anterior.
+  // Estes listeners rodam depois deles e corrigem a caixa com a modalidade V59.22.
+  function bind(){
+    [['tercValor','input'],['tercParcelas','input'],['tercParcelas','change'],['tercTipo','change']].forEach(function(cfg){
+      var campo=el(cfg[0]);
+      if(!campo) return;
+      var chave='cmfinV5923'+cfg[1];
+      if(campo.dataset[chave]) return;
+      campo.dataset[chave]='1';
+      campo.addEventListener(cfg[1],function(){ setTimeout(atualizarCorreto,0); });
+    });
+  }
+
+  // Ao alternar Valor Total / Valor Mensal, atualiza também a prévia legada imediatamente.
+  function envolverSeletorModo(){
+    var original=window.cmfinV5922DefinirModoValorTerceiro;
+    if(typeof original!=='function'||original.__cmfinV5923) return;
+    var novo=function(){
+      var retorno=original.apply(this,arguments);
+      setTimeout(atualizarCorreto,0);
+      return retorno;
+    };
+    novo.__cmfinV5923=true;
+    window.cmfinV5922DefinirModoValorTerceiro=novo;
+    try{ cmfinV5922DefinirModoValorTerceiro=novo; }catch(_){ }
+  }
+
+  function iniciar(){
+    bind();
+    envolverSeletorModo();
+    atualizarCorreto();
+    setTimeout(function(){ bind(); envolverSeletorModo(); atualizarCorreto(); },300);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+})();
+</script>
+
 </body>
 </html>
 
