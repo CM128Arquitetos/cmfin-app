@@ -34513,7 +34513,7 @@ Os outros lançamentos não serão alterados.`;
 
       atualizarBadgeCloud("Consultando dados na nuvem...", "info");
 
-      var res = await client.rpc("cmfin_carregar_dados", {
+      var res = await client.rpc("cmfin_carregar_dados_v2", {
         p_usuario: s.usuario,
         p_senha: s.senha,
         p_licenca: s.licenca,
@@ -34581,7 +34581,7 @@ Os outros lançamentos não serão alterados.`;
       var client = await getSupabaseClientCloud();
       var pacote = coletarDadosLocais();
 
-      var res = await client.rpc("cmfin_salvar_dados", {
+      var res = await client.rpc("cmfin_salvar_dados_v2", {
         p_usuario: s.usuario,
         p_senha: s.senha,
         p_licenca: s.licenca,
@@ -35388,7 +35388,7 @@ Os outros lançamentos não serão alterados.`;
         }
       }
 
-      var res = await client.rpc("cmfin_salvar_dados", {
+      var res = await client.rpc("cmfin_salvar_dados_v2", {
         p_usuario: usuario,
         p_senha: senha,
         p_licenca: licenca,
@@ -35407,7 +35407,7 @@ Os outros lançamentos não serão alterados.`;
         var msgErro = String(res.error.message || res.error.details || "erro no Supabase");
         if(/public\.licencas|relation [\"']?licencas/i.test(msgErro)){
           setStatus({ status:"Configuração do Supabase pendente", pill:"Ajustar Supabase" });
-          toast("A RPC de nuvem ainda aponta para a tabela antiga de licenças. Execute o patch V59.19 no Supabase.", "erro");
+          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL complementar da V59.20.", "erro");
         }else{
           toast("Falha ao salvar na nuvem: " + msgErro, "erro");
         }
@@ -48270,7 +48270,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<!-- CMFin V59.18 - Sincronização automática multidispositivo -->
+<!-- CMFin V59.20 - Sincronização automática multidispositivo / Nuvem V2 -->
 <script id="cmfin-v5918-auto-cloud-multidevice">
 (function(){
   "use strict";
@@ -48386,7 +48386,7 @@ Os outros lançamentos não serão alterados.`;
 
   async function probeCloud(s){
     var client = await getClient();
-    var res = await client.rpc("cmfin_carregar_dados", {
+    var res = await client.rpc("cmfin_carregar_dados_v2", {
       p_usuario: s.usuario,
       p_senha: s.senha,
       p_licenca: s.licenca,
@@ -48505,9 +48505,14 @@ Os outros lançamentos não serão alterados.`;
         disableAuto();
         var cloudErr = String((probe.error && (probe.error.message || probe.error.details || probe.error.hint)) || (probe.data && (probe.data.mensagem || probe.data.message)) || "");
         var legacyLicenseError = /public\.licencas|relation [\"']?public\.licencas|relation [\"']?licencas/i.test(cloudErr);
-        if(legacyLicenseError){
-          setStatus({ status:"Configuração do Supabase pendente", pill:"Ajustar Supabase" });
-          toast("A nuvem respondeu, mas as RPCs ainda apontam para a tabela antiga de licenças. Execute o patch V59.19 no Supabase.", "error");
+        var authCloudError = /usu[aá]rio.*senha.*licen[cç]a.*inv[aá]lid|credenciais?.*inv[aá]lid/i.test(cloudErr);
+        var rpcMissingV2 = /cmfin_(carregar|salvar)_dados_v2|could not find the function|PGRST202|42883/i.test(cloudErr);
+        if(legacyLicenseError || rpcMissingV2){
+          setStatus({ status:"Sincronização V2 não instalada", pill:"Ajustar Supabase" });
+          toast("A sincronização V2 ainda não está instalada no Supabase. Execute o SQL complementar da V59.20.", "error");
+        }else if(authCloudError){
+          setStatus({ status:"Credenciais da nuvem recusadas", pill:"Revalidar acesso" });
+          toast("O login foi aceito, mas a nuvem recusou as credenciais. Saia e entre novamente; se persistir, execute o SQL V59.20.", "error");
         }else{
           setStatus({ status:"Nuvem temporariamente indisponível", pill:"Aguardando conexão" });
           toast("Não foi possível conferir a nuvem agora. Seus dados locais foram preservados e não serão enviados às cegas.", "warn");
@@ -48600,3 +48605,5 @@ Os outros lançamentos não serão alterados.`;
 
 </body>
 </html>
+
+<!-- CMFin V59.20: sincronização em nuvem usa RPCs cmfin_carregar_dados_v2 / cmfin_salvar_dados_v2 e tabela privada cmfin_dados_nuvem_v2. -->
