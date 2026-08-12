@@ -1,4 +1,5 @@
 <!-- CMFin V59.15 - E-mail do suporte copiado para a area de transferencia - 2026-08-11 -->
+<!-- CMFin V59.16 - Correção definitiva da cópia do e-mail de suporte + feedback visível - 2026-08-11 -->
 <!-- CMFin V59.14 - Login por usuário/senha + recuperação + suporte, sem código de licença visível - 2026-08-11 -->
 <!-- CMFin V59.13 - Perfil no backup + Pasta Backup conforme licença - 2026-08-11 -->
 <!-- CMFin V59.12 - Valor Total ou Valor da Parcela em Gastos Fixos parcelados - 2026-08-10 -->
@@ -30721,7 +30722,7 @@ Os outros lançamentos não serão alterados.`;
       t.id = id;
       t.setAttribute("role", "status");
       t.setAttribute("aria-live", "polite");
-      t.style.cssText = "position:fixed;right:24px;bottom:24px;z-index:6500;display:none;align-items:center;gap:9px;max-width:min(520px,calc(100vw - 32px));padding:13px 16px;border-radius:16px;color:#fff;font-size:13px;font-weight:800;line-height:1.4;box-shadow:0 18px 46px rgba(7,31,26,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);";
+      t.style.cssText = "position:fixed;right:24px;bottom:24px;z-index:1000015;display:none;align-items:center;gap:9px;max-width:min(520px,calc(100vw - 32px));padding:13px 16px;border-radius:16px;color:#fff;font-size:13px;font-weight:800;line-height:1.4;box-shadow:0 18px 46px rgba(7,31,26,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);";
       document.body.appendChild(t);
     }
     t.style.background = tipo === "erro" ? "rgba(153,27,27,.96)" : "rgba(7,94,75,.96)";
@@ -30731,35 +30732,70 @@ Os outros lançamentos não serão alterados.`;
     t._cmfinHideTimer = setTimeout(function(){ t.style.display = "none"; }, 3600);
   }
 
+  function cmfinCopiarTextoFallback(texto){
+    var area = null;
+    try{
+      area = document.createElement("textarea");
+      area.value = String(texto || "");
+      area.setAttribute("readonly", "");
+      area.setAttribute("aria-hidden", "true");
+      area.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;z-index:-1;padding:0;border:0;";
+      document.body.appendChild(area);
+      area.focus({ preventScroll:true });
+      area.select();
+      area.setSelectionRange(0, area.value.length);
+      return !!document.execCommand("copy");
+    }catch(err){
+      console.warn("Fallback de cópia indisponível:", err);
+      return false;
+    }finally{
+      try{ if(area && area.parentNode) area.parentNode.removeChild(area); }catch(_e){}
+    }
+  }
+
+  function cmfinFeedbackBotaoEmail(copiado){
+    var btn = document.getElementById("cmfinSupportEmailCopy");
+    if(!btn) return;
+    var label = btn.querySelector("div");
+    if(!label) return;
+    if(!label.dataset.cmfinOriginalLabel) label.dataset.cmfinOriginalLabel = label.textContent || "E-mail";
+    clearTimeout(btn._cmfinEmailFeedbackTimer);
+    label.textContent = copiado ? "E-mail copiado!" : "Copiar e-mail";
+    btn.setAttribute("aria-label", copiado ? "E-mail do suporte copiado" : "Tentar copiar e-mail do suporte novamente");
+    btn._cmfinEmailFeedbackTimer = setTimeout(function(){
+      label.textContent = label.dataset.cmfinOriginalLabel || "E-mail";
+      btn.setAttribute("aria-label", "Copiar e-mail do suporte CMFin");
+    }, 2200);
+  }
+
   async function cmfinCopiarEmailSuporte(e){
-    if(e) e.preventDefault();
+    if(e){ e.preventDefault(); e.stopPropagation(); }
     var btn = document.getElementById("cmfinSupportEmailCopy");
     var email = String((btn && btn.getAttribute("data-email")) || "cm128arquitetos@gmail.com").trim();
     var copiado = false;
-    try{
-      if(navigator.clipboard && window.isSecureContext){
+
+    // Primeiro tenta a API moderna. Se o navegador negar permissão,
+    // ainda executa o método compatível como segunda tentativa.
+    if(navigator.clipboard && window.isSecureContext && typeof navigator.clipboard.writeText === "function"){
+      try{
         await navigator.clipboard.writeText(email);
         copiado = true;
-      } else {
-        var area = document.createElement("textarea");
-        area.value = email;
-        area.setAttribute("readonly", "");
-        area.style.cssText = "position:fixed;opacity:0;pointer-events:none;left:-9999px;top:-9999px;";
-        document.body.appendChild(area);
-        area.select();
-        area.setSelectionRange(0, area.value.length);
-        copiado = document.execCommand("copy");
-        area.remove();
+      }catch(err){
+        console.warn("Clipboard API bloqueada; tentando método alternativo:", err);
       }
-    }catch(err){
-      console.warn("Não foi possível copiar o e-mail do suporte:", err);
     }
 
+    if(!copiado){
+      copiado = cmfinCopiarTextoFallback(email);
+    }
+
+    cmfinFeedbackBotaoEmail(copiado);
     if(copiado){
-      cmfinToastAcesso("E-mail do suporte copiado para a área de transferência: " + email, "ok");
+      cmfinToastAcesso("E-mail copiado para a área de transferência: " + email, "ok");
     } else {
       cmfinToastAcesso("Não foi possível copiar automaticamente. E-mail do suporte: " + email, "erro");
     }
+    return copiado;
   }
   function cmfinAbrirRecuperacao(e){
     if(e) e.preventDefault();
