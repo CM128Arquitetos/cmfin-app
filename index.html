@@ -16,6 +16,7 @@
 <!-- CMFin V57 - Remove alertas de terceiros/backup e prioriza vencimentos - 2026-08-05 -->
 <!-- CMFin V53 - Análise Financeira Aprimorada e Alertas Inteligentes; base V51 - 2026-08-04 -->
 <!-- CMFin V48 - Refatoração estrutural segura: módulos, armazenamento centralizado e autenticação RPC-only - 2026-08-04 -->
+<!-- V59.18: sincronização automática multidispositivo com Supabase, preservando backup manual. -->
 <!-- V48: módulos explícitos CMFin.Data, CMFin.UI, CMFin.Auth, CMFin.Cloud e CMFin.Reports. -->
 <!-- V48: acesso direto à tabela cmfin_licencas removido; RPCs do Supabase são obrigatórias. -->
 <!-- V48: chamadas de armazenamento passam por CMFin.Storage; senhas nunca são persistidas no localStorage. -->
@@ -11825,8 +11826,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   });
 
   function start(){
-    // O CMFin mantém a sincronização manual para evitar que um reset local
-    // substitua automaticamente um backup válido da nuvem.
+    // V59.18: o auto-sync permanece bloqueado durante a inicialização.
+    // Ele só é liberado depois que a sessão é validada e a versão da nuvem é conferida.
     Cloud.disableAuto();
   }
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
@@ -35083,12 +35084,12 @@ Os outros lançamentos não serão alterados.`;
     + '  <div class="cmfin-cloud-compact-head">'
     + '    <div>'
     + '      <h2>Sincronização em Nuvem</h2>'
-    + '      <p>Status resumido do backup online no Supabase. As ações rápidas ficam no topo e no menu Ações.</p>'
+    + '      <p>Sincronização automática com o Supabase. Ao entrar, o CMFin busca os dados online; durante o uso, as alterações são salvas automaticamente.</p>'
     + '    </div>'
-    + '    <div class="cmfin-cloud-pill" data-cloud-field="statusPill">Nuvem ativa</div>'
+    + '    <div class="cmfin-cloud-pill" data-cloud-field="statusPill">Automática</div>'
     + '  </div>'
     + '  <div class="cmfin-cloud-mini-grid">'
-    + '    <div class="cmfin-cloud-mini-card"><small>Status</small><strong data-cloud-field="status">Sincronização ativa</strong></div>'
+    + '    <div class="cmfin-cloud-mini-card"><small>Status</small><strong data-cloud-field="status">Sincronização automática</strong></div>'
     + '    <div class="cmfin-cloud-mini-card"><small>Último salvamento</small><strong data-cloud-field="ultimoSalvamento">Ainda não registrado</strong></div>'
     + '    <div class="cmfin-cloud-mini-card"><small>Último carregamento</small><strong data-cloud-field="ultimoCarregamento">Ainda não registrado</strong></div>'
     + '    <div class="cmfin-cloud-mini-card"><small>Licença</small><strong data-cloud-field="licenca">-</strong></div>'
@@ -35109,8 +35110,8 @@ Os outros lançamentos não serão alterados.`;
     var st = getStatus();
 
     var map = {
-      status: st.status || "Sincronização ativa",
-      statusPill: st.pill || "Nuvem ativa",
+      status: st.status || "Sincronização automática",
+      statusPill: st.pill || "Automática",
       ultimoSalvamento: brDateTime(st.ultimoSalvamento),
       ultimoCarregamento: brDateTime(st.ultimoCarregamento),
       licenca: s.licenca || "-"
@@ -35206,7 +35207,7 @@ Os outros lançamentos não serão alterados.`;
   function start(){
     ensureStyle();
     setStatus({
-      status:getStatus().status || "Sincronização ativa",
+      status:getStatus().status || "Sincronização automática",
       pill:getStatus().pill || "Nuvem ativa"
     });
 
@@ -47178,7 +47179,7 @@ Os outros lançamentos não serão alterados.`;
 
   window.resetarDados=function(){
     const nomeModo=modoAtual==='empresarial'?'Empresarial':'Pessoal';
-    if(!confirm(`Deseja mesmo resetar todos os dados do Modo ${nomeModo}?\n\nSerão apagados lançamentos, bancos, objetivos, documentos, sócios/pró-labore, configurações do modo, perfil do modo, Cofre e dados auxiliares. Login e licença serão preservados.`)) return;
+    if(!confirm(`Deseja mesmo resetar todos os dados do Modo ${nomeModo}?\n\nSerão apagados lançamentos, bancos, objetivos, documentos, sócios/pró-labore, configurações do modo, perfil do modo, Cofre e dados auxiliares. Login e licença serão preservados.\n\nCom a sincronização automática ativa, esse reset também será enviado para a nuvem e refletido nos outros dispositivos.`)) return;
     try{
       if(typeof aplicarSnapshot==='function'&&typeof criarDadosVazios==='function') aplicarSnapshot(criarDadosVazios());
       if(typeof configuracoes!=='undefined'){
@@ -48258,6 +48259,329 @@ Os outros lançamentos não serão alterados.`;
     try{if(window.CMFin)CMFin.version='59.12.0';}catch(_){ }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
+})();
+</script>
+
+
+
+<!-- CMFin V59.18 - Sincronização automática multidispositivo -->
+<script id="cmfin-v5918-auto-cloud-multidevice">
+(function(){
+  "use strict";
+
+  var AUTH_KEY = "cmfin_auth_session_supabase_v2_revalidate";
+  var DEVICE_KEY = "cmfin_device_id_v1";
+  var STATUS_KEY = "cmfin_cloud_status_v2";
+  var AUTO_STATE_KEY = "cmfin_cloud_auto_state_v5918";
+  var syncing = false;
+  var lastLicense = "";
+  var retryTimer = null;
+
+  function getSession(){
+    try{
+      return JSON.parse(
+        (window.CMFin && CMFin.Storage && CMFin.Storage.session && CMFin.Storage.session.getItem(AUTH_KEY)) ||
+        (window.CMFin && CMFin.Storage && CMFin.Storage.local && CMFin.Storage.local.getItem(AUTH_KEY)) ||
+        "null"
+      );
+    }catch(e){ return null; }
+  }
+
+  function validSession(s){
+    return !!(s && s.autenticado && s.usuario && s.senha && s.licenca);
+  }
+
+  function getDeviceId(){
+    try{
+      var id = CMFin.Storage.local.getItem(DEVICE_KEY);
+      if(id) return id;
+      id = ("CMFIN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10) + "-" + Math.random().toString(36).slice(2,10)).toUpperCase();
+      CMFin.Storage.local.setItem(DEVICE_KEY, id);
+      return id;
+    }catch(e){ return "CMFIN-WEB"; }
+  }
+
+  function setStatus(update){
+    try{
+      var atual = JSON.parse(CMFin.Storage.local.getItem(STATUS_KEY) || "{}");
+      var novo = Object.assign({}, atual, update || {});
+      CMFin.Storage.local.setItem(STATUS_KEY, JSON.stringify(novo));
+      try{ window.dispatchEvent(new CustomEvent("cmfin:cloud-status-v5918", { detail: novo })); }catch(_e){}
+      return novo;
+    }catch(e){ return update || {}; }
+  }
+
+  function setAutoState(update){
+    try{
+      var atual = JSON.parse(CMFin.Storage.session.getItem(AUTO_STATE_KEY) || "{}");
+      var novo = Object.assign({}, atual, update || {});
+      CMFin.Storage.session.setItem(AUTO_STATE_KEY, JSON.stringify(novo));
+      return novo;
+    }catch(e){ return update || {}; }
+  }
+
+  function toast(msg, type){
+    try{
+      var id = "cmfinCloudBadge";
+      var b = document.getElementById(id);
+      if(!b){
+        b = document.createElement("div");
+        b.id = id;
+        b.style.cssText = "position:fixed;right:22px;bottom:22px;z-index:99991;display:flex;align-items:center;gap:8px;max-width:460px;padding:10px 13px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;box-shadow:0 14px 36px rgba(15,23,42,.18);font-size:11px;font-weight:900;backdrop-filter:blur(12px);";
+        document.body.appendChild(b);
+      }
+      if(type === "ok") b.style.background = "rgba(6,95,70,.94)";
+      else if(type === "error") b.style.background = "rgba(153,27,27,.94)";
+      else if(type === "warn") b.style.background = "rgba(146,64,14,.94)";
+      else b.style.background = "rgba(15,23,42,.92)";
+      b.textContent = msg;
+      b.style.display = "flex";
+      clearTimeout(b._hideTimer);
+      b._hideTimer = setTimeout(function(){ b.style.display = "none"; }, 4300);
+    }catch(e){}
+  }
+
+  function ensureSupabase(){
+    return new Promise(function(resolve, reject){
+      if(window.supabase && window.supabase.createClient){ resolve(); return; }
+      var existing = document.querySelector('script[data-cmfin-supabase-lib="1"]');
+      if(existing){
+        if(window.supabase && window.supabase.createClient){ resolve(); return; }
+        existing.addEventListener("load", resolve, { once:true });
+        existing.addEventListener("error", function(){ reject(new Error("Biblioteca Supabase indisponível.")); }, { once:true });
+        return;
+      }
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      s.async = true;
+      s.setAttribute("data-cmfin-supabase-lib", "1");
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error("Biblioteca Supabase indisponível.")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getClient(){
+    await ensureSupabase();
+    if(window.cmfinSupabaseClient) return window.cmfinSupabaseClient;
+    var url = window.SUPABASE_URL || "https://ahpefoaspcxgntrquhej.supabase.co";
+    var key = window.SUPABASE_ANON_KEY || "sb_publishable_loOmGiLkYRq1PxJaVEXLAw_haNJQsPr";
+    window.cmfinSupabaseClient = window.supabase.createClient(url, key);
+    return window.cmfinSupabaseClient;
+  }
+
+  function normalizeRpcData(data){
+    data = Array.isArray(data) ? data[0] : data;
+    if(typeof data === "string"){
+      try{ data = JSON.parse(data); }catch(e){}
+    }
+    return data;
+  }
+
+  async function probeCloud(s){
+    var client = await getClient();
+    var res = await client.rpc("cmfin_carregar_dados", {
+      p_usuario: s.usuario,
+      p_senha: s.senha,
+      p_licenca: s.licenca,
+      p_device_id: getDeviceId()
+    });
+    if(res.error) return { ok:false, error:res.error };
+    var data = normalizeRpcData(res.data);
+    if(!data || !data.ok) return { ok:false, data:data };
+    return { ok:true, existe:!!data.existe, data:data };
+  }
+
+  function enableAuto(){
+    try{
+      if(CMFin.Cloud){
+        CMFin.Cloud.enableAuto();
+        CMFin.Cloud.resume();
+      }
+    }catch(e){}
+  }
+
+  function disableAuto(){
+    try{
+      if(CMFin.Cloud){
+        CMFin.Cloud.disableAuto();
+        CMFin.Cloud.pause();
+      }
+    }catch(e){}
+  }
+
+  function installScheduleGuard(){
+    try{
+      if(!CMFin.Cloud || CMFin.Cloud.__v5918ScheduleGuard) return;
+      var original = CMFin.Cloud.schedule.bind(CMFin.Cloud);
+      CMFin.Cloud.schedule = function(reason, delay){
+        var r = String(reason || "").toLowerCase();
+        if(
+          r.indexOf("cmfin_auth_session") >= 0 ||
+          r.indexOf("cmfin_remembered_access") >= 0 ||
+          r.indexOf("cmfin_last_user") >= 0 ||
+          r.indexOf("cmfin_device_id") >= 0 ||
+          r.indexOf("cmfin_cloud_status") >= 0 ||
+          r.indexOf("cmfin_cloud_auto_state") >= 0 ||
+          r.indexOf("supabase.auth.token") >= 0
+        ) return false;
+        return original(reason, Math.max(1800, Number(delay || 2200)));
+      };
+      CMFin.Cloud.__v5918ScheduleGuard = true;
+    }catch(e){}
+  }
+
+  function installCloudFunctionStatusWrappers(){
+    try{
+      if(window.__cmfinV5918CloudWrapped) return;
+      if(typeof window.cmfinSalvarDadosNuvem !== "function" || typeof window.cmfinCarregarDadosNuvem !== "function") return;
+
+      var saveBase = window.cmfinSalvarDadosNuvem;
+      var loadBase = window.cmfinCarregarDadosNuvem;
+
+      window.cmfinSalvarDadosNuvem = async function(silent){
+        var ok = await saveBase.apply(this, arguments);
+        if(ok){
+          var now = new Date().toISOString();
+          setStatus({
+            status:"Sincronização automática",
+            pill:"Automática",
+            ultimoSalvamento:now
+          });
+          setAutoState({ ultimoSalvamento:now, ativo:true });
+        }
+        return ok;
+      };
+
+      window.cmfinCarregarDadosNuvem = async function(){
+        var ok = await loadBase.apply(this, arguments);
+        if(ok){
+          var now = new Date().toISOString();
+          setStatus({
+            status:"Sincronização automática",
+            pill:"Automática",
+            ultimoCarregamento:now
+          });
+          setAutoState({ ultimoCarregamento:now, ativo:true });
+        }
+        return ok;
+      };
+
+      window.__cmfinV5918CloudWrapped = true;
+    }catch(e){}
+  }
+
+  async function syncAfterAuth(reason){
+    var s = getSession();
+    if(!validSession(s)) return false;
+    if(syncing) return false;
+
+    var currentLicense = String(s.licenca || "");
+    var state = {};
+    try{ state = JSON.parse(CMFin.Storage.session.getItem(AUTO_STATE_KEY) || "{}"); }catch(e){}
+    if(reason !== "online" && state.inicializado && state.licenca === currentLicense && lastLicense === currentLicense){
+      enableAuto();
+      return true;
+    }
+
+    syncing = true;
+    lastLicense = currentLicense;
+    disableAuto();
+    installScheduleGuard();
+    installCloudFunctionStatusWrappers();
+
+    setStatus({ status:"Sincronizando ao entrar...", pill:"Conectando" });
+    toast("Sincronizando seus dados com a nuvem...", "info");
+
+    try{
+      var probe = await probeCloud(s);
+      if(!probe.ok){
+        disableAuto();
+        setStatus({ status:"Nuvem temporariamente indisponível", pill:"Aguardando conexão" });
+        setAutoState({ inicializado:false, licenca:currentLicense, ativo:false, falhaEm:new Date().toISOString() });
+        toast("Não foi possível conferir a nuvem agora. Seus dados locais foram preservados e não serão enviados às cegas.", "warn");
+        return false;
+      }
+
+      if(probe.existe){
+        if(typeof window.cmfinCarregarDadosNuvem !== "function") throw new Error("Rotina de carregamento da nuvem não encontrada.");
+        var loaded = await window.cmfinCarregarDadosNuvem();
+        if(!loaded) throw new Error("Não foi possível aplicar os dados da nuvem.");
+        setAutoState({
+          inicializado:true,
+          licenca:currentLicense,
+          ativo:true,
+          origem:"nuvem",
+          inicializadoEm:new Date().toISOString()
+        });
+        enableAuto();
+        setStatus({ status:"Sincronização automática", pill:"Automática" });
+        toast("Dados atualizados. A sincronização automática está ativa neste dispositivo.", "ok");
+        return true;
+      }
+
+      // Primeira utilização desta licença na nuvem: cria o estado online com os dados locais atuais.
+      if(typeof window.cmfinSalvarDadosNuvem !== "function") throw new Error("Rotina de salvamento da nuvem não encontrada.");
+      var seeded = await window.cmfinSalvarDadosNuvem(false);
+      if(!seeded) throw new Error("Não foi possível criar a primeira sincronização online.");
+
+      setAutoState({
+        inicializado:true,
+        licenca:currentLicense,
+        ativo:true,
+        origem:"local-inicial",
+        inicializadoEm:new Date().toISOString()
+      });
+      enableAuto();
+      setStatus({ status:"Sincronização automática", pill:"Automática" });
+      toast("Primeira sincronização criada. A partir de agora seus dados serão mantidos na nuvem.", "ok");
+      return true;
+    }catch(err){
+      console.warn("CMFin V59.18 auto sync:", err);
+      disableAuto();
+      setStatus({ status:"Sincronização automática pausada", pill:"Verificar conexão" });
+      setAutoState({ inicializado:false, licenca:currentLicense, ativo:false, falhaEm:new Date().toISOString() });
+      toast("A sincronização automática foi pausada para proteger seus dados. Verifique a conexão e tente novamente.", "warn");
+      return false;
+    }finally{
+      syncing = false;
+    }
+  }
+
+  function scheduleStart(reason, delay){
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(function(){ syncAfterAuth(reason || "login"); }, Number(delay || 350));
+  }
+
+  installScheduleGuard();
+  setTimeout(installCloudFunctionStatusWrappers, 0);
+  setTimeout(installCloudFunctionStatusWrappers, 800);
+  setTimeout(installCloudFunctionStatusWrappers, 1800);
+
+  try{
+    window.addEventListener("cmfin:sessao-atualizada", function(){
+      // A sessão é gravada antes da liberação visual. Pausa qualquer envio até confirmar a versão da nuvem.
+      disableAuto();
+      try{ CMFin.Storage.session.removeItem(AUTO_STATE_KEY); }catch(e){}
+      scheduleStart("login", 260);
+    });
+  }catch(e){}
+
+  window.addEventListener("online", function(){
+    var s = getSession();
+    if(validSession(s)) scheduleStart("online", 450);
+  });
+
+  // Compatibilidade com revalidação já concluída antes deste módulo ser iniciado.
+  function boot(){
+    installCloudFunctionStatusWrappers();
+    var s = getSession();
+    if(validSession(s)) scheduleStart("boot", 700);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once:true });
+  else boot();
+
+  window.cmfinSincronizarAutomaticamenteAgora = function(){ return syncAfterAuth("manual-auto"); };
 })();
 </script>
 
