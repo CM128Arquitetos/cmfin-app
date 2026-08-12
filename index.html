@@ -10206,6 +10206,9 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                   <button class="btn btn-primary" id="btnSalvarTerceiro" onclick="salvarLancamentoTerceiro()">Registrar Lançamento</button>
                   <button class="btn btn-secondary" id="btnCancelarEdicaoTerceiro" style="display:none;" onclick="cancelarEdicaoTerceiro()">Cancelar Edição</button>
                 </div>
+                <div class="cmfin-v5924-clear-row">
+                  <button type="button" class="btn btn-secondary cmfin-v5924-clear-btn" id="btnLimparDadosTerceiro" onclick="cmfinLimparDadosLancamentoTerceiro()">Limpar Dados</button>
+                </div>
               </div>
             </div>
 
@@ -49090,6 +49093,140 @@ Os outros lançamentos não serão alterados.`;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
   else iniciar();
+})();
+</script>
+
+
+
+<!-- CMFin V59.24 - Limpar formulário de Lançamento de Terceiro manualmente e após registro - 2026-08-12 -->
+<style id="cmfin-v5924-terceiros-limpar-style">
+  #terceiros .cmfin-v5924-clear-row{
+    width:100%;
+    margin-top:10px;
+  }
+  #terceiros .cmfin-v5924-clear-btn{
+    width:100%;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+</style>
+<script id="cmfin-v5924-terceiros-limpar-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5924TerceirosLimpar) return;
+  window.__cmfinV5924TerceirosLimpar=true;
+
+  function el(id){ return document.getElementById(id); }
+  function set(id,valor){ var c=el(id); if(c) c.value=valor==null?'':String(valor); }
+  function lista(){
+    try{ if(typeof terceiros!=='undefined' && Array.isArray(terceiros)) return terceiros; }catch(_){ }
+    return Array.isArray(window.terceiros)?window.terceiros:[];
+  }
+  function mesPadrao(){
+    return (el('dashboardMes') && el('dashboardMes').value) || (typeof mesAtual==='function'?mesAtual():'');
+  }
+  function garantirPlaceholderCategoria(){
+    var c=el('tercCategoria');
+    if(!c) return;
+    var tem=[].slice.call(c.options||[]).some(function(o){return o.value==='';});
+    if(!tem){
+      var opt=document.createElement('option');
+      opt.value=''; opt.textContent='Selecione';
+      c.insertBefore(opt,c.firstChild);
+    }
+    c.value='';
+  }
+  function limparVisualAuxiliar(){
+    var aviso=el('avisoTerceiroFormulario');
+    if(aviso){ aviso.textContent=''; aviso.style.display='none'; }
+
+    var divisao=el('cmfinDivisaoTerceiro');
+    if(divisao){
+      divisao.className='cmfin-auto-parcela';
+      divisao.innerHTML='';
+    }
+    var resumo=el('cmfinV5922ResumoValorTerceiro');
+    if(resumo) resumo.classList.remove('is-visible');
+    var total=el('cmfinV5922TotalTerceiro'); if(total) total.textContent='R$ 0,00';
+    var mensal=el('cmfinV5922MensalTerceiro'); if(mensal) mensal.textContent='R$ 0,00';
+  }
+  function reforcarEstadoLimpo(){
+    set('tercEditCompraId','');
+    set('tercPessoa','');
+    set('tercFormaPagamento','Cartão de Crédito');
+    try{ if(typeof atualizarCampoCartaoTerceiro==='function') atualizarCampoCartaoTerceiro(); }catch(_){ }
+    set('tercCartao','');
+    set('tercDescricao','');
+    set('tercValor','');
+    set('tercVencimento','');
+    garantirPlaceholderCategoria();
+    set('tercTipo','Parcelado');
+    set('tercParcelas','1');
+    try{
+      if(typeof setValorMes==='function') setValorMes('tercPrimeiraFatura',mesPadrao());
+      else set('tercPrimeiraFatura',mesPadrao());
+    }catch(_){ set('tercPrimeiraFatura',mesPadrao()); }
+    set('tercStatus','Pendente');
+    set('tercObs','');
+    set('tercModoValorParcelado','total');
+
+    var salvar=el('btnSalvarTerceiro'); if(salvar) salvar.textContent='Registrar Lançamento';
+    var cancelar=el('btnCancelarEdicaoTerceiro'); if(cancelar) cancelar.style.display='none';
+
+    try{ if(typeof atualizarCamposParcelamentoTerceiro==='function') atualizarCamposParcelamentoTerceiro(); }catch(_){ }
+    try{ if(typeof window.cmfinV5922DefinirModoValorTerceiro==='function') window.cmfinV5922DefinirModoValorTerceiro('total'); }catch(_){ }
+    limparVisualAuxiliar();
+  }
+
+  var limparAnterior=window.limparFormularioLancamentoTerceiro;
+  function limparCompleto(manual){
+    try{ if(typeof limparAnterior==='function') limparAnterior.apply(this,arguments); }catch(e){ console.warn('CMFin V59.24 - limpeza anterior ignorada:',e); }
+    reforcarEstadoLimpo();
+    // Algumas versões anteriores atualizam prévias em setTimeout; reforça depois delas.
+    setTimeout(reforcarEstadoLimpo,0);
+    setTimeout(reforcarEstadoLimpo,80);
+    if(manual){
+      try{
+        if(typeof toast==='function') toast('Os dados do Lançamento de Terceiro foram limpos. O formulário está pronto para um novo registro.',{title:'Formulário limpo',type:'info',icon:'✓'});
+      }catch(_){ }
+    }
+  }
+
+  window.cmfinLimparDadosLancamentoTerceiro=function(){ limparCompleto(true); };
+
+  var limparNovo=function(){ return limparCompleto(false); };
+  limparNovo.__cmfinV5924=true;
+  window.limparFormularioLancamentoTerceiro=limparNovo;
+  try{ limparFormularioLancamentoTerceiro=limparNovo; }catch(_){ }
+
+  // Garantia adicional: só limpa após um salvamento que realmente alterou/criou o lançamento.
+  var salvarAnterior=window.salvarLancamentoTerceiro;
+  if(typeof salvarAnterior==='function' && !salvarAnterior.__cmfinV5924){
+    var salvarNovo=function(){
+      var antes=lista().slice();
+      var qtdAntes=antes.length;
+      var idsAntes=new Set(antes.map(function(i){return String(i&&i.compraId||'');}));
+      var editAntes=String((el('tercEditCompraId') && el('tercEditCompraId').value)||'');
+      var retorno=salvarAnterior.apply(this,arguments);
+      var depois=lista();
+      var criou=depois.length>qtdAntes || depois.some(function(i){var id=String(i&&i.compraId||'');return id&&!idsAntes.has(id);});
+      var editConcluida=!!editAntes && !String((el('tercEditCompraId') && el('tercEditCompraId').value)||'');
+      if(criou || editConcluida){
+        // Executa depois da consolidação Total/Mensal e das renderizações das versões anteriores.
+        setTimeout(function(){ limparCompleto(false); },0);
+      }
+      return retorno;
+    };
+    salvarNovo.__cmfinV5924=true;
+    salvarNovo.__cmfinAutoDivisao=true;
+    window.salvarLancamentoTerceiro=salvarNovo;
+    try{ salvarLancamentoTerceiro=salvarNovo; }catch(_){ }
+  }
+
+  try{ if(window.CMFin) CMFin.version='59.24.0'; }catch(_){ }
 })();
 </script>
 
