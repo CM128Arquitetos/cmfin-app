@@ -1,3 +1,4 @@
+<!-- CMFin V59.22 - Gastos por Terceiros: Valor Total ou Valor Mensal - 2026-08-12 -->
 <!-- CMFin V59.15 - E-mail do suporte copiado para a area de transferencia - 2026-08-11 -->
 <!-- CMFin V59.16 - Correção definitiva da cópia do e-mail de suporte + feedback visível - 2026-08-11 -->
 <!-- CMFin V59.14 - Login por usuário/senha + recuperação + suporte, sem código de licença visível - 2026-08-11 -->
@@ -17112,8 +17113,9 @@ Os outros lançamentos não serão alterados.`;
 
               <div class="terc-row-side terc-row-side-v13">
                 <div class="terc-row-value terc-row-value-v13">
-                  <span class="label">Valor Total</span>
+                  <span class="label">Valor Mensal</span>
                   <span class="value">${moeda(valorTotalTerceiro(t))}</span>
+                  ${tipoLancamento === "Parcelado" ? `<span class="cmfin-v5922-row-total">Total: ${moeda(typeof cmfinValorCompraTotalTerceiro === "function" ? cmfinValorCompraTotalTerceiro(t) : (valorTotalTerceiro(t) * Number(t.totalParcelas || 1)))}</span>` : ""}
                 </div>
                 <div class="terc-row-actions terc-row-actions-v13">
                   <button class="btn btn-secondary btn-small" onclick="editarLancamentoTerceiro(${t.compraId}, ${t.id})">Editar</button>
@@ -48600,6 +48602,396 @@ Os outros lançamentos não serão alterados.`;
   else boot();
 
   window.cmfinSincronizarAutomaticamenteAgora = function(){ return syncAfterAuth("manual-auto"); };
+})();
+</script>
+
+
+<!-- CMFin V59.22 - Valor Total ou Valor Mensal em Gastos por Terceiros parcelados - 2026-08-12 -->
+<style id="cmfin-v5922-terceiros-modo-valor-css">
+  #terceiros #cmfinV5922ModoValorTerceiro{
+    grid-column:1 / -1;
+    padding:12px 13px;
+    border:1px solid #dfe8e6;
+    border-radius:16px;
+    background:#f8fbfa;
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-title{
+    display:block;
+    margin-bottom:8px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-options{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-option{
+    min-height:43px;
+    border:1px solid #d6e0de;
+    border-radius:13px;
+    background:#fff;
+    color:#172b27;
+    font:inherit;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:none;
+    transition:.16s ease;
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-option:hover{
+    border-color:#8fb9b1;
+    background:#f5faf8;
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-option.is-active{
+    border-color:#0f766e;
+    background:#eaf7f4;
+    color:#075e54;
+    box-shadow:0 0 0 2px rgba(15,118,110,.06);
+  }
+  #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-help{
+    display:block;
+    margin-top:7px;
+    color:#718096;
+    font-size:11px;
+    line-height:1.45;
+    font-weight:650;
+  }
+  #terceiros #cmfinV5922ResumoValorTerceiro{
+    grid-column:1 / -1;
+    display:none;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-top:-2px;
+  }
+  #terceiros #cmfinV5922ResumoValorTerceiro.is-visible{display:grid;}
+  #terceiros #cmfinV5922ResumoValorTerceiro .cmfin-v5922-value-card{
+    padding:10px 12px;
+    border:1px solid #dfe8e6;
+    border-radius:14px;
+    background:#fff;
+  }
+  #terceiros #cmfinV5922ResumoValorTerceiro .cmfin-v5922-value-card span{
+    display:block;
+    margin-bottom:4px;
+    color:#7b8798;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+  }
+  #terceiros #cmfinV5922ResumoValorTerceiro .cmfin-v5922-value-card strong{
+    display:block;
+    color:#0f2f29;
+    font-size:15px;
+    font-weight:950;
+  }
+  #terceiros .cmfin-v5922-row-total{
+    display:block;
+    margin-top:3px;
+    color:#7a8796;
+    font-size:10px;
+    font-weight:750;
+    white-space:nowrap;
+  }
+  @media(max-width:760px){
+    #terceiros #cmfinV5922ModoValorTerceiro .cmfin-v5922-options,
+    #terceiros #cmfinV5922ResumoValorTerceiro{grid-template-columns:1fr;}
+  }
+</style>
+<script id="cmfin-v5922-terceiros-modo-valor-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5922TerceirosModoValor) return;
+  window.__cmfinV5922TerceirosModoValor=true;
+
+  var FLAG='__cmfinV5922TerceirosModoValor';
+  function el(id){return document.getElementById(id);}
+  function n(v){var x=Number(v);return Number.isFinite(x)?x:0;}
+  function lerMoeda(texto){
+    try{if(typeof window.limparMoeda==='function') return n(window.limparMoeda(texto));}catch(_){ }
+    try{if(typeof limparMoeda==='function') return n(limparMoeda(texto));}catch(_){ }
+    var s=String(texto||'').trim().replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.');
+    return n(s);
+  }
+  function dinheiro(v){
+    try{if(typeof window.moeda==='function') return window.moeda(n(v));}catch(_){ }
+    try{if(typeof moeda==='function') return moeda(n(v));}catch(_){ }
+    return n(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function lista(){
+    try{if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros;}catch(_){ }
+    return Array.isArray(window.terceiros)?window.terceiros:[];
+  }
+  function gravar(nova){
+    try{terceiros=nova;}catch(_){ }
+    try{window.terceiros=nova;}catch(_){ }
+  }
+  function tipo(){return el('tercTipo')?.value||'Parcelado';}
+  function parcelado(){return tipo()==='Parcelado';}
+  function qtd(){return parcelado()?Math.max(1,Math.floor(n(el('tercParcelas')?.value||1))):1;}
+  function modo(){return el('tercModoValorParcelado')?.value==='mensal'?'mensal':'total';}
+  function informado(){return lerMoeda(el('tercValor')?.value||'');}
+  function calculados(){
+    var valor=informado(), parcelas=qtd(), m=parcelado()?modo():'mensal';
+    var mensal=m==='mensal'?valor:(parcelas>0?valor/parcelas:0);
+    var total=parcelado()?(m==='mensal'?valor*parcelas:valor):valor;
+    return {informado:valor,parcelas:parcelas,modo:m,mensal:mensal,total:total};
+  }
+  function valorMensalItem(item){
+    if(!item) return 0;
+    var vp=n(item.valorParcela);
+    if(vp>0) return vp;
+    var total=n(item.valorCompraTotal||item.valorTotalParcelamentoTerceiro);
+    var parcelas=Math.max(1,n(item.totalParcelas||1));
+    if(total>0&&parcelas>0) return total/parcelas;
+    try{if(typeof valorTotalTerceiro==='function') return n(valorTotalTerceiro(item));}catch(_){ }
+    return n(item.valorTotal||item.valor);
+  }
+  function valorCompraTotalItem(item){
+    if(!item) return 0;
+    var salvo=n(item.valorCompraTotal||item.valorTotalParcelamentoTerceiro);
+    if(salvo>0) return salvo;
+    if((item.tipo||'Parcelado')!=='Parcelado') return valorMensalItem(item);
+    return valorMensalItem(item)*Math.max(1,n(item.totalParcelas||1));
+  }
+  window.cmfinValorMensalTerceiro=valorMensalItem;
+  window.cmfinValorCompraTotalTerceiro=valorCompraTotalItem;
+
+  function labelValor(texto){
+    var input=el('tercValor');
+    var label=input&&input.parentElement?input.parentElement.querySelector('label'):null;
+    if(label) label.textContent=texto;
+    var ajuda=input&&input.parentElement?input.parentElement.querySelector('.muted'):null;
+    if(ajuda){
+      if(!parcelado()) ajuda.textContent='Informe o valor mensal deste lançamento recorrente.';
+      else if(modo()==='mensal') ajuda.textContent='Informe o valor de cada parcela mensal.';
+      else ajuda.textContent='Informe o valor total da compra/produto; o CMFin calculará o valor mensal.';
+    }
+  }
+  function criarInterface(){
+    var input=el('tercValor');
+    if(!input||el('cmfinV5922ModoValorTerceiro')) return;
+    var grade=input.closest('.terc-launch-form');
+    var campoValor=input.parentElement;
+    if(!grade||!campoValor) return;
+
+    var seletor=document.createElement('div');
+    seletor.id='cmfinV5922ModoValorTerceiro';
+    seletor.className='full';
+    seletor.innerHTML=''
+      +'<input type="hidden" id="tercModoValorParcelado" value="total">'
+      +'<span class="cmfin-v5922-title">Como deseja informar o valor?</span>'
+      +'<div class="cmfin-v5922-options" role="group" aria-label="Forma de informar o valor do lançamento parcelado">'
+      +'<button type="button" class="cmfin-v5922-option is-active" data-modo="total" onclick="cmfinV5922DefinirModoValorTerceiro(\'total\')">Valor Total</button>'
+      +'<button type="button" class="cmfin-v5922-option" data-modo="mensal" onclick="cmfinV5922DefinirModoValorTerceiro(\'mensal\')">Valor Mensal</button>'
+      +'</div>'
+      +'<span class="cmfin-v5922-help">Escolha se o valor digitado corresponde ao total da compra ou ao valor de cada parcela.</span>';
+    grade.insertBefore(seletor,campoValor);
+
+    var resumo=document.createElement('div');
+    resumo.id='cmfinV5922ResumoValorTerceiro';
+    resumo.className='full';
+    resumo.innerHTML=''
+      +'<div class="cmfin-v5922-value-card"><span>Valor Total</span><strong id="cmfinV5922TotalTerceiro">R$ 0,00</strong></div>'
+      +'<div class="cmfin-v5922-value-card"><span>Valor Mensal</span><strong id="cmfinV5922MensalTerceiro">R$ 0,00</strong></div>';
+    if(campoValor.nextSibling) grade.insertBefore(resumo,campoValor.nextSibling); else grade.appendChild(resumo);
+  }
+  function sincronizarBotoes(){
+    var box=el('cmfinV5922ModoValorTerceiro');
+    if(!box) return;
+    box.querySelectorAll('.cmfin-v5922-option').forEach(function(btn){
+      var ativo=btn.getAttribute('data-modo')===modo();
+      btn.classList.toggle('is-active',ativo);
+      btn.setAttribute('aria-pressed',ativo?'true':'false');
+    });
+  }
+  function atualizarResumo(){
+    var resumo=el('cmfinV5922ResumoValorTerceiro');
+    if(!resumo) return;
+    if(!parcelado()){
+      resumo.classList.remove('is-visible');
+      return;
+    }
+    var v=calculados();
+    if(!(v.informado>0)){
+      resumo.classList.remove('is-visible');
+      return;
+    }
+    resumo.classList.add('is-visible');
+    var totalEl=el('cmfinV5922TotalTerceiro');
+    var mensalEl=el('cmfinV5922MensalTerceiro');
+    if(totalEl) totalEl.textContent=dinheiro(v.total);
+    if(mensalEl) mensalEl.textContent=v.parcelas+'× de '+dinheiro(v.mensal);
+  }
+  function atualizarInterface(){
+    criarInterface();
+    var seletor=el('cmfinV5922ModoValorTerceiro');
+    if(seletor) seletor.style.display=parcelado()?'block':'none';
+    labelValor(parcelado()?(modo()==='mensal'?'Valor Mensal':'Valor Total'):'Valor Mensal');
+    sincronizarBotoes();
+    atualizarResumo();
+  }
+  window.cmfinV5922DefinirModoValorTerceiro=function(novoModo){
+    criarInterface();
+    var campo=el('tercModoValorParcelado');
+    if(campo) campo.value=novoModo==='mensal'?'mensal':'total';
+    atualizarInterface();
+  };
+
+  function grupoCompra(compraId){
+    return lista().filter(function(item){return item&&String(item.compraId)===String(compraId);});
+  }
+  function consolidarGrupo(compraId,mensal,total,m,valorInformado){
+    if(!compraId) return;
+    var atual=lista();
+    var nova=atual.map(function(item){
+      if(!item||String(item.compraId)!==String(compraId)) return item;
+      var ehParcelado=(item.tipo||'Parcelado')==='Parcelado';
+      return Object.assign({},item,{
+        valor:mensal,
+        valorTotal:mensal,
+        valorParcela:mensal,
+        valorCompraTotal:ehParcelado?total:mensal,
+        valorTotalParcelamentoTerceiro:ehParcelado?total:mensal,
+        modoValorTerceiroParcelado:ehParcelado?m:'mensal',
+        valorInformadoTerceiro:valorInformado,
+        cmfinModoValorTerceiroV5922:true
+      });
+    });
+    gravar(nova);
+  }
+
+  var camposAnterior=window.atualizarCamposParcelamentoTerceiro;
+  if(typeof camposAnterior==='function'&&!camposAnterior[FLAG]){
+    var camposNovo=function(){var out=camposAnterior.apply(this,arguments);setTimeout(atualizarInterface,0);return out;};
+    camposNovo[FLAG]=true;
+    window.atualizarCamposParcelamentoTerceiro=camposNovo;
+    try{atualizarCamposParcelamentoTerceiro=camposNovo;}catch(_){ }
+  }
+
+  var limparAnterior=window.limparFormularioLancamentoTerceiro;
+  if(typeof limparAnterior==='function'&&!limparAnterior[FLAG]){
+    var limparNovo=function(){
+      var out=limparAnterior.apply(this,arguments);
+      criarInterface();
+      if(el('tercModoValorParcelado')) el('tercModoValorParcelado').value='total';
+      setTimeout(atualizarInterface,0);
+      return out;
+    };
+    limparNovo[FLAG]=true;
+    window.limparFormularioLancamentoTerceiro=limparNovo;
+    try{limparFormularioLancamentoTerceiro=limparNovo;}catch(_){ }
+  }
+
+  var editarAnterior=window.editarLancamentoTerceiro;
+  if(typeof editarAnterior==='function'&&!editarAnterior[FLAG]){
+    var editarNovo=function(compraId){
+      var grupo=grupoCompra(compraId);
+      var base=grupo[0]||null;
+      var out=editarAnterior.apply(this,arguments);
+      try{
+        criarInterface();
+        if(base&&(base.tipo||'Parcelado')==='Parcelado'){
+          var m=base.modoValorTerceiroParcelado==='mensal'?'mensal':'total';
+          var mensal=valorMensalItem(base);
+          var total=valorCompraTotalItem(base);
+          if(el('tercModoValorParcelado')) el('tercModoValorParcelado').value=m;
+          if(el('tercValor')) el('tercValor').value=dinheiro(m==='mensal'?mensal:total);
+        }else{
+          if(el('tercModoValorParcelado')) el('tercModoValorParcelado').value='mensal';
+          if(base&&el('tercValor')) el('tercValor').value=dinheiro(valorMensalItem(base));
+        }
+        atualizarInterface();
+      }catch(e){console.warn('CMFin V59.22 - falha ao preparar valor de terceiro na edição:',e);}
+      return out;
+    };
+    editarNovo[FLAG]=true;
+    window.editarLancamentoTerceiro=editarNovo;
+    try{editarLancamentoTerceiro=editarNovo;}catch(_){ }
+  }
+
+  var salvarAnterior=window.salvarLancamentoTerceiro;
+  if(typeof salvarAnterior==='function'&&!salvarAnterior[FLAG]){
+    var salvarNovo=function(){
+      var input=el('tercValor');
+      var valorInformado=informado();
+      var tipoAtual=tipo();
+      var parcelas=qtd();
+      var m=tipoAtual==='Parcelado'?modo():'mensal';
+      if(!(valorInformado>0)){
+        try{if(typeof mostrarAvisoTerceiroFormulario==='function') mostrarAvisoTerceiroFormulario(tipoAtual==='Parcelado'&&m==='mensal'?'Informe o valor mensal da parcela.':tipoAtual==='Parcelado'?'Informe o valor total da compra.':'Informe o valor mensal do lançamento.');else alert('Informe um valor válido.');}catch(_){alert('Informe um valor válido.');}
+        input?.focus();
+        return;
+      }
+      var mensal=tipoAtual==='Parcelado'?(m==='mensal'?valorInformado:valorInformado/parcelas):valorInformado;
+      var total=tipoAtual==='Parcelado'?(m==='mensal'?valorInformado*parcelas:valorInformado):valorInformado;
+      var editId=String(el('tercEditCompraId')?.value||'');
+      var compraIdsAntes=new Set(lista().map(function(item){return String(item&&item.compraId||'');}));
+      var textoOriginal=input?input.value:'';
+
+      /*
+        A rotina anterior V25 espera Valor Total em novos parcelamentos e Valor Mensal na edição preservada V22.
+        Ajustamos somente durante o salvamento e depois consolidamos os dois valores no registro.
+      */
+      if(input&&tipoAtual==='Parcelado'){
+        input.value=dinheiro(editId?mensal:total);
+      }
+
+      var retorno;
+      try{
+        retorno=salvarAnterior.apply(this,arguments);
+      }catch(e){
+        if(input) input.value=textoOriginal;
+        throw e;
+      }
+
+      try{
+        var compraIdAlvo=editId;
+        if(!compraIdAlvo){
+          var novos=[];
+          lista().forEach(function(item){
+            var id=String(item&&item.compraId||'');
+            if(id&&!compraIdsAntes.has(id)&&novos.indexOf(id)<0) novos.push(id);
+          });
+          compraIdAlvo=novos.length?novos[novos.length-1]:'';
+        }
+        if(compraIdAlvo){
+          consolidarGrupo(compraIdAlvo,mensal,total,m,valorInformado);
+          try{if(typeof salvarDados==='function') salvarDados();}catch(_){ }
+          try{if(typeof renderizarTudo==='function') renderizarTudo();else if(typeof renderizarTerceiros==='function') renderizarTerceiros();}catch(_){ }
+        }
+      }catch(e){console.warn('CMFin V59.22 - falha ao consolidar total/mensal do terceiro:',e);}
+      return retorno;
+    };
+    salvarNovo[FLAG]=true;
+    salvarNovo.__cmfinAutoDivisao=true;
+    window.salvarLancamentoTerceiro=salvarNovo;
+    try{salvarLancamentoTerceiro=salvarNovo;}catch(_){ }
+  }
+
+  function bind(){
+    criarInterface();
+    [['tercValor','input'],['tercParcelas','input'],['tercParcelas','change'],['tercTipo','change']].forEach(function(cfg){
+      var campo=el(cfg[0]);
+      if(!campo) return;
+      var key='cmfinV5922'+cfg[1];
+      if(campo.dataset[key]) return;
+      campo.dataset[key]='1';
+      campo.addEventListener(cfg[1],function(){setTimeout(atualizarInterface,0);});
+    });
+  }
+  function iniciar(){
+    bind();
+    atualizarInterface();
+    setTimeout(function(){bind();atualizarInterface();},300);
+    setTimeout(function(){bind();atualizarInterface();},1000);
+    try{if(window.CMFin) CMFin.version='59.22.0';}catch(_){ }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true}); else iniciar();
 })();
 </script>
 
