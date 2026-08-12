@@ -1,3 +1,4 @@
+<!-- CMFin V59.13 - Perfil no backup + Pasta Backup conforme licença - 2026-08-11 -->
 <!-- CMFin V59.12 - Valor Total ou Valor da Parcela em Gastos Fixos parcelados - 2026-08-10 -->
 <!-- CMFin V59.10 - Contorno definitivo do ícone Dívidas com Terceiros - 2026-08-10 -->
 <!-- CMFin V59.8 - Categorias exclusivas do Empresarial ocultas no Modo Pessoal - 2026-08-10 -->
@@ -12358,6 +12359,54 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       return normalizarModoBackupELLO(modo) === "empresarial" ? "Empresarial" : "Pessoal";
     }
 
+    const CMFIN_PERFIL_BACKUP_KEY = "cmfin_perfil_por_modo_v2";
+    const CMFIN_PERFIL_BACKUP_KEY_OLD = "cmfin_perfil_usuario_v1";
+
+    function obterPerfilModoBackupELLO(modo) {
+      const modoNormalizado = normalizarModoBackupELLO(modo);
+      try {
+        let perfis = JSON.parse(CMFin.Storage.local.getItem(CMFIN_PERFIL_BACKUP_KEY) || "null");
+        if (!perfis || typeof perfis !== "object") {
+          perfis = JSON.parse(CMFin.Storage.local.getItem(CMFIN_PERFIL_BACKUP_KEY_OLD) || "{}");
+        }
+        const perfil = perfis && perfis[modoNormalizado];
+        return perfil && typeof perfil === "object" ? Object.assign({}, perfil) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function restaurarPerfilModoBackupELLO(modo, perfil) {
+      if (!perfil || typeof perfil !== "object" || Array.isArray(perfil)) return false;
+      const modoNormalizado = normalizarModoBackupELLO(modo);
+      try {
+        let perfis = {};
+        try { perfis = JSON.parse(CMFin.Storage.local.getItem(CMFIN_PERFIL_BACKUP_KEY) || "{}"); } catch (e) {}
+        if (!perfis || typeof perfis !== "object" || Array.isArray(perfis)) perfis = {};
+        perfis.pessoal = perfis.pessoal || {};
+        perfis.empresarial = perfis.empresarial || {};
+        perfis[modoNormalizado] = Object.assign({}, perfil);
+        perfis.atualizadoEm = new Date().toISOString();
+        CMFin.Storage.local.setItem(CMFIN_PERFIL_BACKUP_KEY, JSON.stringify(perfis));
+        return true;
+      } catch (e) {
+        console.warn("Não foi possível restaurar o Perfil do backup.", e);
+        return false;
+      }
+    }
+
+    function extrairPerfilPacoteBackupELLO(pacote, modo) {
+      if (!pacote || typeof pacote !== "object") return null;
+      if (pacote.perfil && typeof pacote.perfil === "object" && !Array.isArray(pacote.perfil)) {
+        return pacote.perfil;
+      }
+      const modoNormalizado = normalizarModoBackupELLO(modo || pacote.modo);
+      if (pacote.perfis && pacote.perfis[modoNormalizado] && typeof pacote.perfis[modoNormalizado] === "object") {
+        return pacote.perfis[modoNormalizado];
+      }
+      return null;
+    }
+
     function abrirBancoPastaPadraoELLO() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(ELLO_BACKUP_DB, 1);
@@ -12499,7 +12548,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         tipo: "exportacao_modo",
         modo: modoNormalizado,
         exportadoEm: new Date().toISOString(),
-        dados: dadosPacote
+        dados: dadosPacote,
+        perfil: obterPerfilModoBackupELLO(modoNormalizado)
       };
     }
 
@@ -12568,7 +12618,10 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const arquivo = await arquivoHandle.getFile();
       const texto = await arquivo.text();
       const pacote = JSON.parse(texto);
-      return extrairDadosPacoteBackupELLO(pacote);
+      return {
+        dados: extrairDadosPacoteBackupELLO(pacote),
+        perfil: extrairPerfilPacoteBackupELLO(pacote, modoNormalizado)
+      };
     }
 
     async function importarAmbosModosELLO() {
@@ -12585,16 +12638,19 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       )) return;
 
       try {
-        const dadosPessoal = await lerBackupModoDaPastaELLO("pessoal");
-        const dadosEmpresarial = await lerBackupModoDaPastaELLO("empresarial");
+        const backupPessoal = await lerBackupModoDaPastaELLO("pessoal");
+        const backupEmpresarial = await lerBackupModoDaPastaELLO("empresarial");
 
         const base = carregarBaseStorage();
         base.versaoEstrutura = 2;
         base.modoAtual = modoAtual;
         base.modos = base.modos || {};
-        base.modos.pessoal = dadosPessoal || criarDadosVazios();
-        base.modos.empresarial = dadosEmpresarial || criarDadosVazios();
+        base.modos.pessoal = (backupPessoal && backupPessoal.dados) || criarDadosVazios();
+        base.modos.empresarial = (backupEmpresarial && backupEmpresarial.dados) || criarDadosVazios();
         salvarBaseStorage(base);
+
+        if (backupPessoal && backupPessoal.perfil) restaurarPerfilModoBackupELLO("pessoal", backupPessoal.perfil);
+        if (backupEmpresarial && backupEmpresarial.perfil) restaurarPerfilModoBackupELLO("empresarial", backupEmpresarial.perfil);
 
         if (Array.isArray(base.modos.pessoal.dividasTerceiros)) {
           try { CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(base.modos.pessoal.dividasTerceiros)); } catch (e) {}
@@ -12666,6 +12722,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           }
 
           aplicarSnapshot(dados);
+          restaurarPerfilModoBackupELLO(modoAtual, extrairPerfilPacoteBackupELLO(pacote, pacote.modo || modoAtual));
           salvarDados();
           preencherCategorias();
           atualizarSelects();
@@ -12694,7 +12751,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         tipo: "exportacao_modo",
         modo: modoAtual,
         exportadoEm: new Date().toISOString(),
-        dados: obterSnapshotAtual()
+        dados: obterSnapshotAtual(),
+        perfil: obterPerfilModoBackupELLO(modoAtual)
       };
 
       const blob = new Blob([JSON.stringify(pacote, null, 2)], { type: "application/json" });
@@ -35945,6 +36003,59 @@ Os outros lançamentos não serão alterados.`;
     return modo === "empresarial" ? "Empresarial" : "Pessoal";
   }
 
+  var PERFIL_BACKUP_KEY = "cmfin_perfil_por_modo_v2";
+  var PERFIL_BACKUP_KEY_OLD = "cmfin_perfil_usuario_v1";
+
+  function obterPerfilModoBackup(modo){
+    try{
+      var perfis = JSON.parse(CMFin.Storage.local.getItem(PERFIL_BACKUP_KEY) || "null");
+      if(!perfis || typeof perfis !== "object"){
+        perfis = JSON.parse(CMFin.Storage.local.getItem(PERFIL_BACKUP_KEY_OLD) || "{}");
+      }
+      var perfil = perfis && perfis[modo];
+      return perfil && typeof perfil === "object" ? Object.assign({}, perfil) : {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function restaurarPerfilModoBackup(modo, perfil){
+    if(!perfil || typeof perfil !== "object" || Array.isArray(perfil)) return false;
+    try{
+      var perfis = {};
+      try{ perfis = JSON.parse(CMFin.Storage.local.getItem(PERFIL_BACKUP_KEY) || "{}"); }catch(e){}
+      if(!perfis || typeof perfis !== "object" || Array.isArray(perfis)) perfis = {};
+      perfis.pessoal = perfis.pessoal || {};
+      perfis.empresarial = perfis.empresarial || {};
+      perfis[modo] = Object.assign({}, perfil);
+      perfis.atualizadoEm = new Date().toISOString();
+      CMFin.Storage.local.setItem(PERFIL_BACKUP_KEY, JSON.stringify(perfis));
+      return true;
+    }catch(e){
+      console.warn("CMFin: não foi possível restaurar o Perfil do backup.", e);
+      return false;
+    }
+  }
+
+  function perfilDoPacote(pacote, modo){
+    if(!pacote || typeof pacote !== "object") return null;
+    if(pacote.perfil && typeof pacote.perfil === "object" && !Array.isArray(pacote.perfil)) return pacote.perfil;
+    if(pacote.perfis && pacote.perfis[modo] && typeof pacote.perfis[modo] === "object") return pacote.perfis[modo];
+    return null;
+  }
+
+  function modosPermitidosPelaLicenca(){
+    var fn = window.cmfinLicencaPermiteModo;
+    if(typeof fn !== "function") return ["pessoal", "empresarial"];
+
+    var modos = [];
+    try{ if(fn("pessoal")) modos.push("pessoal"); }catch(e){}
+    try{ if(fn("empresarial")) modos.push("empresarial"); }catch(e){}
+
+    // Em caso de sessão ainda não estabilizada, preserva o comportamento anterior.
+    return modos.length ? modos : ["pessoal", "empresarial"];
+  }
+
   function exportarModoEscolhido(modo){
     try{
       if(typeof window.salvarDados === "function") window.salvarDados();
@@ -35966,7 +36077,8 @@ Os outros lançamentos não serão alterados.`;
         tipo:"exportacao_modo",
         modo:modo,
         exportadoEm:new Date().toISOString(),
-        dados:dados
+        dados:dados,
+        perfil:obterPerfilModoBackup(modo)
       };
 
       baixarArquivo(pacote, "cmfin-" + modo + "-backup-" + new Date().toISOString().slice(0,10) + ".cmfin");
@@ -36021,6 +36133,8 @@ Os outros lançamentos não serão alterados.`;
           base.modoAtual = modo;
           salvarBaseStorage(base);
 
+          restaurarPerfilModoBackup(modo, perfilDoPacote(pacote, modo));
+
           if(modo === "pessoal" && Object.prototype.hasOwnProperty.call(dados, "dividasTerceiros")){
             try{
               CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : []));
@@ -36055,6 +36169,14 @@ Os outros lançamentos não serão alterados.`;
 
   function abrirEscolhaModo(tipo){
     ensureStyle();
+
+    if(tipo === "pasta"){
+      var modosLiberados = modosPermitidosPelaLicenca();
+      if(modosLiberados.length === 1){
+        pastaBackupModo(modosLiberados[0]);
+        return;
+      }
+    }
 
     var overlay = document.getElementById("cmfinChoiceModeOverlay");
     if(!overlay){
