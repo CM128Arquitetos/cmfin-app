@@ -1,3 +1,4 @@
+<!-- CMFin V59.29 - Adiantamentos de sócios integrados aos Gastos Fixos/Variáveis e Dívidas com Terceiros - 2026-08-17 -->
 <!-- CMFin V59.27 - Dívidas com Terceiros em ambos os modos, com dados isolados por modo - 2026-08-17 -->
 <!-- CMFin V59.25 - Login consolidado por e-mail/usuário + licença resolvida sempre no Supabase; menu Ações estabilizado - 2026-08-17 -->
 <!-- CMFin V59.26 - Autenticação consolidada: login por e-mail/usuário + senha; licença sempre resolvida no Supabase. -->
@@ -10262,7 +10263,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
               <div>
                 <span class="dtc-kicker" id="dtcModoKicker">Modo atual · Dívidas com Terceiros</span>
                 <h2>Dívidas com Terceiros</h2>
-                <p>Controle valores que você deve para outras pessoas, com vencimento, status, pagamento parcial e anexos de comprovantes, boletos, prints, contratos ou acordos.</p>
+                <p>Controle valores que o escritório deve a sócios e terceiros. Despesas pagas do bolso de um sócio podem ser vinculadas automaticamente aqui para prestação de contas e reembolso.</p>
               </div>
               <div class="dtc-hero-card">
                 <span>Total pendente</span>
@@ -10293,6 +10294,24 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
               <strong id="dtcTotalVencidas">0</strong>
               <small>Dívidas vencidas com saldo pendente.</small>
             </article>
+          </div>
+
+          <div class="dtc-panel cmfin-reembolso-panel" id="cmfinReembolsosSociosPanel">
+            <div class="dtc-panel-head">
+              <div>
+                <span class="cmfin-reembolso-kicker">Prestação de contas</span>
+                <h2>Reembolsos / Adiantamentos de Sócios</h2>
+                <p>Conta corrente automática das despesas do escritório que foram pagas do bolso de sócios ou terceiros.</p>
+              </div>
+              <span class="dtc-badge">Automático</span>
+            </div>
+            <div class="cmfin-reembolso-kpis">
+              <div><span>Total adiantado</span><strong id="cmfinReembolsoTotal">R$ 0,00</strong></div>
+              <div><span>Já reembolsado</span><strong id="cmfinReembolsoPago">R$ 0,00</strong></div>
+              <div><span>A reembolsar</span><strong id="cmfinReembolsoPendente">R$ 0,00</strong></div>
+              <div><span>Pessoas</span><strong id="cmfinReembolsoPessoas">0</strong></div>
+            </div>
+            <div id="cmfinReembolsoGrupos" class="cmfin-reembolso-grupos"></div>
           </div>
 
           <div class="dtc-grid">
@@ -10827,6 +10846,42 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                 <select id="fixoBanco" onchange="preencherVencimentoPeloBanco()"></select>
               </div>
 
+              <div class="cmfin-adiantamento-box" id="cmfinAdiantamentoFixo" style="grid-column:1 / -1;">
+                <div class="cmfin-adiantamento-head">
+                  <div><strong>Quem desembolsou esta despesa?</strong><span>Se um sócio ou terceiro pagou do próprio bolso, o CMFin cria automaticamente um valor a reembolsar em Dívidas com Terceiros.</span></div>
+                  <span class="cmfin-adiantamento-tag">Reembolso</span>
+                </div>
+                <div class="grid-2 cmfin-adiantamento-grid">
+                  <div>
+                    <label>Origem do dinheiro</label>
+                    <select id="fixoPagadorTipo" onchange="cmfinAtualizarPagadorDespesa('fixo')">
+                      <option value="empresa">Empresa / Caixa do escritório</option>
+                      <option value="externo">Sócio / terceiro adiantou o valor</option>
+                    </select>
+                  </div>
+                  <div id="fixoPagadorPessoaWrap" style="display:none;">
+                    <label>Pessoa que adiantou</label>
+                    <select id="fixoPagadorNome" onchange="cmfinAtualizarOutroPagador('fixo')"></select>
+                    <input id="fixoPagadorOutro" style="display:none;margin-top:8px;" placeholder="Nome da pessoa" />
+                  </div>
+                  <div id="fixoPagadorInstrumentoWrap" style="display:none;">
+                    <label>Como ela pagou?</label>
+                    <select id="fixoPagadorInstrumento">
+                      <option value="Cartão pessoal">Cartão pessoal</option>
+                      <option value="Pix pessoal">Pix pessoal</option>
+                      <option value="Dinheiro pessoal">Dinheiro pessoal</option>
+                      <option value="Transferência pessoal">Transferência pessoal</option>
+                      <option value="Outro">Outro</option>
+                    </select>
+                  </div>
+                  <div id="fixoPagadorObsWrap" style="display:none;">
+                    <label>Observação do adiantamento</label>
+                    <input id="fixoPagadorObs" placeholder="Ex.: pago no cartão pessoal do Elton" />
+                  </div>
+                </div>
+                <div class="cmfin-adiantamento-note" id="fixoPagadorNota" style="display:none;">O gasto continua sendo despesa do escritório, mas não sai do caixa agora. O valor será lançado como reembolso devido à pessoa informada.</div>
+              </div>
+
               <div><label>Dia de Vencimento</label><select id="fixoVencimento"></select></div>
 
               <div id="campoComprovanteFixo" style="display:none; grid-column:1 / -1;">
@@ -10992,6 +11047,42 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           </select>
         </div>
         <div id="campoBancoVariavel"><label>Banco/Cartão</label><select id="varBanco" onchange="atualizarCamposPagamentoVariavel()"></select></div>
+
+        <div class="cmfin-adiantamento-box" id="cmfinAdiantamentoVariavel" style="grid-column:1 / -1;">
+          <div class="cmfin-adiantamento-head">
+            <div><strong>Quem desembolsou esta despesa?</strong><span>Use esta opção quando a compra do escritório foi paga no cartão, Pix ou dinheiro pessoal de um sócio/terceiro.</span></div>
+            <span class="cmfin-adiantamento-tag">Reembolso</span>
+          </div>
+          <div class="grid-2 cmfin-adiantamento-grid">
+            <div>
+              <label>Origem do dinheiro</label>
+              <select id="varPagadorTipo" onchange="cmfinAtualizarPagadorDespesa('var')">
+                <option value="empresa">Empresa / Caixa do escritório</option>
+                <option value="externo">Sócio / terceiro adiantou o valor</option>
+              </select>
+            </div>
+            <div id="varPagadorPessoaWrap" style="display:none;">
+              <label>Pessoa que adiantou</label>
+              <select id="varPagadorNome" onchange="cmfinAtualizarOutroPagador('var')"></select>
+              <input id="varPagadorOutro" style="display:none;margin-top:8px;" placeholder="Nome da pessoa" />
+            </div>
+            <div id="varPagadorInstrumentoWrap" style="display:none;">
+              <label>Como ela pagou?</label>
+              <select id="varPagadorInstrumento">
+                <option value="Cartão pessoal">Cartão pessoal</option>
+                <option value="Pix pessoal">Pix pessoal</option>
+                <option value="Dinheiro pessoal">Dinheiro pessoal</option>
+                <option value="Transferência pessoal">Transferência pessoal</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div id="varPagadorObsWrap" style="display:none;">
+              <label>Observação do adiantamento</label>
+              <input id="varPagadorObs" placeholder="Ex.: pago no cartão pessoal do Elton" />
+            </div>
+          </div>
+          <div class="cmfin-adiantamento-note" id="varPagadorNota" style="display:none;">O fornecedor fica quitado, mas o escritório passa a dever esse valor à pessoa que fez o adiantamento.</div>
+        </div>
         <div><label>Forma de Pagamento</label><select id="varForma" onchange="atualizarCamposPagamentoVariavel()"><option value="Débito">Débito</option><option value="Cartão de Crédito">Cartão de Crédito</option><option value="Pix">Pix</option><option value="Boleto">Boleto</option><option value="Promissória">Promissória</option><option value="Dinheiro">Dinheiro</option></select></div>
         <div><label>Valor</label><input id="varValor" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)" /></div>
         <div id="campoTipoParcelamentoVariavel" class="payment-mode-box" style="display:none; grid-column:1 / -1;">
@@ -17827,7 +17918,7 @@ Os outros lançamentos não serão alterados.`;
         const infoParcela = parcelaFixaAtual(i, mes);
         tbody.innerHTML += `
           <tr>
-            <td><strong>${i.nome}</strong><div class="muted">${i.forma || "Cartão de Crédito"} · ${i.tipo || "Recorrente"}${infoParcela ? ` · <button type="button" class="parcel-inline-btn" style="${estiloParcelaMarca(i.banco)}" title="Alterar parcela deste mês sem abrir edição" onclick="alterarParcelaFixaInline(${i.id}, '${mes}')">Parcela ${infoParcela}</button>` : ""}</div>${i.banco ? `<div class="muted">${nomeMarcaColorido(i.banco)}</div>` : ""}${linkBoleto(obterBoletoDoItem(i, mes), i.id, mes)}${linkComprovante(obterComprovanteDoItem(i, "fixos", mes), "fixos", i.id, mes)}</td>
+            <td><strong>${i.nome}</strong>${typeof cmfinPagadorBadgeFixo==="function"?cmfinPagadorBadgeFixo(i, mes):""}<div class="muted">${i.forma || "Cartão de Crédito"} · ${i.tipo || "Recorrente"}${infoParcela ? ` · <button type="button" class="parcel-inline-btn" style="${estiloParcelaMarca(i.banco)}" title="Alterar parcela deste mês sem abrir edição" onclick="alterarParcelaFixaInline(${i.id}, '${mes}')">Parcela ${infoParcela}</button>` : ""}</div>${i.banco ? `<div class="muted">${nomeMarcaColorido(i.banco)}</div>` : ""}${linkBoleto(obterBoletoDoItem(i, mes), i.id, mes)}${linkComprovante(obterComprovanteDoItem(i, "fixos", mes), "fixos", i.id, mes)}</td>
             <td>
               ${categoriaSaidaSelect("fixos", i.id, i.categoria)}
               <div class="typology-cell">${tipologiaSaidaSelect("fixos", i.id, i.tipologia, i.categoria)}</div>
@@ -18046,7 +18137,7 @@ Os outros lançamentos não serão alterados.`;
               <div style="display:flex; align-items:${i.descricaoServico ? 'flex-start' : 'center'}; gap:8px; min-height:42px;">
                 <button type="button" class="drag-handle" draggable="true" ondragstart="iniciarArrastoGastoVariavel(event, ${i.id})" ondragend="finalizarArrastoGastoVariavel()" title="Clique e arraste para reposicionar na Ordem Manual / Cadastro" aria-label="Arrastar gasto para reordenar" style="margin-top:${i.descricaoServico ? '2px' : '0'};"><span class="drag-grip">⋮⋮</span></button>
                 <div style="display:flex; flex-direction:column; justify-content:center; min-height:28px;">
-                  <strong>${i.descricao}</strong>
+                  <strong>${i.descricao}</strong>${typeof cmfinPagadorBadgeVariavel==="function"?cmfinPagadorBadgeVariavel(i):""}
                   ${i.descricaoServico ? `<div class="muted"><strong>Serviço:</strong> ${i.descricaoServico}</div>` : ""}
                   ${linkBoleto(obterBoletoDoItem(i, mesReferenciaVariavel(i)), i.id, mesReferenciaVariavel(i), "boletosVariaveis")}
                   ${linkComprovante(i.comprovante, "variaveis", i.id)}
@@ -47221,8 +47312,8 @@ Os outros lançamentos não serão alterados.`;
   function fluxoMes(mes){
     const rec=recebimentosPagos(mes);
     const fixos=listaFixos(mes), vars=listaVariaveis(mes), terc=listaTerceirizados(mes), arq=listaArquitetos(mes);
-    const fixPago=somar(fixos.filter(i=>!naoIncluir(statusFixo(i,mes))&&pago(statusFixo(i,mes))));
-    const varPago=somar(vars.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
+    const fixPago=somar(fixos.filter(i=>!naoIncluir(statusFixo(i,mes))&&pago(statusFixo(i,mes))&&!((((i.pagadoresPorMes||{})[mes]||{}).tipo)==='externo')));
+    const varPago=somar(vars.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))&&i.pagadorTipo!=='externo'));
     const tercPago=somar(terc.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
     const arqPago=somar(arq.filter(i=>!naoIncluir(statusGenerico(i,mes))&&pago(statusGenerico(i,mes))));
     const divPago=pagoDividasNoMes(mes);
@@ -49071,6 +49162,147 @@ Os outros lançamentos não serão alterados.`;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",rotulo);else rotulo();
   setTimeout(rotulo,250);
   try{ if(window.CMFin) CMFin.version="59.27.0"; }catch(e){}
+})();
+</script>
+
+
+<style id="cmfin-v5929-reembolsos-style">
+  .cmfin-adiantamento-box{border:1px solid #cfe5dc;border-radius:18px;padding:15px;background:linear-gradient(180deg,#f8fcfa,#f3faf7);box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+  .cmfin-adiantamento-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .cmfin-adiantamento-head strong{display:block;color:#13342d;font-size:13px;font-weight:950}
+  .cmfin-adiantamento-head span:not(.cmfin-adiantamento-tag){display:block;margin-top:4px;color:#667b74;font-size:11px;line-height:1.45;font-weight:650}
+  .cmfin-adiantamento-tag{flex:0 0 auto;padding:6px 9px;border-radius:999px;background:#e4f7ef;color:#08765e;border:1px solid #bde9d9;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.07em}
+  .cmfin-adiantamento-grid{gap:12px!important}.cmfin-adiantamento-note{margin-top:11px;padding:10px 12px;border-radius:13px;background:#fff7e8;border:1px solid #fde3ae;color:#79551b;font-size:11px;line-height:1.45;font-weight:750}
+  .cmfin-pagador-badge{display:inline-flex;align-items:center;gap:5px;margin:4px 0 1px;padding:4px 7px;border-radius:999px;background:#fff5dc;border:1px solid #f5d792;color:#7b5710;font-size:9px;font-weight:900;line-height:1.2}
+  .cmfin-pagador-badge:before{content:'↗';display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#f6c75e;color:#513700;font-size:9px}
+  .cmfin-reembolso-panel{margin:18px 0!important;border-color:#cfe5dc!important;background:linear-gradient(180deg,#ffffff,#f8fcfa)!important}
+  .cmfin-reembolso-kicker{display:block;margin-bottom:5px;color:#0f766e;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.1em}
+  .cmfin-reembolso-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:4px 0 16px}
+  .cmfin-reembolso-kpis>div{padding:13px;border:1px solid #dceae5;border-radius:15px;background:#fff}
+  .cmfin-reembolso-kpis span{display:block;color:#75847f;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.055em}
+  .cmfin-reembolso-kpis strong{display:block;margin-top:5px;color:#10231e;font-size:17px;letter-spacing:-.025em}
+  .cmfin-reembolso-grupos{display:grid;gap:13px}
+  .cmfin-reembolso-grupo{border:1px solid #dce8e4;border-radius:17px;background:#fff;overflow:hidden}
+  .cmfin-reembolso-grupo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 14px;background:#f6faf8;border-bottom:1px solid #e3ece8}
+  .cmfin-reembolso-grupo-head h3{margin:0;color:#16352e;font-size:14px;letter-spacing:-.02em}.cmfin-reembolso-grupo-head small{display:block;margin-top:3px;color:#75847f;font-size:10px}
+  .cmfin-reembolso-grupo-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.cmfin-reembolso-grupo-actions button{height:30px;padding:0 10px;border-radius:10px;border:1px solid #cfe0da;background:#fff;color:#21473d;font-size:9px;font-weight:900;cursor:pointer}
+  .cmfin-reembolso-resumo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:11px 14px;border-bottom:1px solid #edf2ef}.cmfin-reembolso-resumo div{font-size:10px;color:#75847f}.cmfin-reembolso-resumo strong{display:block;margin-top:3px;color:#172c26;font-size:13px}
+  .cmfin-reembolso-itens{display:grid}.cmfin-reembolso-item{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(125px,.5fr) minmax(105px,.45fr) auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #edf2ef}.cmfin-reembolso-item:last-child{border-bottom:0}.cmfin-reembolso-item strong{display:block;color:#263a35;font-size:11px}.cmfin-reembolso-item small{display:block;margin-top:3px;color:#788983;font-size:9px;line-height:1.35}.cmfin-reembolso-item .money{text-align:right;color:#1d332d;font-size:10px}.cmfin-reembolso-item .money b{display:block;font-size:11px}.cmfin-reembolso-item button{height:30px;padding:0 9px;border:0;border-radius:9px;background:#0f766e;color:#fff;font-size:9px;font-weight:900;cursor:pointer}.cmfin-reembolso-item button[disabled]{opacity:.45;cursor:default;background:#87938f}
+  .cmfin-reembolso-empty{padding:18px;border:1px dashed #cfded9;border-radius:15px;background:#fbfdfc;color:#6f807a;font-size:11px;text-align:center}
+  @media(max-width:900px){.cmfin-reembolso-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cmfin-reembolso-item{grid-template-columns:1fr 1fr}.cmfin-reembolso-item>div:first-child{grid-column:1/-1}.cmfin-reembolso-item button{width:100%}}
+  @media(max-width:560px){.cmfin-reembolso-kpis{grid-template-columns:1fr 1fr}.cmfin-reembolso-resumo{grid-template-columns:1fr}.cmfin-adiantamento-head{flex-direction:column}.cmfin-reembolso-grupo-head{align-items:flex-start;flex-direction:column}}
+</style>
+
+
+<script id="cmfin-v5929-reembolsos-script">
+(function(){
+  "use strict";
+  var FLAG="__cmfinV5929";
+  function el(id){return document.getElementById(id);}
+  function modo(){try{return (typeof modoAtual!=="undefined"&&modoAtual==="empresarial")?"empresarial":"pessoal";}catch(e){return "pessoal";}}
+  function brl(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+  function esc(v){try{return CMFin.UI.escapeHTML(String(v??""));}catch(e){return String(v??"").replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];});}}
+  function mesNome(m){var ns=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];var p=String(m||"").split("-");return p.length===2?(ns[Number(p[1])-1]||p[1])+" de "+p[0]:String(m||"");}
+  function mesAtualSeguro(){return el("dashboardMes")?.value||new Date().toISOString().slice(0,7);}
+  function getDebts(){try{if(CMFin.Data?.getModeDebts)return CMFin.Data.getModeDebts(modo())||[];}catch(e){}return [];}
+  function setDebts(lista){try{if(CMFin.Data?.setModeDebts){CMFin.Data.setModeDebts(modo(),lista);return;}}catch(e){} }
+  function saveMain(){try{if(typeof salvarDados==="function")salvarDados();}catch(e){console.warn("CMFin V59.29: falha ao salvar metadados do pagador",e);}}
+  function nomesSocios(){
+    var arr=[];
+    try{var s=configuracoes?.sociosProlabore?.socios;if(Array.isArray(s))s.forEach(function(x){if(x&&x.ativo!==false&&String(x.nome||"").trim())arr.push(String(x.nome).trim());});}catch(e){}
+    try{getDebts().forEach(function(d){if(d?.tipoDivida==="reembolso_socio"&&d.credor)arr.push(String(d.credor).trim());});}catch(e){}
+    return Array.from(new Set(arr.filter(Boolean))).sort(function(a,b){return a.localeCompare(b,"pt-BR");});
+  }
+  function preencherPagador(prefix,valor){
+    var sel=el(prefix+"PagadorNome");if(!sel)return;
+    var atual=valor||sel.value||"";var nomes=nomesSocios();
+    sel.innerHTML='<option value="">Selecione a pessoa</option>'+nomes.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join("")+'<option value="__outro__">Outro nome...</option>';
+    if(atual&&nomes.includes(atual))sel.value=atual;else if(atual){sel.value="__outro__";var outro=el(prefix+"PagadorOutro");if(outro){outro.value=atual;outro.style.display="block";}}else sel.value="";
+  }
+  window.cmfinAtualizarOutroPagador=function(prefix){var sel=el(prefix+"PagadorNome"),outro=el(prefix+"PagadorOutro");if(!sel||!outro)return;outro.style.display=sel.value==="__outro__"?"block":"none";if(sel.value!=="__outro__")outro.value="";};
+  window.cmfinAtualizarPagadorDespesa=function(prefix){
+    preencherPagador(prefix);
+    var externo=el(prefix+"PagadorTipo")?.value==="externo";
+    ["PessoaWrap","InstrumentoWrap","ObsWrap"].forEach(function(s){var x=el(prefix+"Pagador"+s);if(x)x.style.display=externo?"block":"none";});
+    var nota=el(prefix+"PagadorNota");if(nota)nota.style.display=externo?"block":"none";
+    // Gastos variáveis têm um lançamento único e podem ser marcados como pagos já no formulário.
+    // Gastos fixos usam status por competência; o mês correto é marcado como Pago em syncFixo(),
+    // evitando que editar um mês altere indevidamente o status-base de outro mês.
+    if(externo && prefix==="var"){var status=el("varStatus");if(status)status.value="Pago";}
+    cmfinAtualizarOutroPagador(prefix);
+  };
+  function formPagador(prefix){
+    var tipo=el(prefix+"PagadorTipo")?.value||"empresa";if(tipo!=="externo")return {tipo:"empresa",nome:"",instrumento:"",obs:""};
+    var sel=el(prefix+"PagadorNome")?.value||"";var nome=sel==="__outro__"?(el(prefix+"PagadorOutro")?.value||"").trim():sel.trim();
+    return {tipo:"externo",nome:nome,instrumento:el(prefix+"PagadorInstrumento")?.value||"Cartão pessoal",obs:(el(prefix+"PagadorObs")?.value||"").trim()};
+  }
+  function setForm(prefix,p){
+    p=p||{tipo:"empresa"};var tipo=el(prefix+"PagadorTipo");if(tipo)tipo.value=p.tipo==="externo"?"externo":"empresa";
+    preencherPagador(prefix,p.nome||"");var instr=el(prefix+"PagadorInstrumento");if(instr&&p.instrumento)instr.value=p.instrumento;var obs=el(prefix+"PagadorObs");if(obs)obs.value=p.obs||"";window.cmfinAtualizarPagadorDespesa(prefix);
+  }
+  window.cmfinPagadorBadgeFixo=function(item,mes){var p=item?.pagadoresPorMes?.[mes];return p?.tipo==="externo"?'<div class="cmfin-pagador-badge">Pago por '+esc(p.nome||"terceiro")+'</div>':"";};
+  window.cmfinPagadorBadgeVariavel=function(item){return item?.pagadorTipo==="externo"?'<div class="cmfin-pagador-badge">Pago por '+esc(item.pagadorNome||"terceiro")+'</div>':"";};
+
+  function debtKey(tipo,id,mes){return tipo+"|"+String(id)+"|"+String(mes||"");}
+  function findDebt(lista,tipo,id,mes){var k=debtKey(tipo,id,mes);return lista.find(function(d){return debtKey(d.origemTipo,d.origemId,d.origemMes)===k;});}
+  function statusDebt(total,pago){if(Number(pago)>=Number(total)&&Number(total)>0)return "Pago";if(Number(pago)>0)return "Parcial";return "Pendente";}
+  function syncDebt(source,tipo,mes,p){
+    var lista=getDebts();var existente=findDebt(lista,tipo,source.id,mes);
+    if(p.tipo!=="externo"){
+      if(existente){if(Number(existente.valorPago||0)<=0.0001)lista=lista.filter(function(d){return d!==existente;});else{existente.origemAutomatica=false;existente.origemDesvinculada=true;existente.obs=(existente.obs||"")+" | Origem alterada para pagamento pelo caixa após já haver reembolso registrado.";}}
+      setDebts(lista);return;
+    }
+    var total=Number(source.valor||0);if(!(total>0)||!p.nome)return;
+    var parcela=source.parcela?" · Parcela "+source.parcela:"";
+    var desc=(tipo==="gasto_fixo_mes"?(source.nome||"Gasto Fixo"):(source.descricao||"Gasto Variável"))+parcela;
+    var pagoAtual=existente?Math.min(Number(existente.valorPago||0),total):0;
+    var item=existente||{};
+    Object.assign(item,{
+      id:item.id||("reemb_"+Date.now()+"_"+Math.random().toString(36).slice(2,8)),
+      credor:p.nome,categoria:"Reembolso de Sócio",descricao:desc,valorTotal:total,valorPago:pagoAtual,
+      data:mes||mesAtualSeguro(),vencimento:"",forma:"Transferência",status:statusDebt(total,pagoAtual),
+      obs:"Despesa do escritório paga por "+p.nome+" via "+(p.instrumento||"meio pessoal")+". Origem automática: "+(tipo==="gasto_fixo_mes"?"Gastos Fixos":"Gastos Variáveis")+(p.obs?". "+p.obs:""),
+      tipoDivida:"reembolso_socio",origemAutomatica:true,origemTipo:tipo,origemId:source.id,origemMes:mes||mesAtualSeguro(),origemCompraId:source.compraId||null,formaAdiantamento:p.instrumento||"",atualizadoEm:new Date().toISOString(),cmfinMesCadastro:item.cmfinMesCadastro||mes||mesAtualSeguro(),historicoPagamentos:Array.isArray(item.historicoPagamentos)?item.historicoPagamentos:[]
+    });
+    if(!existente)lista.unshift(item);setDebts(lista);
+  }
+  function syncFixo(item,mes,p){if(!item)return;item.pagadoresPorMes=item.pagadoresPorMes||{};item.pagadoresPorMes[mes]=p;if(p.tipo==="externo"){item.statusMes=item.statusMes||{};item.statusMes[mes]="Pago";}syncDebt(item,"gasto_fixo_mes",mes,p);}
+  function syncVar(item,p){if(!item)return;item.pagadorTipo=p.tipo;item.pagadorNome=p.nome||"";item.pagadorInstrumento=p.instrumento||"";item.pagadorObs=p.obs||"";if(p.tipo==="externo")item.status="Pago";var mes=item.mesReferencia||item.primeiraFatura||String(item.data||item.dataCompra||"").slice(0,7)||mesAtualSeguro();syncDebt(item,"gasto_variavel",mes,p);}
+
+  function installForms(){
+    preencherPagador("fixo");preencherPagador("var");setForm("fixo",{tipo:"empresa"});setForm("var",{tipo:"empresa"});
+    var abrirF=window.abrirModalGastoFixo;if(typeof abrirF==="function"&&!abrirF[FLAG]){var nf=function(){var r=abrirF.apply(this,arguments);setForm("fixo",{tipo:"empresa"});return r;};nf[FLAG]=true;window.abrirModalGastoFixo=nf;try{abrirModalGastoFixo=nf;}catch(e){}}
+    var abrirV=window.abrirModalGastoVariavel;if(typeof abrirV==="function"&&!abrirV[FLAG]){var nv=function(){var r=abrirV.apply(this,arguments);setForm("var",{tipo:"empresa"});return r;};nv[FLAG]=true;window.abrirModalGastoVariavel=nv;try{abrirModalGastoVariavel=nv;}catch(e){}}
+    var editF=window.editarGastoFixo;if(typeof editF==="function"&&!editF[FLAG]){var ef=function(id,mes){var r=editF.apply(this,arguments);var item=(typeof gastosFixos!=="undefined"?gastosFixos:[]).find(function(x){return Number(x.id)===Number(id);});var m=mes||el("fixoEditId")?.dataset?.mesComprovante||item?.mesReferencia||item?.mesInicial||mesAtualSeguro();setForm("fixo",item?.pagadoresPorMes?.[m]||{tipo:"empresa"});return r;};ef[FLAG]=true;window.editarGastoFixo=ef;try{editarGastoFixo=ef;}catch(e){}}
+    var editV=window.editarGastoVariavel;if(typeof editV==="function"&&!editV[FLAG]){var ev=function(id){var r=editV.apply(this,arguments);var item=(typeof gastosVariaveis!=="undefined"?gastosVariaveis:[]).find(function(x){return Number(x.id)===Number(id);});setForm("var",{tipo:item?.pagadorTipo||"empresa",nome:item?.pagadorNome||"",instrumento:item?.pagadorInstrumento||"Cartão pessoal",obs:item?.pagadorObs||""});return r;};ev[FLAG]=true;window.editarGastoVariavel=ev;try{editarGastoVariavel=ev;}catch(e){}}
+
+    var saveF=window.salvarGastoFixo;if(typeof saveF==="function"&&!saveF[FLAG]){var sf=async function(){var p=formPagador("fixo");if(p.tipo==="externo"&&!p.nome){alert("Informe quem adiantou o valor desta despesa.");return false;}var edit=el("fixoEditId")?.value||"";var mes=(edit?(el("fixoEditId")?.dataset?.mesComprovante||""):"")||el("fixoMesReferencia")?.value||el("dashboardMes")?.value||mesAtualSeguro();var antes=new Set((typeof gastosFixos!=="undefined"?gastosFixos:[]).map(function(x){return String(x.id);}));var r=await saveF.apply(this,arguments);var afetados=[];try{if(edit){var x=gastosFixos.find(function(i){return String(i.id)===String(edit);});if(x)afetados=[x];}else afetados=gastosFixos.filter(function(i){return !antes.has(String(i.id));});afetados.forEach(function(i){syncFixo(i,mes,p);});if(afetados.length){saveMain();if(typeof renderizarTudo==="function")renderizarTudo();renderReembolsos();}}catch(e){console.error("CMFin V59.29 - falha ao vincular gasto fixo ao reembolso",e);}return r;};sf[FLAG]=true;window.salvarGastoFixo=sf;try{salvarGastoFixo=sf;}catch(e){}}
+    var saveV=window.salvarGastoVariavel;if(typeof saveV==="function"&&!saveV[FLAG]){var sv=async function(){var p=formPagador("var");if(p.tipo==="externo"&&!p.nome){alert("Informe quem adiantou o valor desta despesa.");return false;}var edit=el("varEditId")?.value||"";var antes=new Set((typeof gastosVariaveis!=="undefined"?gastosVariaveis:[]).map(function(x){return String(x.id);}));var r=await saveV.apply(this,arguments);var afetados=[];try{if(edit){var x=gastosVariaveis.find(function(i){return String(i.id)===String(edit);});if(x)afetados=[x];}else afetados=gastosVariaveis.filter(function(i){return !antes.has(String(i.id));});afetados.forEach(function(i){syncVar(i,p);});if(afetados.length){saveMain();if(typeof renderizarTudo==="function")renderizarTudo();renderReembolsos();}}catch(e){console.error("CMFin V59.29 - falha ao vincular gasto variável ao reembolso",e);}return r;};sv[FLAG]=true;window.salvarGastoVariavel=sv;try{salvarGastoVariavel=sv;}catch(e){}}
+
+    var excluir=window.excluirItem;if(typeof excluir==="function"&&!excluir[FLAG]){var ex=function(lista,id){var eraFonte=(lista==="gastosFixos"||lista==="gastosVariaveis");var r=excluir.apply(this,arguments);if(!eraFonte)return r;var ainda=false;if(lista==="gastosFixos"){ainda=(typeof gastosFixos!=="undefined")&&gastosFixos.some(function(i){return Number(i.id)===Number(id);});}else{ainda=(typeof gastosVariaveis!=="undefined")&&gastosVariaveis.some(function(i){return Number(i.id)===Number(id);});}if(ainda)return r;var debts=getDebts();debts=debts.filter(function(d){if(Number(d.origemId)!==Number(id))return true;if(!String(d.origemTipo||"").startsWith(lista==="gastosFixos"?"gasto_fixo":"gasto_variavel"))return true;if(Number(d.valorPago||0)>0){d.origemAutomatica=false;d.origemDesvinculada=true;d.obs=(d.obs||"")+" | O lançamento de origem foi excluído após existir reembolso registrado.";return true;}return false;});setDebts(debts);renderReembolsos();return r;};ex[FLAG]=true;window.excluirItem=ex;try{excluirItem=ex;}catch(e){}}
+  }
+
+  function autoDebts(){return getDebts().filter(function(d){return d?.tipoDivida==="reembolso_socio"&&!d.origemDesvinculada;});}
+  function renderReembolsos(){
+    var host=el("cmfinReembolsoGrupos");if(!host)return;var lista=autoDebts();var total=0,pago=0,pessoas=new Set();lista.forEach(function(d){total+=Number(d.valorTotal||0);pago+=Number(d.valorPago||0);if(d.credor)pessoas.add(d.credor);});
+    if(el("cmfinReembolsoTotal"))el("cmfinReembolsoTotal").textContent=brl(total);if(el("cmfinReembolsoPago"))el("cmfinReembolsoPago").textContent=brl(pago);if(el("cmfinReembolsoPendente"))el("cmfinReembolsoPendente").textContent=brl(Math.max(0,total-pago));if(el("cmfinReembolsoPessoas"))el("cmfinReembolsoPessoas").textContent=String(pessoas.size);
+    if(!lista.length){host.innerHTML='<div class="cmfin-reembolso-empty">Nenhum adiantamento de sócio registrado neste modo. Ao salvar um Gasto Fixo ou Variável como pago por um sócio/terceiro, ele aparecerá aqui automaticamente.</div>';return;}
+    var grupos={};lista.forEach(function(d){var m=d.origemMes||d.data||"";var k=(d.credor||"Sem pessoa")+"|"+m;(grupos[k]||(grupos[k]={credor:d.credor||"Sem pessoa",mes:m,itens:[]})).itens.push(d);});
+    var arr=Object.values(grupos).sort(function(a,b){return String(b.mes).localeCompare(String(a.mes))||a.credor.localeCompare(b.credor,"pt-BR");});
+    host.innerHTML=arr.map(function(g){var t=g.itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=g.itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0),s=Math.max(0,t-p);var key=encodeURIComponent(g.credor)+"__"+encodeURIComponent(g.mes);return '<section class="cmfin-reembolso-grupo"><div class="cmfin-reembolso-grupo-head"><div><h3>'+esc(mesNome(g.mes))+' — Devendo '+esc(g.credor)+'</h3><small>'+g.itens.length+' despesa(s) vinculada(s) automaticamente.</small></div><div class="cmfin-reembolso-grupo-actions"><button type="button" onclick="cmfinCopiarPrestacaoConta(\''+key+'\')">Copiar prestação</button><button type="button" onclick="cmfinQuitarGrupoReembolso(\''+key+'\')"'+(s<=.001?' disabled':'')+'>Reembolsar grupo</button></div></div><div class="cmfin-reembolso-resumo"><div>Total adiantado<strong>'+brl(t)+'</strong></div><div>Já devolvido<strong>'+brl(p)+'</strong></div><div>Saldo devido<strong>'+brl(s)+'</strong></div></div><div class="cmfin-reembolso-itens">'+g.itens.map(function(d){var pend=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));return '<div class="cmfin-reembolso-item"><div><strong>'+esc(d.descricao||"Despesa")+'</strong><small>'+esc(d.origemTipo==="gasto_fixo_mes"?"Gasto Fixo":"Gasto Variável")+(d.formaAdiantamento?' · '+esc(d.formaAdiantamento):'')+'</small></div><div class="money">Total<b>'+brl(d.valorTotal)+'</b></div><div class="money">Saldo<b>'+brl(pend)+'</b></div><button type="button" onclick="cmfinRegistrarReembolso(\''+esc(d.id)+'\')"'+(pend<=.001?' disabled':'')+'>'+(pend<=.001?'Reembolsado':'Reembolsar')+'</button></div>';}).join("")+'</div></section>';}).join("");
+  }
+  window.cmfinRenderReembolsosSocios=renderReembolsos;
+  window.cmfinRegistrarReembolso=function(id){var lista=getDebts(),d=lista.find(function(x){return String(x.id)===String(id);});if(!d)return;var pend=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));if(pend<=.001)return;var raw=prompt("Quanto o escritório está devolvendo agora para "+d.credor+"?",brl(pend));if(raw===null)return;var val=Number(String(raw).replace(/R\$/gi,"").replace(/\s/g,"").replace(/\./g,"").replace(",",".").replace(/[^0-9.-]/g,""));if(!(val>0)){alert("Informe um valor válido.");return;}val=Math.min(val,pend);d.valorPago=Number(d.valorPago||0)+val;d.status=statusDebt(d.valorTotal,d.valorPago);d.atualizadoEm=new Date().toISOString();d.pagoEm=new Date().toISOString();d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now(),mes:mesAtualSeguro(),data:new Date().toISOString(),valor:val,tipo:"reembolso_socio"});setDebts(lista);try{if(typeof dtcRenderizar==="function")dtcRenderizar();}catch(e){}renderReembolsos();try{if(typeof renderizarTudo==="function")renderizarTudo();}catch(e){} };
+  function decodeGroup(key){var p=String(key||"").split("__");return {credor:decodeURIComponent(p[0]||""),mes:decodeURIComponent(p.slice(1).join("__")||"")};}
+  window.cmfinQuitarGrupoReembolso=function(key){var g=decodeGroup(key),lista=getDebts(),itens=lista.filter(function(d){return d.tipoDivida==="reembolso_socio"&&!d.origemDesvinculada&&d.credor===g.credor&&(d.origemMes||d.data||"")===g.mes;});var total=itens.reduce(function(a,d){return a+Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));},0);if(total<=.001)return;if(!confirm("Registrar reembolso de "+brl(total)+" para "+g.credor+" referente a "+mesNome(g.mes)+"?"))return;var agora=new Date().toISOString();itens.forEach(function(d){var v=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));if(v<=0)return;d.valorPago=Number(d.valorTotal||0);d.status="Pago";d.atualizadoEm=agora;d.pagoEm=agora;d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now()+Math.random(),mes:mesAtualSeguro(),data:agora,valor:v,tipo:"reembolso_socio_grupo"});});setDebts(lista);try{dtcRenderizar();}catch(e){}renderReembolsos();try{renderizarTudo();}catch(e){} };
+  window.cmfinCopiarPrestacaoConta=async function(key){var g=decodeGroup(key),itens=autoDebts().filter(function(d){return d.credor===g.credor&&(d.origemMes||d.data||"")===g.mes;});var t=itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0);var linhas=["Conta mês de "+mesNome(g.mes)+" - Devendo "+g.credor,"",...itens.map(function(d){return "• "+(d.descricao||"Despesa")+" — "+brl(d.valorTotal||0)+(Number(d.valorPago||0)>0?" | devolvido: "+brl(d.valorPago):"");}),"","Total adiantado: "+brl(t),"Já reembolsado: "+brl(p),"Saldo devido: "+brl(Math.max(0,t-p))];var txt=linhas.join("\n");try{await navigator.clipboard.writeText(txt);if(typeof mostrarToast==="function")mostrarToast("Prestação de contas copiada.");else alert("Prestação de contas copiada.");}catch(e){prompt("Copie a prestação de contas:",txt);} };
+
+  function wrapDebtRender(){var old=window.dtcRenderizar;if(typeof old==="function"&&!old[FLAG]){var n=function(){var r=old.apply(this,arguments);renderReembolsos();return r;};n[FLAG]=true;window.dtcRenderizar=n;try{dtcRenderizar=n;}catch(e){}}}
+  function init(){installForms();wrapDebtRender();renderReembolsos();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+  window.addEventListener("load",function(){setTimeout(init,180);});
+  document.addEventListener("click",function(e){if(e.target?.closest('[data-module="dividasTerceiros"],#navDividasTerceiros'))setTimeout(renderReembolsos,80);},true);
+  window.addEventListener("cmfin:storage-change",function(){setTimeout(renderReembolsos,120);});
 })();
 </script>
 
