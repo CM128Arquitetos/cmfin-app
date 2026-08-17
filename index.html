@@ -31,6 +31,7 @@
 <!-- CMFin V51 - Central de Sugestões compatível com autenticação bcrypt - 2026-08-04 -->
 <!-- CMFin V54 - Análise financeira sem Gastos por Terceiros; controle mantido separado - 2026-08-04 -->
 <!-- CMFin V59.17 - Cursor de clique padronizado nos botões de suporte - 2026-08-11 -->
+<!-- CMFin V59.28 - Sincronização em Nuvem exclusiva de Configurações + Salvar nas Nuvens no menu Ações - 2026-08-17 -->
 <!DOCTYPE html>
 <!-- CMFin V55 - Central de Sugestões com ícone de lâmpada; sino exclusivo para Alertas Inteligentes - 2026-08-04 -->
 <!-- CMFin V56 - Cabeçalho imediato: Sugestões, Novo Registro, Alertas e Ações presentes no HTML inicial - 2026-08-05 -->
@@ -31339,6 +31340,20 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
+  async function salvarNasNuvens(){
+    fecharMenu();
+    toast("Salvando dados nas nuvens...", "info");
+    try{
+      var ok = false;
+      if(typeof window.cmfinSalvarDadosNuvem === "function") ok = await window.cmfinSalvarDadosNuvem();
+      else if(typeof window.cmfinSalvarManualForcadoNuvem === "function") ok = await window.cmfinSalvarManualForcadoNuvem();
+      toast(ok ? "Dados salvos nas nuvens." : "Não foi possível salvar os dados nas nuvens.", ok ? "ok" : "erro");
+    }catch(err){
+      console.warn(err);
+      toast("Erro ao salvar os dados nas nuvens.", "erro");
+    }
+  }
+
   async function importarNuvem(){
     fecharMenu();
     try{ CMFin.Storage.session.setItem("cmfin_cloud_loaded_once", "1"); }catch(e){}
@@ -31460,6 +31475,7 @@ Os outros lançamentos não serão alterados.`;
       box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
       box.appendChild(makeBtn("Histórico de Sincronização", abrirHistoricoSyncFinal));
       box.appendChild(sep());
+      box.appendChild(makeBtn("Salvar nas Nuvens", salvarNasNuvens));
       box.appendChild(makeBtn("Pasta Backup", pastaBackup));
       box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
       box.appendChild(makeBtn("Restaurar Cópia de Segurança", restaurarCopia));
@@ -35088,42 +35104,17 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function isConfigVisible(){
-    var hash = (location.hash || "").toLowerCase();
-    if(hash.indexOf("config") >= 0) return true;
-
-    var activeText = "";
-    try{
-      var active = document.querySelector(".module.active, main, .content");
-      activeText = (active ? active.innerText : "").toLowerCase();
-    }catch(e){}
-
-    return activeText.indexOf("personalização") >= 0 ||
-           activeText.indexOf("backup e importação") >= 0 ||
-           activeText.indexOf("configurações") >= 0;
+    // V59.28: o card de nuvem pertence exclusivamente ao módulo Configurações.
+    // Não usa mais texto da página/hash, pois isso causava falso positivo em Relatório Contador.
+    var active = document.querySelector(".module.active");
+    return !!(active && active.id === "configuracoes");
   }
 
   function findConfigContainer(){
-    var candidates = [
-      "#configuracoes",
-      "#configuracoesPanel",
-      "#configuracoes-panel",
-      "#module-configuracoes",
-      "#config",
-      ".configuracoes",
-      ".configuracoes-panel",
-      ".module.active",
-      "main .module.active",
-      ".content .module.active",
-      "main",
-      ".content"
-    ];
-
-    for(var i=0;i<candidates.length;i++){
-      var el = document.querySelector(candidates[i]);
-      if(el && el.offsetParent !== null) return el;
-    }
-
-    return null;
+    // V59.28: nunca monta o painel fora de #configuracoes.
+    var el = document.getElementById("configuracoes");
+    if(!el || !el.classList.contains("active")) return null;
+    return el;
   }
 
   function panelHTML(){
@@ -35173,6 +35164,10 @@ Os outros lançamentos não serão alterados.`;
 
   function mountConfigPanel(){
     ensureStyle();
+
+    // V59.28: remove itens legados de nuvem do menu Ações; o menu final controla as ações.
+    var legacyMenu = document.getElementById("cmfinCloudActionItems");
+    if(legacyMenu) legacyMenu.remove();
 
     // Só monta dentro da aba de Configurações.
     if(!isConfigVisible()){
