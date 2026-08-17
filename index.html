@@ -1,5 +1,6 @@
 <!-- CMFin V59.25 - Login consolidado por e-mail/usuário + licença resolvida sempre no Supabase; menu Ações estabilizado - 2026-08-17 -->
-<!-- V59.25: a licença lembrada no navegador não participa mais da autenticação; cmfin_resolver_licenca_usuario é a fonte oficial do código interno. -->
+<!-- CMFin V59.26 - Autenticação consolidada: login por e-mail/usuário + senha; licença sempre resolvida no Supabase. -->
+<!-- V59.26: remove campo oculto de licença do formulário e referências legadas no fluxo de login. -->
 <!-- CMFin V59.22 - Gastos por Terceiros: Valor Total ou Valor Mensal - 2026-08-12 -->
 <!-- CMFin V59.15 - E-mail do suporte copiado para a area de transferencia - 2026-08-11 -->
 <!-- CMFin V59.16 - Correção definitiva da cópia do e-mail de suporte + feedback visível - 2026-08-11 -->
@@ -8882,7 +8883,6 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
           </button>
         </div>
       </div>
-      <input id="cmfinLoginLicenca" class="cmfin-login-license-hidden" type="hidden" autocomplete="off" />
       <div class="cmfin-login-options">
         <label><input type="checkbox" id="cmfinLembrarAcesso" checked /><span title="A senha não é armazenada no dispositivo. Ao fechar o navegador, ela poderá ser solicitada novamente.">Manter conectado</span></label>
         <a class="cmfin-login-support-btn" href="#" id="cmfinOpenSupportBtn"><span class="cmfin-support-dot">?</span>Suporte</a>
@@ -30656,13 +30656,13 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
-  async function validarSupabase(usuario, senha, licencaIgnorada){
+  async function validarSupabase(usuario, senha){
     var client = getSupabaseClient();
     var usuarioNormalizado = normalizar(usuario);
     var licencaResolvida = "";
 
     try{
-      // V59.25: o e-mail/usuário é sempre a origem da autenticação.
+      // V59.26: o e-mail/usuário é sempre a origem da autenticação.
       // Nunca reutiliza uma licença antiga guardada no navegador para decidir
       // qual conta autenticar. O código interno é resolvido no Supabase em
       // toda validação e revalidação por cmfin_resolver_licenca_usuario.
@@ -31047,12 +31047,9 @@ Os outros lançamentos não serão alterados.`;
     if(!salvo || !salvo.usuario) return false;
 
     var usuarioEl = document.getElementById("cmfinLoginUsuario");
-    var licencaEl = document.getElementById("cmfinLoginLicenca");
     var lembrarEl = document.getElementById("cmfinLembrarAcesso");
 
     if(usuarioEl && !usuarioEl.value) usuarioEl.value = salvo.usuario || "";
-    // V59.25: licença lembrada nunca é restaurada para autenticação.
-    if(licencaEl) licencaEl.value = "";
     if(lembrarEl) lembrarEl.checked = true;
 
     // Não existe login automático sem senha: ela não é persistida no dispositivo.
@@ -31082,8 +31079,8 @@ Os outros lançamentos não serão alterados.`;
         return false;
       }
 
-      // V59.25: revalida o usuário e resolve novamente a licença no servidor.
-      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", "");
+      // V59.26: revalida o usuário e resolve novamente a licença no servidor.
+      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "");
 
       if(!resultado || !resultado.ok){
         limparSessao();
@@ -31130,15 +31127,11 @@ Os outros lançamentos não serão alterados.`;
 
     var usuarioEl = document.getElementById("cmfinLoginUsuario");
     var senhaEl = document.getElementById("cmfinLoginSenha");
-    var licencaEl = document.getElementById("cmfinLoginLicenca");
     var lembrarEl = document.getElementById("cmfinLembrarAcesso");
     var form = document.getElementById("cmfinLoginForm");
 
     var acessoLembrado = getAcessoLembrado();
     if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || CMFin.Storage.local.getItem(CMFIN_LAST_USER_KEY) || "";
-    // V59.25: o campo oculto é apenas compatibilidade/telemetria da sessão atual.
-    // Antes de autenticar, a licença será sempre resolvida pelo usuário digitado.
-    if(licencaEl) licencaEl.value = "";
 
     var footer = document.querySelector(".cmfin-login-footer");
     if(footer){
@@ -31154,12 +31147,6 @@ Os outros lançamentos não serão alterados.`;
 
     if(lembrarEl && acessoLembrado) lembrarEl.checked = true;
 
-    // Qualquer troca de e-mail/usuário invalida imediatamente a licença oculta anterior.
-    if(usuarioEl && !usuarioEl.getAttribute("data-cmfin-license-reset-ok")){
-      usuarioEl.setAttribute("data-cmfin-license-reset-ok", "1");
-      usuarioEl.addEventListener("input", function(){ if(licencaEl) licencaEl.value = ""; });
-      usuarioEl.addEventListener("change", function(){ if(licencaEl) licencaEl.value = ""; });
-    }
 
     if(form && !form.getAttribute("data-cmfin-login-ok")){
       form.setAttribute("data-cmfin-login-ok", "1");
@@ -31176,7 +31163,7 @@ Os outros lançamentos não serão alterados.`;
             mostrarErro("Informe e-mail/usuário e senha para continuar.");
             return;
           }
-          // V59.25: a licença é resolvida dentro de validarSupabase a partir
+          // V59.26: a licença é resolvida dentro de validarSupabase a partir
           // do e-mail/usuário digitado; nunca enviamos uma licença lembrada.
           var r = await validarSupabase(
             usuarioDigitado,
@@ -31254,7 +31241,7 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
-<!-- V59.14: para logins em um dispositivo novo sem código de licença, o Supabase deve possuir a RPC public.cmfin_resolver_licenca_usuario(p_usuario text). O arquivo SQL complementar acompanha esta versão. -->
+<!-- V59.26: autenticação oficial usa public.cmfin_resolver_licenca_usuario(text) + public.cmfin_ativar_licenca(text,text,text,text). -->
 
 <!-- Ajuste final solicitado: menu Ações reorganizado, importação sem recarregar e senha dentro de Configurações -->
 <script id="cmfin-final-menu-acoes-perfil-ajustes-js">
@@ -36594,57 +36581,7 @@ Os outros lançamentos não serão alterados.`;
     return buttons.find(function(b){ return (b.textContent || "").trim().toLowerCase() === text.toLowerCase(); });
   }
 
-  function simplificarMenu(){
-    ensureStyle();
-
-    var menu = document.getElementById("menuAcoesTopo") || document.querySelector(".actions-dropdown");
-    if(!menu || menu.dataset.cmfinSimplificado === "1") return;
-
-    var oldImportAtual = findButtonByText(menu, "Importar");
-    var oldExportAtual = findButtonByText(menu, "Exportar");
-    var oldPastaPessoal = findButtonByText(menu, "Pasta Backup - Pessoal");
-    var oldPastaEmpresarial = findButtonByText(menu, "Pasta Backup - Empresarial");
-    var exportAmbos = findButtonByText(menu, "Exportar Ambos");
-
-    // Esconde botões antigos duplicados.
-    [oldImportAtual, oldExportAtual, oldPastaPessoal, oldPastaEmpresarial].forEach(function(b){
-      if(b) b.style.display = "none";
-    });
-
-    var frag = document.createDocumentFragment();
-
-    frag.appendChild(criarBotao("Exportar", "exportarModo"));
-    frag.appendChild(criarBotao("Importar", "importarModo"));
-
-    if(exportAmbos){
-      menu.insertBefore(frag, exportAmbos);
-    }else{
-      menu.insertBefore(frag, menu.firstChild);
-    }
-
-    var importAmbos = findButtonByText(menu, "Importar Ambos");
-    var resetar = findButtonByText(menu, "Resetar Dados");
-
-    var pasta = criarBotao("Pasta Backup", "pastaBackup");
-    if(resetar && resetar.parentNode === menu){
-      menu.insertBefore(pasta, resetar);
-    }else if(importAmbos && importAmbos.parentNode === menu && importAmbos.nextSibling){
-      menu.insertBefore(pasta, importAmbos.nextSibling);
-    }else{
-      menu.appendChild(pasta);
-    }
-
-    // Renomeia itens avançados de backup, se existirem.
-    var baixar = menu.querySelector("[data-cmfin-cloud-menu='backup']");
-    if(baixar) baixar.textContent = "Baixar Cópia de Segurança";
-
-    var restaurar = document.getElementById("cmfinRestoreBackupMenuItem");
-    if(restaurar) restaurar.textContent = "Restaurar Cópia de Segurança";
-
-    menu.dataset.cmfinSimplificado = "1";
-  }
-
-  // V59.25: o menu visível é montado exclusivamente por cmfinMenuFinalActions.
+  // V59.26: menu legado simplificado removido. O menu visível é montado exclusivamente por cmfinMenuFinalActions.
   // Mantemos apenas a função de escolha de modo para compatibilidade dos botões finais.
   window.cmfinAbrirEscolhaModoBackup = abrirEscolhaModo;
 })();
@@ -37040,43 +36977,8 @@ Os outros lançamentos não serão alterados.`;
     });
   }
 
-  function instalarMenu(){
-    ensureStyle();
-
-    if(document.getElementById("cmfinAlterarSenhaMenuItem")) return;
-
-    var menu = document.getElementById("menuAcoesTopo") ||
-               document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
-
-    if(!menu) return;
-
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "cmfinAlterarSenhaMenuItem";
-    btn.className = "cmfin-password-menu-item";
-    btn.textContent = "Alterar Senha de Acesso";
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes();
-      setTimeout(abrirModalSenha, 80);
-    });
-
-    var reset = Array.prototype.slice.call(menu.querySelectorAll("button")).find(function(b){
-      return (b.textContent || "").trim().toLowerCase() === "resetar dados";
-    });
-
-    if(reset && reset.parentNode === menu){
-      menu.insertBefore(btn, reset);
-    }else{
-      var sep = document.createElement("div");
-      sep.style.cssText = "height:1px;background:rgba(15,23,42,.08);margin:8px 0;";
-      menu.appendChild(sep);
-      menu.appendChild(btn);
-    }
-  }
-
-  // V59.25: o modal continua disponível em Configurações, porém este patch
+  // V59.26: o modal continua disponível em Configurações; o injetor legado do menu foi removido.
+  // Este patch
   // não injeta mais um item concorrente no menu Ações.
   window.cmfinAbrirAlterarSenha = abrirModalSenha;
 })();
@@ -37546,133 +37448,14 @@ Os outros lançamentos não serão alterados.`;
     carregarNoModal();
   }
 
-  function instalarMenu(){
-    ensureStyle();
-
-    if(document.getElementById("cmfinHistoricoSyncMenuItem")) return;
-
-    var menu = document.getElementById("menuAcoesTopo") ||
-               document.querySelector(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
-
-    if(!menu) return;
-
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "cmfinHistoricoSyncMenuItem";
-    btn.className = "cmfin-hist-menu-item";
-    btn.textContent = "Histórico de Sincronização";
-    btn.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      if(typeof window.fecharMenuAcoes === "function") window.fecharMenuAcoes();
-      setTimeout(abrirHistorico, 80);
-    });
-
-    var carregarNuvem = Array.prototype.slice.call(menu.querySelectorAll("button")).find(function(b){
-      return (b.textContent || "").trim().toLowerCase() === "carregar dados da nuvem";
-    });
-
-    if(carregarNuvem && carregarNuvem.parentNode === menu){
-      if(carregarNuvem.nextSibling) menu.insertBefore(btn, carregarNuvem.nextSibling);
-      else menu.appendChild(btn);
-    }else{
-      var sep = document.createElement("div");
-      sep.style.cssText = "height:1px;background:rgba(15,23,42,.08);margin:8px 0;";
-      menu.appendChild(sep);
-      menu.appendChild(btn);
-    }
-  }
-
-  // V59.25: o histórico é aberto pelo menu final consolidado; não cria
+  // V59.26: o histórico é aberto pelo menu final consolidado; o injetor legado foi removido e não cria
   // um segundo item diretamente no DOM do menu Ações.
   window.cmfinAbrirHistoricoSincronizacao = abrirHistorico;
 })();
 </script>
 
 
-<script id="cmfin-ajuste-card-alterar-senha-js">
-(function(){
-  "use strict";
-
-  function ajustarCardAlterarSenha(){
-    var btn = document.getElementById("cmfinAlterarSenhaMenuItem");
-    if(!btn) return;
-
-    // Aplica o mesmo visual dos cards/botões principais do menu Ações.
-    btn.classList.add("btn", "btn-secondary", "cmfin-simple-action-btn");
-
-    // Remove aparência de item simples/texto.
-    btn.classList.remove("cmfin-password-menu-item");
-
-    btn.style.width = "100%";
-    btn.style.justifyContent = "flex-start";
-    btn.style.border = "1px solid #d5dae0";
-    btn.style.borderRadius = "14px";
-    btn.style.padding = "11px 14px";
-    btn.style.background = "#fff";
-    btn.style.color = "#0f172a";
-    btn.style.fontSize = "12.5px";
-    btn.style.fontWeight = "900";
-    btn.style.textAlign = "left";
-    btn.style.minHeight = "46px";
-    btn.style.margin = "0";
-    btn.style.boxShadow = "none";
-
-    // Garante posição antes de Resetar Dados e sem separador visual acima.
-    var menu = document.getElementById("menuAcoesTopo") ||
-               btn.closest(".actions-dropdown, .actions-menu, .dropdown-menu, .menu-popover, [data-actions-menu]");
-
-    if(menu){
-      var botoes = Array.prototype.slice.call(menu.querySelectorAll("button"));
-      var resetar = botoes.find(function(b){
-        return (b.textContent || "").trim().toLowerCase() === "resetar dados";
-      });
-
-      if(resetar && resetar.parentNode === menu && btn.nextElementSibling !== resetar){
-        menu.insertBefore(btn, resetar);
-      }
-
-      // Remove separadores vazios imediatamente antes/depois desse botão, caso tenham sido criados pelo patch anterior.
-      var prev = btn.previousElementSibling;
-      if(prev && !prev.textContent.trim() && (prev.tagName || "").toLowerCase() === "div"){
-        var cs = window.getComputedStyle(prev);
-        if(cs.height === "1px" || prev.style.height === "1px"){
-          prev.remove();
-        }
-      }
-    }
-  }
-
-  if(!document.getElementById("cmfin-ajuste-card-alterar-senha-style")){
-    var css = document.createElement("style");
-    css.id = "cmfin-ajuste-card-alterar-senha-style";
-    css.textContent = `
-      #cmfinAlterarSenhaMenuItem{
-        width:100% !important;
-        justify-content:flex-start !important;
-        border:1px solid #d5dae0 !important;
-        border-radius:14px !important;
-        padding:11px 14px !important;
-        background:#fff !important;
-        color:#0f172a !important;
-        font-size:12.5px !important;
-        font-weight:900 !important;
-        text-align:left !important;
-        min-height:46px !important;
-        box-shadow:none !important;
-      }
-      #cmfinAlterarSenhaMenuItem:hover{
-        background:#f8fafc !important;
-        border-color:#cbd5e1 !important;
-      }
-    `;
-    document.head.appendChild(css);
-  }
-
-  // V59.25: item de senha não existe mais no menu Ações; a alteração
-  // permanece acessível pelo card próprio em Configurações.
-})();
-</script>
+<!-- V59.26: patch visual legado cmfinAlterarSenhaMenuItem removido; item não é mais injetado. -->
 
 
 <script id="cmfin-perfil-usuario-js">
