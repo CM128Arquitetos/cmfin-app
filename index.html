@@ -1,3 +1,5 @@
+<!-- CMFin V59.25 - Login consolidado por e-mail/usuário + licença resolvida sempre no Supabase; menu Ações estabilizado - 2026-08-17 -->
+<!-- V59.25: a licença lembrada no navegador não participa mais da autenticação; cmfin_resolver_licenca_usuario é a fonte oficial do código interno. -->
 <!-- CMFin V59.22 - Gastos por Terceiros: Valor Total ou Valor Mensal - 2026-08-12 -->
 <!-- CMFin V59.15 - E-mail do suporte copiado para a area de transferencia - 2026-08-11 -->
 <!-- CMFin V59.16 - Correção definitiva da cópia do e-mail de suporte + feedback visível - 2026-08-11 -->
@@ -30604,7 +30606,8 @@ Os outros lançamentos não serão alterados.`;
   }
 
   function cmfinEhAdmin(row){
-    return String(row?.tipo_usuario || "").toLowerCase() === "admin" || row?.acesso_vitalicio === true;
+    // V59.25: acesso vitalício é condição comercial, não privilégio administrativo.
+    return String(row?.tipo_usuario || "").trim().toLowerCase() === "admin";
   }
 
   function cmfinStatusBloqueado(row){
@@ -30653,26 +30656,25 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
-  async function validarSupabase(usuario, senha, licenca){
+  async function validarSupabase(usuario, senha, licencaIgnorada){
     var client = getSupabaseClient();
     var usuarioNormalizado = normalizar(usuario);
-    var licencaResolvida = normalizarLicenca(licenca);
+    var licencaResolvida = "";
 
     try{
-      // V59.14: o código deixa de ser digitado. Quando não há licença lembrada,
-      // uma RPC mínima resolve o código internamente e a autenticação continua
-      // sendo feita pela RPC segura cmfin_ativar_licenca.
-      if(!licencaResolvida){
-        var resolucao = await cmfinResolverLicencaPorUsuario(client, usuarioNormalizado);
-        if(!resolucao.ok || !resolucao.licenca){
-          return {
-            ok:false,
-            mensagem: resolucao.mensagem || "Usuário ou senha inválidos.",
-            configuracaoServidorPendente: !!resolucao.rpcAusente
-          };
-        }
-        licencaResolvida = resolucao.licenca;
+      // V59.25: o e-mail/usuário é sempre a origem da autenticação.
+      // Nunca reutiliza uma licença antiga guardada no navegador para decidir
+      // qual conta autenticar. O código interno é resolvido no Supabase em
+      // toda validação e revalidação por cmfin_resolver_licenca_usuario.
+      var resolucao = await cmfinResolverLicencaPorUsuario(client, usuarioNormalizado);
+      if(!resolucao.ok || !resolucao.licenca){
+        return {
+          ok:false,
+          mensagem: resolucao.mensagem || "Usuário ou senha inválidos.",
+          configuracaoServidorPendente: !!resolucao.rpcAusente
+        };
       }
+      licencaResolvida = resolucao.licenca;
 
       var fallback = { usuario: usuarioNormalizado, licenca: licencaResolvida };
       var resposta = await client.rpc("cmfin_ativar_licenca", {
@@ -31049,7 +31051,8 @@ Os outros lançamentos não serão alterados.`;
     var lembrarEl = document.getElementById("cmfinLembrarAcesso");
 
     if(usuarioEl && !usuarioEl.value) usuarioEl.value = salvo.usuario || "";
-    if(licencaEl && !licencaEl.value) licencaEl.value = salvo.licenca || "";
+    // V59.25: licença lembrada nunca é restaurada para autenticação.
+    if(licencaEl) licencaEl.value = "";
     if(lembrarEl) lembrarEl.checked = true;
 
     // Não existe login automático sem senha: ela não é persistida no dispositivo.
@@ -31079,7 +31082,8 @@ Os outros lançamentos não serão alterados.`;
         return false;
       }
 
-      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", sessao.licenca);
+      // V59.25: revalida o usuário e resolve novamente a licença no servidor.
+      var resultado = await validarSupabase(sessao.usuario, sessao.senha || "", "");
 
       if(!resultado || !resultado.ok){
         limparSessao();
@@ -31132,7 +31136,9 @@ Os outros lançamentos não serão alterados.`;
 
     var acessoLembrado = getAcessoLembrado();
     if(usuarioEl && !usuarioEl.value) usuarioEl.value = (acessoLembrado && acessoLembrado.usuario) || CMFin.Storage.local.getItem(CMFIN_LAST_USER_KEY) || "";
-    if(licencaEl && !licencaEl.value && acessoLembrado && acessoLembrado.licenca) licencaEl.value = acessoLembrado.licenca || "";
+    // V59.25: o campo oculto é apenas compatibilidade/telemetria da sessão atual.
+    // Antes de autenticar, a licença será sempre resolvida pelo usuário digitado.
+    if(licencaEl) licencaEl.value = "";
 
     var footer = document.querySelector(".cmfin-login-footer");
     if(footer){
@@ -31147,6 +31153,13 @@ Os outros lançamentos não serão alterados.`;
     }, 80);
 
     if(lembrarEl && acessoLembrado) lembrarEl.checked = true;
+
+    // Qualquer troca de e-mail/usuário invalida imediatamente a licença oculta anterior.
+    if(usuarioEl && !usuarioEl.getAttribute("data-cmfin-license-reset-ok")){
+      usuarioEl.setAttribute("data-cmfin-license-reset-ok", "1");
+      usuarioEl.addEventListener("input", function(){ if(licencaEl) licencaEl.value = ""; });
+      usuarioEl.addEventListener("change", function(){ if(licencaEl) licencaEl.value = ""; });
+    }
 
     if(form && !form.getAttribute("data-cmfin-login-ok")){
       form.setAttribute("data-cmfin-login-ok", "1");
@@ -31163,10 +31176,12 @@ Os outros lançamentos não serão alterados.`;
             mostrarErro("Informe e-mail/usuário e senha para continuar.");
             return;
           }
+          // V59.25: a licença é resolvida dentro de validarSupabase a partir
+          // do e-mail/usuário digitado; nunca enviamos uma licença lembrada.
           var r = await validarSupabase(
             usuarioDigitado,
             senhaDigitada,
-            licencaEl ? licencaEl.value : ""
+            ""
           );
 
           if(!r || !r.ok){
@@ -31371,6 +31386,14 @@ Os outros lançamentos não serão alterados.`;
     }, 60);
   }
 
+  function abrirHistoricoSyncFinal(){
+    fecharMenu();
+    setTimeout(function(){
+      if(typeof window.cmfinAbrirHistoricoSincronizacao === "function") window.cmfinAbrirHistoricoSincronizacao();
+      else toast("Histórico de sincronização ainda não está disponível.", "erro");
+    }, 60);
+  }
+
   function makeBtn(texto, acao, danger){
     var btn = document.createElement("button");
     btn.type = "button";
@@ -31416,6 +31439,7 @@ Os outros lançamentos não serão alterados.`;
       box.appendChild(makeBtn("Importar do Computador", importarComputador));
       box.appendChild(makeBtn("Exportar p/ Nuvem", exportarNuvem));
       box.appendChild(makeBtn("Importar da Nuvem", importarNuvem));
+      box.appendChild(makeBtn("Histórico de Sincronização", abrirHistoricoSyncFinal));
       box.appendChild(sep());
       box.appendChild(makeBtn("Pasta Backup", pastaBackup));
       box.appendChild(makeBtn("Baixar Cópia de Segurança", baixarCopia));
@@ -36602,9 +36626,9 @@ Os outros lançamentos não serão alterados.`;
     var resetar = findButtonByText(menu, "Resetar Dados");
 
     var pasta = criarBotao("Pasta Backup", "pastaBackup");
-    if(resetar){
+    if(resetar && resetar.parentNode === menu){
       menu.insertBefore(pasta, resetar);
-    }else if(importAmbos && importAmbos.nextSibling){
+    }else if(importAmbos && importAmbos.parentNode === menu && importAmbos.nextSibling){
       menu.insertBefore(pasta, importAmbos.nextSibling);
     }else{
       menu.appendChild(pasta);
@@ -36620,20 +36644,8 @@ Os outros lançamentos não serão alterados.`;
     menu.dataset.cmfinSimplificado = "1";
   }
 
-  function tick(){
-    simplificarMenu();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 700);
-      tick();
-    });
-  }else{
-    setInterval(tick, 700);
-    tick();
-  }
-
+  // V59.25: o menu visível é montado exclusivamente por cmfinMenuFinalActions.
+  // Mantemos apenas a função de escolha de modo para compatibilidade dos botões finais.
   window.cmfinAbrirEscolhaModoBackup = abrirEscolhaModo;
 })();
 </script>
@@ -37054,7 +37066,7 @@ Os outros lançamentos não serão alterados.`;
       return (b.textContent || "").trim().toLowerCase() === "resetar dados";
     });
 
-    if(reset){
+    if(reset && reset.parentNode === menu){
       menu.insertBefore(btn, reset);
     }else{
       var sep = document.createElement("div");
@@ -37064,20 +37076,8 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
-  function tick(){
-    instalarMenu();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 800);
-      tick();
-    });
-  }else{
-    setInterval(tick, 800);
-    tick();
-  }
-
+  // V59.25: o modal continua disponível em Configurações, porém este patch
+  // não injeta mais um item concorrente no menu Ações.
   window.cmfinAbrirAlterarSenha = abrirModalSenha;
 })();
 </script>
@@ -37572,8 +37572,9 @@ Os outros lançamentos não serão alterados.`;
       return (b.textContent || "").trim().toLowerCase() === "carregar dados da nuvem";
     });
 
-    if(carregarNuvem && carregarNuvem.nextSibling){
-      menu.insertBefore(btn, carregarNuvem.nextSibling);
+    if(carregarNuvem && carregarNuvem.parentNode === menu){
+      if(carregarNuvem.nextSibling) menu.insertBefore(btn, carregarNuvem.nextSibling);
+      else menu.appendChild(btn);
     }else{
       var sep = document.createElement("div");
       sep.style.cssText = "height:1px;background:rgba(15,23,42,.08);margin:8px 0;";
@@ -37582,20 +37583,8 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
-  function tick(){
-    instalarMenu();
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(tick, 800);
-      tick();
-    });
-  }else{
-    setInterval(tick, 800);
-    tick();
-  }
-
+  // V59.25: o histórico é aberto pelo menu final consolidado; não cria
+  // um segundo item diretamente no DOM do menu Ações.
   window.cmfinAbrirHistoricoSincronizacao = abrirHistorico;
 })();
 </script>
@@ -37639,7 +37628,7 @@ Os outros lançamentos não serão alterados.`;
         return (b.textContent || "").trim().toLowerCase() === "resetar dados";
       });
 
-      if(resetar && btn.nextElementSibling !== resetar){
+      if(resetar && resetar.parentNode === menu && btn.nextElementSibling !== resetar){
         menu.insertBefore(btn, resetar);
       }
 
@@ -37680,15 +37669,8 @@ Os outros lançamentos não serão alterados.`;
     document.head.appendChild(css);
   }
 
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setInterval(ajustarCardAlterarSenha, 500);
-      ajustarCardAlterarSenha();
-    });
-  }else{
-    setInterval(ajustarCardAlterarSenha, 500);
-    ajustarCardAlterarSenha();
-  }
+  // V59.25: item de senha não existe mais no menu Ações; a alteração
+  // permanece acessível pelo card próprio em Configurações.
 })();
 </script>
 
