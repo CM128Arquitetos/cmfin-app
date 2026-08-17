@@ -1,3 +1,4 @@
+<!-- CMFin V59.27 - Dívidas com Terceiros em ambos os modos, com dados isolados por modo - 2026-08-17 -->
 <!-- CMFin V59.25 - Login consolidado por e-mail/usuário + licença resolvida sempre no Supabase; menu Ações estabilizado - 2026-08-17 -->
 <!-- CMFin V59.26 - Autenticação consolidada: login por e-mail/usuário + senha; licença sempre resolvida no Supabase. -->
 <!-- V59.26: remove campo oculto de licença do formulário e referências legadas no fluxo de login. -->
@@ -10258,7 +10259,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             <div class="dtc-hero-bg"></div>
             <div class="dtc-hero-content">
               <div>
-                <span class="dtc-kicker">Modo Pessoal · Dívidas com Terceiros</span>
+                <span class="dtc-kicker" id="dtcModoKicker">Modo atual · Dívidas com Terceiros</span>
                 <h2>Dívidas com Terceiros</h2>
                 <p>Controle valores que você deve para outras pessoas, com vencimento, status, pagamento parcial e anexos de comprovantes, boletos, prints, contratos ou acordos.</p>
               </div>
@@ -11708,35 +11709,57 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     setMainBase:function(base){
       return Storage.local.setJSON(MAIN_KEY, cloneSafe(base, 0));
     },
-    getPersonalDebts:function(){
+    normalizeMode:function(mode){
+      return mode === "empresarial" ? "empresarial" : "pessoal";
+    },
+    getModeDebts:function(mode){
+      var m = Data.normalizeMode(mode);
       var base = Data.getMainBase();
-      var list = base && base.modos && base.modos.pessoal && base.modos.pessoal.dividasTerceiros;
+      var list = base && base.modos && base.modos[m] && base.modos[m].dividasTerceiros;
       if(Array.isArray(list)) return cloneSafe(list, 0);
-      var legacy = Storage.local.getJSON(LEGACY_DEBTS_KEY, []);
-      if(Array.isArray(legacy)){
-        Data.setPersonalDebts(legacy);
-        return cloneSafe(legacy, 0);
+
+      // Somente o Modo Pessoal possui a chave legada dedicada.
+      if(m === "pessoal"){
+        var legacy = Storage.local.getJSON(LEGACY_DEBTS_KEY, null);
+        if(Array.isArray(legacy)){
+          Data.setModeDebts("pessoal", legacy);
+          return cloneSafe(legacy, 0);
+        }
       }
       return [];
     },
-    setPersonalDebts:function(list){
+    setModeDebts:function(mode, list){
+      var m = Data.normalizeMode(mode);
       list = Array.isArray(list) ? cloneSafe(list, 0) : [];
-      var base = Data.getMainBase() || {versaoEstrutura:2,modoAtual:"pessoal",modos:{pessoal:{},empresarial:{}}};
+      var base = Data.getMainBase() || {versaoEstrutura:2,modoAtual:m,modos:{pessoal:{},empresarial:{}}};
       base.versaoEstrutura = Math.max(2, Number(base.versaoEstrutura || 0));
       base.modos = base.modos || {};
       base.modos.pessoal = base.modos.pessoal || {};
       base.modos.empresarial = base.modos.empresarial || {};
-      base.modos.pessoal.dividasTerceiros = list;
+      base.modos[m].dividasTerceiros = list;
       Data.setMainBase(base);
-      // Espelho temporário para módulos legados; a fonte principal é a base unificada.
-      Storage.local.setJSON(LEGACY_DEBTS_KEY, list);
+
+      // Mantém o espelho legado apenas para o Pessoal. Empresarial fica isolado na base por modo.
+      if(m === "pessoal") Storage.local.setJSON(LEGACY_DEBTS_KEY, list);
       return list;
     },
+    getCurrentDebts:function(){
+      var base = Data.getMainBase();
+      var atual = (typeof window.modoAtual !== "undefined" && window.modoAtual) || (base && base.modoAtual) || "pessoal";
+      return Data.getModeDebts(atual);
+    },
+    setCurrentDebts:function(list){
+      var base = Data.getMainBase();
+      var atual = (typeof window.modoAtual !== "undefined" && window.modoAtual) || (base && base.modoAtual) || "pessoal";
+      return Data.setModeDebts(atual, list);
+    },
+    getPersonalDebts:function(){ return Data.getModeDebts("pessoal"); },
+    setPersonalDebts:function(list){ return Data.setModeDebts("pessoal", list); },
     migrate:function(){
       var base = Data.getMainBase();
       var legacy = Storage.local.getJSON(LEGACY_DEBTS_KEY, null);
       if(Array.isArray(legacy) && (!base || !base.modos || !base.modos.pessoal || !Array.isArray(base.modos.pessoal.dividasTerceiros))){
-        Data.setPersonalDebts(legacy);
+        Data.setModeDebts("pessoal", legacy);
       }
     }
   };
@@ -12281,18 +12304,20 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     function obterSnapshotAtual() {
       let dividasTerceirosSnapshot = [];
-      if (modoAtual === "pessoal") {
-        try {
-          const salvoDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "null");
-          if (Array.isArray(salvoDividas)) dividasTerceirosSnapshot = salvoDividas;
-          else {
-            const baseAtual = carregarBaseStorage();
-            const salvasNoModo = baseAtual?.modos?.pessoal?.dividasTerceiros;
-            if (Array.isArray(salvasNoModo)) dividasTerceirosSnapshot = salvasNoModo;
+      try {
+        if (CMFin.Data && typeof CMFin.Data.getModeDebts === "function") {
+          dividasTerceirosSnapshot = CMFin.Data.getModeDebts(modoAtual);
+        } else {
+          const baseAtual = carregarBaseStorage();
+          const salvasNoModo = baseAtual?.modos?.[modoAtual]?.dividasTerceiros;
+          if (Array.isArray(salvasNoModo)) dividasTerceirosSnapshot = salvasNoModo;
+          else if (modoAtual === "pessoal") {
+            const legado = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "[]");
+            if (Array.isArray(legado)) dividasTerceirosSnapshot = legado;
           }
-        } catch (e) {
-          dividasTerceirosSnapshot = [];
         }
+      } catch (e) {
+        dividasTerceirosSnapshot = [];
       }
 
       return {
@@ -12323,9 +12348,12 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       terceiros = base.terceiros || [];
       comprovantesTerceiros = base.comprovantesTerceiros || [];
 
-      if (modoAtual === "pessoal" && Object.prototype.hasOwnProperty.call(base, "dividasTerceiros")) {
+      if (Object.prototype.hasOwnProperty.call(base, "dividasTerceiros")) {
         const listaDividas = Array.isArray(base.dividasTerceiros) ? base.dividasTerceiros : [];
-        try { CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividas)); } catch (e) {}
+        try {
+          if (CMFin.Data && typeof CMFin.Data.setModeDebts === "function") CMFin.Data.setModeDebts(modoAtual, listaDividas);
+          else if (modoAtual === "pessoal") CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividas));
+        } catch (e) {}
       }
     }
 
@@ -12621,13 +12649,17 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const modoNormalizado = normalizarModoBackupELLO(modo);
       const dadosPacote = Object.assign({}, dados || criarDadosVazios());
 
-      if (modoNormalizado === "pessoal") {
-        try {
+      try {
+        if (CMFin.Data && typeof CMFin.Data.getModeDebts === "function") {
+          dadosPacote.dividasTerceiros = CMFin.Data.getModeDebts(modoNormalizado);
+        } else if (modoNormalizado === "pessoal") {
           const listaDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "[]");
           dadosPacote.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
-        } catch (e) {
+        } else {
           dadosPacote.dividasTerceiros = Array.isArray(dadosPacote.dividasTerceiros) ? dadosPacote.dividasTerceiros : [];
         }
+      } catch (e) {
+        dadosPacote.dividasTerceiros = Array.isArray(dadosPacote.dividasTerceiros) ? dadosPacote.dividasTerceiros : [];
       }
 
       return {
@@ -12997,8 +13029,8 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     function mudarModulo(id) {
       if (!document.getElementById(id)) id = "dashboard";
-      if ((id === "terceiros" || id === "dividasTerceiros") && modoAtual === "empresarial") {
-        alert("Esta aba está disponível apenas no Modo Pessoal.");
+      if (id === "terceiros" && modoAtual === "empresarial") {
+        alert("Gastos por Terceiros está disponível apenas no Modo Pessoal.");
         id = "dashboard";
       }
       if (["pagamentosTerceirizados", "pagamentosArquitetos"].includes(id) && modoAtual === "pessoal") {
@@ -36378,13 +36410,14 @@ Os outros lançamentos não serão alterados.`;
       var base = carregarBaseStorage();
       var dados = base.modos && base.modos[modo] ? Object.assign({}, base.modos[modo]) : {};
 
-      if(modo === "pessoal"){
-        try{
+      try{
+        if(CMFin.Data && typeof CMFin.Data.getModeDebts === "function") dados.dividasTerceiros = CMFin.Data.getModeDebts(modo);
+        else if(modo === "pessoal"){
           var listaDividas = JSON.parse(CMFin.Storage.local.getItem("cmfin_dividas_terceiros") || "[]");
           dados.dividasTerceiros = Array.isArray(listaDividas) ? listaDividas : [];
-        }catch(e){
-          dados.dividasTerceiros = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
-        }
+        }else dados.dividasTerceiros = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
+      }catch(e){
+        dados.dividasTerceiros = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
       }
 
       var pacote = {
@@ -36450,9 +36483,11 @@ Os outros lançamentos não serão alterados.`;
 
           restaurarPerfilModoBackup(modo, perfilDoPacote(pacote, modo));
 
-          if(modo === "pessoal" && Object.prototype.hasOwnProperty.call(dados, "dividasTerceiros")){
+          if(Object.prototype.hasOwnProperty.call(dados, "dividasTerceiros")){
             try{
-              CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : []));
+              var listaDividasImportada = Array.isArray(dados.dividasTerceiros) ? dados.dividasTerceiros : [];
+              if(CMFin.Data && typeof CMFin.Data.setModeDebts === "function") CMFin.Data.setModeDebts(modo, listaDividasImportada);
+              else if(modo === "pessoal") CMFin.Storage.local.setItem("cmfin_dividas_terceiros", JSON.stringify(listaDividasImportada));
             }catch(e){}
           }
 
@@ -39921,7 +39956,7 @@ Os outros lançamentos não serão alterados.`;
 
   function moduloPermitido(id, m){
     if(!id || !document.getElementById(id)) return "dashboard";
-    if(m === "empresarial" && (id === "terceiros" || id === "dividasTerceiros")) return "dashboard";
+    if(m === "empresarial" && id === "terceiros") return "dashboard";
     if(m === "pessoal" && (id === "pagamentosTerceirizados" || id === "pagamentosArquitetos")) return "dashboard";
     return id;
   }
@@ -39939,7 +39974,7 @@ Os outros lançamentos não serão alterados.`;
     var navTerceiros = document.getElementById("navTerceiros");
     if(navTerceiros) navTerceiros.classList.toggle("nav-hidden", m === "empresarial");
     var navDividasTerceiros = document.getElementById("navDividasTerceiros");
-    if(navDividasTerceiros) navDividasTerceiros.classList.toggle("nav-hidden", m === "empresarial");
+    if(navDividasTerceiros) navDividasTerceiros.classList.remove("nav-hidden");
 
     ["navPagamentosTerceirizados", "navPagamentosArquitetos"].forEach(function(id){
       var btn = document.getElementById(id);
@@ -41025,44 +41060,71 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
+  function modoDtc(){
+    try{ if(typeof modoAtual !== "undefined" && modoAtual === "empresarial") return "empresarial"; }catch(e){}
+    var base = lerBasePrincipal();
+    return base && base.modoAtual === "empresarial" ? "empresarial" : "pessoal";
+  }
+
+  function atualizarRotuloModoDtc(){
+    var kicker = el("dtcModoKicker") || document.querySelector("#dividasTerceiros .dtc-kicker");
+    if(kicker) kicker.textContent = (modoDtc() === "empresarial" ? "Modo Empresarial" : "Modo Pessoal") + " · Dívidas com Terceiros";
+  }
+
   function lerDividas(){
+    var modo = modoDtc();
     try{
-      var raw = CMFin.Storage.local.getItem(DTC_KEY);
-      if(raw !== null){
-        var dedicado = JSON.parse(raw || "[]");
-        return Array.isArray(dedicado) ? dedicado : [];
+      if(CMFin.Data && typeof CMFin.Data.getModeDebts === "function"){
+        var viaData = CMFin.Data.getModeDebts(modo);
+        return Array.isArray(viaData) ? viaData : [];
       }
     }catch(e){}
 
     try{
       var base = lerBasePrincipal();
-      var migradas = base && base.modos && base.modos.pessoal && base.modos.pessoal.dividasTerceiros;
-      if(Array.isArray(migradas)){
-        CMFin.Storage.local.setItem(DTC_KEY, JSON.stringify(migradas));
-        return migradas;
-      }
+      var listaModo = base && base.modos && base.modos[modo] && base.modos[modo].dividasTerceiros;
+      if(Array.isArray(listaModo)) return listaModo;
     }catch(e){}
 
+    // Migração de compatibilidade: chave dedicada pertence somente ao Pessoal.
+    if(modo === "pessoal"){
+      try{
+        var raw = CMFin.Storage.local.getItem(DTC_KEY);
+        if(raw !== null){
+          var dedicado = JSON.parse(raw || "[]");
+          return Array.isArray(dedicado) ? dedicado : [];
+        }
+      }catch(e){}
+    }
     return [];
   }
 
   function gravarDividas(lista){
     if(!Array.isArray(lista)) throw new Error("Lista de dívidas inválida.");
+    var modo = modoDtc();
 
-    CMFin.Storage.local.setItem(DTC_KEY, JSON.stringify(lista));
-
-    // Espelha somente este módulo na base principal, sem alterar os demais dados.
     try{
-      var base = lerBasePrincipal();
-      if(base && base.modos && typeof base.modos === "object"){
-        if(!base.modos.pessoal || typeof base.modos.pessoal !== "object"){
-          base.modos.pessoal = {};
-        }
-        base.modos.pessoal.dividasTerceiros = lista;
-        CMFin.Storage.local.setItem(MAIN_KEY, JSON.stringify(base));
+      if(CMFin.Data && typeof CMFin.Data.setModeDebts === "function"){
+        CMFin.Data.setModeDebts(modo, lista);
+        return;
       }
     }catch(e){
-      console.warn("CMFin: não foi possível espelhar as dívidas na base principal.", e);
+      console.warn("CMFin: falha ao salvar Dívidas com Terceiros pela camada de dados.", e);
+    }
+
+    try{
+      var base = lerBasePrincipal();
+      base = base && typeof base === "object" ? base : {};
+      base.versaoEstrutura = Math.max(2, Number(base.versaoEstrutura || 0));
+      base.modos = base.modos || {};
+      base.modos[modo] = base.modos[modo] || {};
+      base.modos[modo].dividasTerceiros = lista;
+      base.modoAtual = modo;
+      CMFin.Storage.local.setItem(MAIN_KEY, JSON.stringify(base));
+      if(modo === "pessoal") CMFin.Storage.local.setItem(DTC_KEY, JSON.stringify(lista));
+    }catch(e){
+      console.warn("CMFin: não foi possível salvar as dívidas na base principal.", e);
+      throw e;
     }
   }
 
@@ -41359,6 +41421,7 @@ Os outros lançamentos não serão alterados.`;
 
   function iniciar(){
     instalarEventos();
+    atualizarRotuloModoDtc();
     window.dtcRenderizar();
   }
 
@@ -47119,16 +47182,22 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 
-  function dividasPessoais(){
-    if(modo()!=='pessoal') return [];
-    try{ if(CMFin.Data&&typeof CMFin.Data.getPersonalDebts==='function') return CMFin.Data.getPersonalDebts()||[]; }catch(e){}
-    try{return JSON.parse(storage().getItem('cmfin_dividas_terceiros')||'[]')||[];}catch(e){return [];}
+  function dividasModo(){
+    const m=modo();
+    try{ if(CMFin.Data&&typeof CMFin.Data.getModeDebts==='function') return CMFin.Data.getModeDebts(m)||[]; }catch(e){}
+    try{
+      const base=JSON.parse(storage().getItem('cmfin_gestao_financeira_inteligente_dados')||'{}')||{};
+      const lista=base?.modos?.[m]?.dividasTerceiros;
+      if(Array.isArray(lista)) return lista;
+      if(m==='pessoal') return JSON.parse(storage().getItem('cmfin_dividas_terceiros')||'[]')||[];
+    }catch(e){}
+    return [];
   }
   function vencimentoDivida(item){ return mesIso(item?.vencimento)||mesIso(item?.data)||mesCadastroItem(item)||mesHoje(); }
   function historicoDivida(item){ return Array.isArray(item?.historicoPagamentos)?item.historicoPagamentos:[]; }
   function pagoDividasNoMes(mes){
     let total=0;
-    dividasPessoais().forEach(item=>{
+    dividasModo().forEach(item=>{
       if(!permitidoNoMes(item,mes)) return;
       const hist=historicoDivida(item);
       if(hist.length){
@@ -47146,8 +47215,7 @@ Os outros lançamentos não serão alterados.`;
     return total;
   }
   function pendenteDividasNoMes(mes){
-    if(modo()!=='pessoal') return 0;
-    return dividasPessoais().reduce((a,item)=>{
+    return dividasModo().reduce((a,item)=>{
       if(!permitidoNoMes(item,mes)) return a;
       const venc=vencimentoDivida(item); if(venc>mes) return a;
       return a+Math.max(0,num(item.valorTotal)-num(item.valorPago));
@@ -47257,17 +47325,15 @@ Os outros lançamentos não serão alterados.`;
     try{grupos.push(gastosFixos,gastosVariaveis,pagamentosTerceirizados,pagamentosArquitetos);}catch(e){}
     grupos.forEach(lista=>(Array.isArray(lista)?lista:[]).forEach(item=>{if(!item.cmfinMesCadastro){const m=mesCadastroItem(item);if(m){item.cmfinMesCadastro=m;mudou=true;}}}));
     if(mudou){try{salvarDados();}catch(e){}}
-    if(modo()==='pessoal'){
-      try{
-        const d=dividasPessoais(); let md=false;
-        d.forEach(item=>{
-          if(!item.cmfinMesCadastro){const m=mesCadastroItem(item); if(m){item.cmfinMesCadastro=m;md=true;}}
-          if(item.valorPagoInicialCMFin===undefined){item.valorPagoInicialCMFin=num(item.valorPago);md=true;}
-          if(!Array.isArray(item.historicoPagamentos)){item.historicoPagamentos=[];md=true;}
-        });
-        if(md&&CMFin.Data&&typeof CMFin.Data.setPersonalDebts==='function')CMFin.Data.setPersonalDebts(d);
-      }catch(e){}
-    }
+    try{
+      const d=dividasModo(); let md=false;
+      d.forEach(item=>{
+        if(!item.cmfinMesCadastro){const m=mesCadastroItem(item); if(m){item.cmfinMesCadastro=m;md=true;}}
+        if(item.valorPagoInicialCMFin===undefined){item.valorPagoInicialCMFin=num(item.valorPago);md=true;}
+        if(!Array.isArray(item.historicoPagamentos)){item.historicoPagamentos=[];md=true;}
+      });
+      if(md&&CMFin.Data&&typeof CMFin.Data.setModeDebts==='function')CMFin.Data.setModeDebts(modo(),d);
+    }catch(e){}
   }
 
   // Dívidas com Terceiros: daqui em diante registramos a data real de pagamentos, sem inventar saídas no passado.
@@ -47276,12 +47342,12 @@ Os outros lançamentos não serão alterados.`;
     const wrap=async function(){
       const idEdit=document.getElementById('dtcIdEdicao')?.value||'';
       const credor=(document.getElementById('dtcCredor')?.value||'').trim(); const descricao=(document.getElementById('dtcDescricao')?.value||'').trim();
-      const antes=dividasPessoais(); const anterior=idEdit?antes.find(x=>String(x.id)===String(idEdit)):null;
+      const antes=dividasModo(); const anterior=idEdit?antes.find(x=>String(x.id)===String(idEdit)):null;
       const oldPago=anterior?num(anterior.valorPago):0; const oldHist=anterior&&Array.isArray(anterior.historicoPagamentos)?anterior.historicoPagamentos.slice():[];
       const result=await oldDtcSalvar.apply(this,arguments); if(result===false)return result;
       try{
-        const lista=dividasPessoais(); let item=idEdit?lista.find(x=>String(x.id)===String(idEdit)):lista.find(x=>String(x.credor||'').trim()===credor&&String(x.descricao||'').trim()===descricao);
-        if(item){ item.cmfinMesCadastro=anterior?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje(); item.valorPagoInicialCMFin=anterior?.valorPagoInicialCMFin!==undefined?anterior.valorPagoInicialCMFin:num(item.valorPago); item.historicoPagamentos=oldHist; const delta=num(item.valorPago)-oldPago; if(anterior&&Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'alteracao_pagamento'}); if(CMFin.Data?.setPersonalDebts)CMFin.Data.setPersonalDebts(lista); }
+        const lista=dividasModo(); let item=idEdit?lista.find(x=>String(x.id)===String(idEdit)):lista.find(x=>String(x.credor||'').trim()===credor&&String(x.descricao||'').trim()===descricao);
+        if(item){ item.cmfinMesCadastro=anterior?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje(); item.valorPagoInicialCMFin=anterior?.valorPagoInicialCMFin!==undefined?anterior.valorPagoInicialCMFin:num(item.valorPago); item.historicoPagamentos=oldHist; const delta=num(item.valorPago)-oldPago; if(anterior&&Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'alteracao_pagamento'}); if(CMFin.Data?.setModeDebts)CMFin.Data.setModeDebts(modo(),lista); }
       }catch(e){console.warn('CMFin V59 DTC:',e);}
       setTimeout(atualizarTudoV59,60); return result;
     }; wrap.__cmfinV59=true; window.dtcSalvarDivida=wrap;
@@ -47289,9 +47355,9 @@ Os outros lançamentos não serão alterados.`;
   const oldDtcPago=window.dtcMarcarPago;
   if(typeof oldDtcPago==='function'&&!oldDtcPago.__cmfinV59){
     const wrap=function(id){
-      const antes=dividasPessoais(); const ant=antes.find(x=>String(x.id)===String(id)); const oldPago=num(ant?.valorPago); const hist=Array.isArray(ant?.historicoPagamentos)?ant.historicoPagamentos.slice():[];
+      const antes=dividasModo(); const ant=antes.find(x=>String(x.id)===String(id)); const oldPago=num(ant?.valorPago); const hist=Array.isArray(ant?.historicoPagamentos)?ant.historicoPagamentos.slice():[];
       const out=oldDtcPago.apply(this,arguments);
-      try{const lista=dividasPessoais();const item=lista.find(x=>String(x.id)===String(id));if(item){item.cmfinMesCadastro=ant?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje();item.valorPagoInicialCMFin=ant?.valorPagoInicialCMFin!==undefined?ant.valorPagoInicialCMFin:oldPago;item.historicoPagamentos=hist;const delta=num(item.valorPago)-oldPago;if(Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'quitacao'});if(CMFin.Data?.setPersonalDebts)CMFin.Data.setPersonalDebts(lista);if(typeof dtcRenderizar==='function')dtcRenderizar();}}catch(e){}
+      try{const lista=dividasModo();const item=lista.find(x=>String(x.id)===String(id));if(item){item.cmfinMesCadastro=ant?.cmfinMesCadastro||mesCadastroItem(item)||mesHoje();item.valorPagoInicialCMFin=ant?.valorPagoInicialCMFin!==undefined?ant.valorPagoInicialCMFin:oldPago;item.historicoPagamentos=hist;const delta=num(item.valorPago)-oldPago;if(Math.abs(delta)>0.0001)item.historicoPagamentos.push({id:Date.now(),mes:mesHoje(),data:new Date().toISOString(),valor:delta,tipo:'quitacao'});if(CMFin.Data?.setModeDebts)CMFin.Data.setModeDebts(modo(),lista);if(typeof dtcRenderizar==='function')dtcRenderizar();}}catch(e){}
       setTimeout(atualizarTudoV59,60);return out;
     }; wrap.__cmfinV59=true; window.dtcMarcarPago=wrap;
   }
@@ -47302,12 +47368,12 @@ Os outros lançamentos não serão alterados.`;
     const cards=document.querySelectorAll('#dashboard .executive-grid .executive-card');
     if(cards[1]){const n=cards[1].querySelector('.executive-note');if(n)n.textContent='Somente saídas efetivamente pagas no mês.';}
     if(cards[2]){const l=cards[2].querySelector('.executive-label');const n=cards[2].querySelector('.executive-note');if(l)l.textContent='Caixa Real Atual';if(n)n.textContent=r.conciliacao?'Saldo real conciliado + movimentos efetivamente realizados.':'Saldo de abertura + entradas recebidas − saídas pagas.';}
-    if(cards[3]){const n=cards[3].querySelector('.executive-note');if(n)n.textContent=modo()==='pessoal'?`Pendências incluídas, inclusive Dívidas com Terceiros (${moedaV59(r.pendDiv)}).`:'Total de compromissos incluídos e ainda não pagos.';}
+    if(cards[3]){const n=cards[3].querySelector('.executive-note');if(n)n.textContent=`Pendências incluídas, inclusive Dívidas com Terceiros (${moedaV59(r.pendDiv)}).`;}
   }
   function renderPainelExecutivo(mes,r){
     const p=document.getElementById('elloDashboardPro'); if(!p)return;
     const fechado=!!extrasModo().fechamentos[mes]; const conc=extrasModo().conciliacoes[mes];
-    p.innerHTML=`<div class="ello-dashboard-shell"><div class="ello-dashboard-head"><div><h3>Painel Executivo do Caixa</h3></div><div class="ello-status-pill ${fechado?'locked':'open'}">${fechado?'🔒 Mês fechado':'🔓 Mês aberto'}</div></div><div class="ello-dashboard-cards"><article class="ello-fin-card primary" style="--accent:#16a34a;--soft:#ecfdf5;--line:#16a34a"><div class="top"><div><span class="label">Disponível agora</span><span class="title">Caixa Atual</span></div><div class="icon">R$</div></div><strong class="value">${moedaV59(r.caixa)}</strong><span class="desc">Somente dinheiro efetivo: saldo conciliado + recebidos − saídas pagas.</span></article><article class="ello-fin-card secondary" style="--accent:#2563eb;--soft:#eff6ff;--line:#2563eb"><div class="top"><div><span class="label">Após compromissos</span><span class="title">Saldo Previsto</span></div><div class="icon">≋</div></div><strong class="value">${moedaV59(r.saldoPrevisto)}</strong><span class="desc">Caixa Atual menos tudo que ainda falta pagar.</span></article><article class="ello-fin-card warning" style="--accent:#d97706;--soft:#fff7ed;--line:#f59e0b"><div class="top"><div><span class="label">Em aberto</span><span class="title">Pendente a Pagar</span></div><div class="icon">!</div></div><strong class="value">${moedaV59(r.pendente)}</strong><span class="desc">Fixos ${moedaV59(r.pendFix)} · Variáveis ${moedaV59(r.pendVar)}${modo()==='pessoal'?` · Dívidas ${moedaV59(r.pendDiv)}`:''}.</span></article><article class="ello-fin-card neutral" style="--accent:${fechado?'#9a3412':'#0f766e'};--soft:${fechado?'#fff7ed':'#ecfeff'};--line:${fechado?'#f59e0b':'#14b8a6'}"><div class="top"><div><span class="label">Fechamento</span><span class="title">Status do Mês</span></div><div class="icon">${fechado?'🔒':'✓'}</div></div><strong class="value" style="font-size:21px">${fechado?'Fechado':'Aberto'}</strong><span class="desc">${conc?`Caixa conciliado em ${moedaV59(r.caixa)}.`:'Caixa ainda não conciliado para este mês.'}</span><div class="ello-status-actions"><button type="button" class="mini-action secondary" onclick="cmfinAbrirConciliacaoCaixaV59('${esc(mes)}')">Conferir caixa</button>${fechado?`<button type="button" class="mini-action secondary" onclick="cmfinReabrirMesV59('${esc(mes)}')">Reabrir mês</button>`:`<button type="button" class="mini-action primary" onclick="cmfinFecharMesV59('${esc(mes)}')">Fechar mês</button>`}</div></article></div></div>`;
+    p.innerHTML=`<div class="ello-dashboard-shell"><div class="ello-dashboard-head"><div><h3>Painel Executivo do Caixa</h3></div><div class="ello-status-pill ${fechado?'locked':'open'}">${fechado?'🔒 Mês fechado':'🔓 Mês aberto'}</div></div><div class="ello-dashboard-cards"><article class="ello-fin-card primary" style="--accent:#16a34a;--soft:#ecfdf5;--line:#16a34a"><div class="top"><div><span class="label">Disponível agora</span><span class="title">Caixa Atual</span></div><div class="icon">R$</div></div><strong class="value">${moedaV59(r.caixa)}</strong><span class="desc">Somente dinheiro efetivo: saldo conciliado + recebidos − saídas pagas.</span></article><article class="ello-fin-card secondary" style="--accent:#2563eb;--soft:#eff6ff;--line:#2563eb"><div class="top"><div><span class="label">Após compromissos</span><span class="title">Saldo Previsto</span></div><div class="icon">≋</div></div><strong class="value">${moedaV59(r.saldoPrevisto)}</strong><span class="desc">Caixa Atual menos tudo que ainda falta pagar.</span></article><article class="ello-fin-card warning" style="--accent:#d97706;--soft:#fff7ed;--line:#f59e0b"><div class="top"><div><span class="label">Em aberto</span><span class="title">Pendente a Pagar</span></div><div class="icon">!</div></div><strong class="value">${moedaV59(r.pendente)}</strong><span class="desc">Fixos ${moedaV59(r.pendFix)} · Variáveis ${moedaV59(r.pendVar)} · Dívidas ${moedaV59(r.pendDiv)}.</span></article><article class="ello-fin-card neutral" style="--accent:${fechado?'#9a3412':'#0f766e'};--soft:${fechado?'#fff7ed':'#ecfeff'};--line:${fechado?'#f59e0b':'#14b8a6'}"><div class="top"><div><span class="label">Fechamento</span><span class="title">Status do Mês</span></div><div class="icon">${fechado?'🔒':'✓'}</div></div><strong class="value" style="font-size:21px">${fechado?'Fechado':'Aberto'}</strong><span class="desc">${conc?`Caixa conciliado em ${moedaV59(r.caixa)}.`:'Caixa ainda não conciliado para este mês.'}</span><div class="ello-status-actions"><button type="button" class="mini-action secondary" onclick="cmfinAbrirConciliacaoCaixaV59('${esc(mes)}')">Conferir caixa</button>${fechado?`<button type="button" class="mini-action secondary" onclick="cmfinReabrirMesV59('${esc(mes)}')">Reabrir mês</button>`:`<button type="button" class="mini-action primary" onclick="cmfinFecharMesV59('${esc(mes)}')">Fechar mês</button>`}</div></article></div></div>`;
   }
   function atualizarCofre(mes,r){
     setMoney('cofreRecebidoMes',r.saldoAnterior); setMoney('cofreSaidasPagas',r.saidasPagas); setMoney('cofreSobraMes',r.caixa); setMoney('cofreCaixaAcumulado',r.saldoPrevisto); setMoney('cofreSaldoLivre',r.saldoPrevisto); setMoney('cofreFaltaPagar',r.pendente); setMoney('cofreFixosPlanejadosResumo',r.pendFix);
@@ -47350,7 +47416,7 @@ Os outros lançamentos não serão alterados.`;
     const wrap=function(){const out=oldTrocar.apply(this,arguments);setTimeout(()=>{migrarMesCadastro();atualizarTudoV59();verificarConciliacaoObrigatoria();},700);return out;};wrap.__cmfinV59Caixa=true;window.trocarModo=wrap;
   }
   document.addEventListener('change',e=>{if(e.target?.id==='dashboardMes'||e.target?.id==='dashboardAno')setTimeout(atualizarTudoV59,160);},true);
-  window.addEventListener('cmfin:storage-change',e=>{const k=e.detail?.key||'';if(k==='cmfin_dividas_terceiros'||k===EXTRA_KEY)setTimeout(atualizarTudoV59,140);});
+  window.addEventListener('cmfin:storage-change',e=>{const k=e.detail?.key||'';if(k==='cmfin_dividas_terceiros'||k==='cmfin_gestao_financeira_inteligente_dados'||k===EXTRA_KEY)setTimeout(atualizarTudoV59,140);});
 
   // Se o usuário deixou o CMFin aberto durante a virada do mês, a conferência
   // também é detectada ao retornar para a aba/janela, sem criar polling contínuo.
@@ -48992,6 +49058,24 @@ Os outros lançamentos não serão alterados.`;
   }
 
   try{ if(window.CMFin) CMFin.version='59.24.0'; }catch(_){ }
+})();
+</script>
+
+
+<script id="cmfin-v5927-dividas-terceiros-ambos-modos">
+(function(){
+  "use strict";
+  function modo(){ try{return (typeof modoAtual!=="undefined"&&modoAtual==="empresarial")?"empresarial":"pessoal";}catch(e){return "pessoal";} }
+  function rotulo(){
+    var k=document.getElementById("dtcModoKicker")||document.querySelector("#dividasTerceiros .dtc-kicker");
+    if(k) k.textContent=(modo()==="empresarial"?"Modo Empresarial":"Modo Pessoal")+" · Dívidas com Terceiros";
+    var b=document.getElementById("navDividasTerceiros"); if(b)b.classList.remove("nav-hidden");
+  }
+  document.addEventListener("click",function(e){if(e.target&&e.target.closest&&e.target.closest('[data-module="dividasTerceiros"],#navDividasTerceiros'))setTimeout(rotulo,20);},true);
+  window.addEventListener("cmfin:mode-changed",function(){setTimeout(rotulo,20);});
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",rotulo);else rotulo();
+  setTimeout(rotulo,250);
+  try{ if(window.CMFin) CMFin.version="59.27.0"; }catch(e){}
 })();
 </script>
 
