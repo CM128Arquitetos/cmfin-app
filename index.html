@@ -1,3 +1,4 @@
+<!-- CMFin V59.48 - Cores de Status padronizadas globalmente (Pago/Pendente/Não incluir) - 2026-08-18 -->
 <!-- CMFin V59.47 - Correção segura do Status de Recebimentos: Não incluir + cores, sem quebrar o HTML - 2026-08-18 -->
 <!-- CMFin V59.32 - Fluxo rápido ao marcar Gasto Fixo/Variável como Pago: identifica pagador, integra Reembolso de Sócios e solicita comprovante sem abrir Editar - 2026-08-17 -->
 <!-- CMFin V59.31 - Correção do login por e-mail/usuário + remoção da rolagem horizontal no login - 2026-08-17 -->
@@ -49944,6 +49945,93 @@ Os outros lançamentos não serão alterados.`;
 </script>
 
 <!-- CMFin V59.45 - Reembolsos/Adiantamentos restritos ao Modo Empresarial -->
+
+
+<!-- CMFin V59.48 - Padronização global das cores dos seletores de Status -->
+<style id="cmfin-v5948-status-cores-padronizadas">
+  /*
+    Regra final e única para os seletores de status das tabelas.
+    O !important é intencional: algumas abas (especialmente Recebimentos)
+    possuem regras locais mais específicas que antes anulavam estas cores.
+  */
+  select.status-select{
+    border-radius:999px !important;
+    font-weight:900 !important;
+    outline:none !important;
+    cursor:pointer !important;
+  }
+  select.status-select.status-pago{
+    background:#dcfce7 !important;
+    color:#16a34a !important;
+    border-color:#bbf7d0 !important;
+  }
+  select.status-select.status-pendente{
+    background:#fef3c7 !important;
+    color:#d97706 !important;
+    border-color:#fde68a !important;
+  }
+  select.status-select.status-nao-incluir{
+    background:#f1f5f9 !important;
+    color:#64748b !important;
+    border-color:#cbd5e1 !important;
+  }
+  select.status-select:focus{
+    box-shadow:0 0 0 3px rgba(15,23,42,.06) !important;
+  }
+</style>
+<script id="cmfin-v5948-status-classes-sincronizadas">
+(function(){
+  function normalizar(valor){
+    return String(valor == null ? '' : valor)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().replace(/\s+/g,'').trim();
+  }
+
+  function classeDoStatus(valor){
+    var v=normalizar(valor);
+    if(v==='pago' || v==='recebido') return 'status-pago';
+    if(v==='naoincluir' || v==='naoincluso' || v==='naoincluido' || v==='desconsiderado') return 'status-nao-incluir';
+    return 'status-pendente';
+  }
+
+  function aplicar(select){
+    if(!select || !select.classList || !select.classList.contains('status-select')) return;
+    select.classList.remove('status-pago','status-pendente','status-nao-incluir');
+    select.classList.add(classeDoStatus(select.value));
+  }
+
+  function atualizar(root){
+    var base=root && root.querySelectorAll ? root : document;
+    if(base.matches && base.matches('select.status-select')) aplicar(base);
+    base.querySelectorAll('select.status-select').forEach(aplicar);
+  }
+
+  document.addEventListener('change',function(ev){
+    var el=ev.target;
+    if(el && el.matches && el.matches('select.status-select')) aplicar(el);
+  },true);
+
+  var observer=new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if(n && n.nodeType===1) atualizar(n);
+      });
+    });
+  });
+
+  function iniciar(){
+    atualizar(document);
+    try{observer.observe(document.body,{subtree:true,childList:true});}catch(e){}
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+
+  window.addEventListener('load',function(){setTimeout(function(){atualizar(document);},80);});
+  window.cmfinAtualizarCoresStatus=function(){atualizar(document);};
+})();
+</script>
+
 </body>
 </html>
 
