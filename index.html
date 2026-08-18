@@ -25119,19 +25119,9 @@ Os outros lançamentos não serão alterados.`;
 
 <!-- PATCH LIMPO - Atualizações seguras sem Tema Claro/Escuro -->
 <style id="ello-atualizacoes-sem-tema-css">
-  /* Compacto 75%: simula o zoom do navegador, mas apenas quando ativado */
-  body.ello-compact .app{
-    zoom:.75;
-    width:133.333%;
-    min-height:133.333vh;
-  }
-  @supports not (zoom:.75){
-    body.ello-compact .app{
-      transform:scale(.75);
-      transform-origin:top left;
-      width:133.333%;
-      min-height:133.333vh;
-    }
+  /* Zoom da interface: ajuste amplo, semelhante ao zoom do navegador */
+  body.ello-density-active .app{
+    transform-origin:top left;
   }
 
   /* Configurações - visual premium limpo, mantendo o modo claro original */
@@ -25192,6 +25182,71 @@ Os outros lançamentos não serão alterados.`;
     color:var(--text);
     font-weight:800;
     padding:0 12px;
+  }
+  .ello-zoom-control{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) minmax(110px,128px) auto;
+    gap:10px;
+    align-items:center;
+  }
+  .ello-zoom-btn{
+    width:46px;
+    height:46px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--text);
+    font-size:22px;
+    font-weight:900;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ello-zoom-range{
+    -webkit-appearance:none;
+    appearance:none;
+    height:8px!important;
+    border:none!important;
+    padding:0!important;
+    border-radius:999px!important;
+    background:linear-gradient(90deg,#0A221A,#1f7a64);
+    cursor:pointer;
+  }
+  .ello-zoom-range::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:#fff;
+    border:2px solid #0A221A;
+    box-shadow:0 2px 10px rgba(10,34,26,.18);
+  }
+  .ello-zoom-range::-moz-range-thumb{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:#fff;
+    border:2px solid #0A221A;
+    box-shadow:0 2px 10px rgba(10,34,26,.18);
+  }
+  .ello-zoom-number{
+    position:relative;
+  }
+  .ello-zoom-number input{
+    padding-right:30px;
+    text-align:center;
+  }
+  .ello-zoom-number span{
+    position:absolute;
+    right:12px;
+    top:50%;
+    transform:translateY(-50%);
+    color:var(--muted);
+    font-size:13px;
+    font-weight:900;
+    pointer-events:none;
   }
   .ello-config-premium-actions{
     display:flex;
@@ -25325,6 +25380,11 @@ Os outros lançamentos não serão alterados.`;
     .ello-analysis-extras{grid-template-columns:1fr;}
     .status-legend-ello{grid-template-columns:1fr;}
   }
+  @media(max-width:720px){
+    .ello-zoom-control{grid-template-columns:1fr 1fr;}
+    .ello-zoom-range{grid-column:1/-1;order:-1;}
+    .ello-zoom-number{grid-column:1/-1;}
+  }
 </style>
 
 <script id="ello-atualizacoes-sem-tema-js">
@@ -25384,18 +25444,76 @@ Os outros lançamentos não serão alterados.`;
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},300);
   }
 
+  function normalizarZoom(v){
+    let n=Math.round(Number(v)||100);
+    if(!Number.isFinite(n)) n=100;
+    n=Math.max(50,Math.min(150,n));
+    n=Math.round(n/5)*5;
+    return n;
+  }
+  function getZoomPct(p){
+    const pref=p||getPrefs();
+    if(Number.isFinite(Number(pref.zoomPct))) return normalizarZoom(pref.zoomPct);
+    if(pref.densidade==='compact') return 75;
+    return 100;
+  }
+  function syncZoomFields(v){
+    const pct=normalizarZoom(v);
+    const range=document.getElementById('elloZoomRange');
+    const input=document.getElementById('elloZoomInput');
+    if(range) range.value=String(pct);
+    if(input) input.value=String(pct);
+    return pct;
+  }
+  function aplicarZoomInterface(pct){
+    const app=document.querySelector('.app');
+    if(!app) return;
+    const n=normalizarZoom(pct);
+    const scale=n/100;
+    const inv=(100/scale).toFixed(3).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+    document.body.classList.toggle('ello-density-active', Math.abs(scale-1)>.001);
+    app.style.zoom='';
+    app.style.transform='';
+    app.style.width='';
+    app.style.minHeight='';
+    if(Math.abs(scale-1)<=.001) return;
+    app.style.zoom=String(scale);
+    app.style.width=inv+'%';
+    app.style.minHeight=inv+'vh';
+    if(app.style.zoom!==String(scale)){
+      app.style.transform='scale('+scale+')';
+    }
+  }
   function aplicarDensidade(){
     const p=getPrefs();
-    document.body.classList.toggle('ello-compact', p.densidade==='compact');
-    const dens=document.getElementById('elloDensidadeSeguro');
-    if(dens) dens.value=p.densidade==='compact'?'compact':'comfort';
+    const pct=getZoomPct(p);
+    syncZoomFields(pct);
+    aplicarZoomInterface(pct);
   }
 
+  window.elloSincronizarZoom=function(v, salvar){
+    const pct=syncZoomFields(v);
+    aplicarZoomInterface(pct);
+    if(salvar){
+      const p=getPrefs();
+      p.zoomPct=pct;
+      delete p.densidade;
+      savePrefs(p);
+    }
+    return pct;
+  };
+  window.elloAjustarZoom=function(delta){
+    const atual=Number(document.getElementById('elloZoomInput')?.value||getZoomPct());
+    return window.elloSincronizarZoom(atual+Number(delta||0), false);
+  };
+  window.elloZoomWheel=function(event){
+    if(!event) return;
+    event.preventDefault();
+    const delta=event.deltaY<0?5:-5;
+    window.elloAjustarZoom(delta);
+  };
   window.elloSalvarDensidade=function(){
-    const p=getPrefs();
-    p.densidade=document.getElementById('elloDensidadeSeguro')?.value==='compact'?'compact':'comfort';
-    savePrefs(p);
-    aplicarDensidade();
+    window.elloSincronizarZoom(document.getElementById('elloZoomInput')?.value||100, true);
   };
 
   function snapshot(){
@@ -25749,7 +25867,7 @@ Os outros lançamentos não serão alterados.`;
     const wrap=document.createElement('div');
     wrap.id='elloConfigExtrasSemTema';
     wrap.className='ello-config-premium-grid';
-    wrap.innerHTML=`<div class="ello-config-premium-card"><h2>Personalização</h2><p>Ajuste apenas a densidade de visualização. O visual claro original do sistema permanece preservado.</p><div><label>Densidade</label><select id="elloDensidadeSeguro" onchange="elloSalvarDensidade()"><option value="comfort">Confortável 100%</option><option value="compact">Compacto 75%</option></select></div><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloSalvarDensidade()">Aplicar</button></div></div><div class="ello-config-premium-card"><h2>Relatório Mensal CMFin</h2><p>Gere um relatório mensal com visual corporativo premium da CMFin, identidade mais autoral, logo oficial no topo e leitura estratégica do período.</p><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloGerarRelatorioPDFMensal()">Gerar Relatório Premium</button></div><div class="ello-config-premium-note">O relatório utiliza o mês selecionado no Dashboard e abre com identidade visual verde autoral da CMFin.</div></div><div class="ello-config-premium-card"><h2>Backup e Importação</h2><p>Exporte todos os dados ou importe um JSON com prévia e backup automático antes da substituição.</p><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloExportarBackupCompleto()">Exportar backup completo</button><button class="btn btn-secondary" onclick="elloBaixarBackupPreImportacao()">Baixar backup pré-importação</button><label class="btn btn-secondary" style="cursor:pointer;margin:0;display:inline-flex;align-items:center;">Importar JSON<input type="file" accept="application/json,.json" onchange="elloImportarBackupSeguro(this)" style="display:none"></label></div><div class="ello-config-premium-note">Antes de importar, o sistema mostra a contagem dos dados e salva um backup automático do estado anterior.</div></div>`;
+    wrap.innerHTML=`<div class="ello-config-premium-card"><h2>Personalização</h2><p>Ajuste o zoom da interface de forma mais ampla, com um comportamento semelhante ao zoom do navegador.</p><div><label>Zoom da interface</label><div class="ello-zoom-control"><button type="button" class="ello-zoom-btn" onclick="elloAjustarZoom(-5)" aria-label="Reduzir zoom">−</button><input id="elloZoomRange" class="ello-zoom-range" type="range" min="50" max="150" step="5" value="100" oninput="elloSincronizarZoom(this.value,false)" onwheel="elloZoomWheel(event)"><div class="ello-zoom-number"><input id="elloZoomInput" type="number" min="50" max="150" step="5" value="100" oninput="elloSincronizarZoom(this.value,false)" onwheel="elloZoomWheel(event)"><span>%</span></div><button type="button" class="ello-zoom-btn" onclick="elloAjustarZoom(5)" aria-label="Aumentar zoom">+</button></div></div><div class="ello-config-premium-note">Faixa de 50% a 150%. Você pode clicar em +/−, digitar o percentual, arrastar a barra ou usar a rolagem do mouse sobre o controle.</div><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloSalvarDensidade()">Salvar zoom</button></div></div><div class="ello-config-premium-card"><h2>Relatório Mensal CMFin</h2><p>Gere um relatório mensal com visual corporativo premium da CMFin, identidade mais autoral, logo oficial no topo e leitura estratégica do período.</p><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloGerarRelatorioPDFMensal()">Gerar Relatório Premium</button></div><div class="ello-config-premium-note">O relatório utiliza o mês selecionado no Dashboard e abre com identidade visual verde autoral da CMFin.</div></div><div class="ello-config-premium-card"><h2>Backup e Importação</h2><p>Exporte todos os dados ou importe um JSON com prévia e backup automático antes da substituição.</p><div class="ello-config-premium-actions"><button class="btn btn-primary" onclick="elloExportarBackupCompleto()">Exportar backup completo</button><button class="btn btn-secondary" onclick="elloBaixarBackupPreImportacao()">Baixar backup pré-importação</button><label class="btn btn-secondary" style="cursor:pointer;margin:0;display:inline-flex;align-items:center;">Importar JSON<input type="file" accept="application/json,.json" onchange="elloImportarBackupSeguro(this)" style="display:none"></label></div><div class="ello-config-premium-note">Antes de importar, o sistema mostra a contagem dos dados e salva um backup automático do estado anterior.</div></div>`;
 
     if(regras) panel.insertBefore(wrap,regras);
     else panel.appendChild(wrap);
@@ -49449,7 +49567,11 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-reembolso-grupos{display:grid;gap:13px}
   .cmfin-reembolso-grupo{border:1px solid #dce8e4;border-radius:17px;background:#fff;overflow:hidden}
   .cmfin-reembolso-grupo-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 14px;background:#f6faf8;border-bottom:1px solid #e3ece8}
-  .cmfin-reembolso-grupo-head h3{margin:0;color:#16352e;font-size:14px;letter-spacing:-.02em}.cmfin-reembolso-grupo-head small{display:block;margin-top:3px;color:#75847f;font-size:10px}
+  .cmfin-reembolso-grupo-head h3{margin:0;color:#16352e;font-size:14px;letter-spacing:-.02em;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 0}
+  .cmfin-reembolso-title-main{font-weight:950}
+  .cmfin-reembolso-title-sep{font-size:11px;opacity:.68;margin:0 6px}
+  .cmfin-reembolso-title-sub{font-weight:850}
+  .cmfin-reembolso-grupo-head small{display:block;margin-top:5px;color:#61756f;font-size:11px;font-weight:700;line-height:1.35}
   .cmfin-reembolso-grupo-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.cmfin-reembolso-grupo-actions button{height:30px;padding:0 10px;border-radius:10px;border:1px solid #cfe0da;background:#fff;color:#21473d;font-size:9px;font-weight:900;cursor:pointer}
   .cmfin-reembolso-resumo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:11px 14px;border-bottom:1px solid #edf2ef}.cmfin-reembolso-resumo div{font-size:10px;color:#75847f}.cmfin-reembolso-resumo strong{display:block;margin-top:3px;color:#172c26;font-size:13px}
   .cmfin-reembolso-itens{display:grid}.cmfin-reembolso-item{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(125px,.5fr) minmax(105px,.45fr) auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #edf2ef}.cmfin-reembolso-item:last-child{border-bottom:0}.cmfin-reembolso-item strong{display:block;color:#263a35;font-size:11px}.cmfin-reembolso-item small{display:block;margin-top:3px;color:#788983;font-size:9px;line-height:1.35}.cmfin-reembolso-item .money{text-align:right;color:#1d332d;font-size:10px}.cmfin-reembolso-item .money b{display:block;font-size:11px}.cmfin-reembolso-item button{height:30px;padding:0 9px;border:0;border-radius:9px;background:#0f766e;color:#fff;font-size:9px;font-weight:900;cursor:pointer}.cmfin-reembolso-item button[disabled]{opacity:.45;cursor:default;background:#87938f}
@@ -49554,13 +49676,13 @@ Os outros lançamentos não serão alterados.`;
     if(!lista.length){host.innerHTML='<div class="cmfin-reembolso-empty">Nenhum adiantamento de sócio registrado neste modo. Ao salvar um Gasto Fixo ou Variável como pago por um sócio/terceiro, ele aparecerá aqui automaticamente.</div>';return;}
     var grupos={};lista.forEach(function(d){var m=d.origemMes||d.data||"";var k=(d.credor||"Sem pessoa")+"|"+m;(grupos[k]||(grupos[k]={credor:d.credor||"Sem pessoa",mes:m,itens:[]})).itens.push(d);});
     var arr=Object.values(grupos).sort(function(a,b){return String(b.mes).localeCompare(String(a.mes))||a.credor.localeCompare(b.credor,"pt-BR");});
-    host.innerHTML=arr.map(function(g){var t=g.itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=g.itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0),s=Math.max(0,t-p);var key=encodeURIComponent(g.credor)+"__"+encodeURIComponent(g.mes);return '<section class="cmfin-reembolso-grupo"><div class="cmfin-reembolso-grupo-head"><div><h3>'+esc(mesNome(g.mes))+' — Devendo '+esc(g.credor)+'</h3><small>'+g.itens.length+' despesa(s) vinculada(s) automaticamente.</small></div><div class="cmfin-reembolso-grupo-actions"><button type="button" onclick="cmfinCopiarPrestacaoConta(\''+key+'\')">Copiar prestação</button><button type="button" onclick="cmfinQuitarGrupoReembolso(\''+key+'\')"'+(s<=.001?' disabled':'')+'>Reembolsar grupo</button></div></div><div class="cmfin-reembolso-resumo"><div>Total adiantado<strong>'+brl(t)+'</strong></div><div>Já devolvido<strong>'+brl(p)+'</strong></div><div>Saldo devido<strong>'+brl(s)+'</strong></div></div><div class="cmfin-reembolso-itens">'+g.itens.map(function(d){var pend=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));return '<div class="cmfin-reembolso-item"><div><strong>'+esc(d.descricao||"Despesa")+'</strong><small>'+esc(d.origemTipo==="gasto_fixo_mes"?"Gasto Fixo":"Gasto Variável")+(d.formaAdiantamento?' · '+esc(d.formaAdiantamento):'')+'</small></div><div class="money">Total<b>'+brl(d.valorTotal)+'</b></div><div class="money">Saldo<b>'+brl(pend)+'</b></div><button type="button" onclick="cmfinRegistrarReembolso(\''+esc(d.id)+'\')"'+(pend<=.001?' disabled':'')+'>'+(pend<=.001?'Reembolsado':'Reembolsar')+'</button></div>';}).join("")+'</div></section>';}).join("");
+    host.innerHTML=arr.map(function(g){var t=g.itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=g.itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0),s=Math.max(0,t-p);var key=encodeURIComponent(g.credor)+"__"+encodeURIComponent(g.mes);return '<section class="cmfin-reembolso-grupo"><div class="cmfin-reembolso-grupo-head"><div><h3><span class="cmfin-reembolso-title-main">'+esc(mesNome(g.mes))+'</span><span class="cmfin-reembolso-title-sep"> - </span><span class="cmfin-reembolso-title-sub">Devendo '+esc(g.credor)+'</span></h3><small>'+g.itens.length+' despesa(s) vinculada(s) automaticamente.</small></div><div class="cmfin-reembolso-grupo-actions"><button type="button" onclick="cmfinCopiarPrestacaoConta(\''+key+'\')">Copiar prestação</button><button type="button" onclick="cmfinQuitarGrupoReembolso(\''+key+'\')"'+(s<=.001?' disabled':'')+'>Reembolsar grupo</button></div></div><div class="cmfin-reembolso-resumo"><div>Total adiantado<strong>'+brl(t)+'</strong></div><div>Já devolvido<strong>'+brl(p)+'</strong></div><div>Saldo devido<strong>'+brl(s)+'</strong></div></div><div class="cmfin-reembolso-itens">'+g.itens.map(function(d){var pend=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));return '<div class="cmfin-reembolso-item"><div><strong>'+esc(d.descricao||"Despesa")+'</strong><small>'+esc(d.origemTipo==="gasto_fixo_mes"?"Gasto Fixo":"Gasto Variável")+(d.formaAdiantamento?' · '+esc(d.formaAdiantamento):'')+'</small></div><div class="money">Total<b>'+brl(d.valorTotal)+'</b></div><div class="money">Saldo<b>'+brl(pend)+'</b></div><button type="button" onclick="cmfinRegistrarReembolso(\''+esc(d.id)+'\')"'+(pend<=.001?' disabled':'')+'>'+(pend<=.001?'Reembolsado':'Reembolsar')+'</button></div>';}).join("")+'</div></section>';}).join("");
   }
   window.cmfinRenderReembolsosSocios=renderReembolsos;
   window.cmfinRegistrarReembolso=function(id){var lista=getDebts(),d=lista.find(function(x){return String(x.id)===String(id);});if(!d)return;var pend=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));if(pend<=.001)return;var raw=prompt("Quanto o escritório está devolvendo agora para "+d.credor+"?",brl(pend));if(raw===null)return;var val=Number(String(raw).replace(/R\$/gi,"").replace(/\s/g,"").replace(/\./g,"").replace(",",".").replace(/[^0-9.-]/g,""));if(!(val>0)){alert("Informe um valor válido.");return;}val=Math.min(val,pend);d.valorPago=Number(d.valorPago||0)+val;d.status=statusDebt(d.valorTotal,d.valorPago);d.atualizadoEm=new Date().toISOString();d.pagoEm=new Date().toISOString();d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now(),mes:mesAtualSeguro(),data:new Date().toISOString(),valor:val,tipo:"reembolso_socio"});setDebts(lista);try{if(typeof dtcRenderizar==="function")dtcRenderizar();}catch(e){}renderReembolsos();try{if(typeof renderizarTudo==="function")renderizarTudo();}catch(e){} };
   function decodeGroup(key){var p=String(key||"").split("__");return {credor:decodeURIComponent(p[0]||""),mes:decodeURIComponent(p.slice(1).join("__")||"")};}
   window.cmfinQuitarGrupoReembolso=function(key){var g=decodeGroup(key),lista=getDebts(),itens=lista.filter(function(d){return d.tipoDivida==="reembolso_socio"&&!d.origemDesvinculada&&d.credor===g.credor&&(d.origemMes||d.data||"")===g.mes;});var total=itens.reduce(function(a,d){return a+Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));},0);if(total<=.001)return;if(!confirm("Registrar reembolso de "+brl(total)+" para "+g.credor+" referente a "+mesNome(g.mes)+"?"))return;var agora=new Date().toISOString();itens.forEach(function(d){var v=Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));if(v<=0)return;d.valorPago=Number(d.valorTotal||0);d.status="Pago";d.atualizadoEm=agora;d.pagoEm=agora;d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now()+Math.random(),mes:mesAtualSeguro(),data:agora,valor:v,tipo:"reembolso_socio_grupo"});});setDebts(lista);try{dtcRenderizar();}catch(e){}renderReembolsos();try{renderizarTudo();}catch(e){} };
-  window.cmfinCopiarPrestacaoConta=async function(key){var g=decodeGroup(key),itens=autoDebts().filter(function(d){return d.credor===g.credor&&(d.origemMes||d.data||"")===g.mes;});var t=itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0);var linhas=["Conta mês de "+mesNome(g.mes)+" - Devendo "+g.credor,"",...itens.map(function(d){return "• "+(d.descricao||"Despesa")+" — "+brl(d.valorTotal||0)+(Number(d.valorPago||0)>0?" | devolvido: "+brl(d.valorPago):"");}),"","Total adiantado: "+brl(t),"Já reembolsado: "+brl(p),"Saldo devido: "+brl(Math.max(0,t-p))];var txt=linhas.join("\n");try{await navigator.clipboard.writeText(txt);if(typeof mostrarToast==="function")mostrarToast("Prestação de contas copiada.");else alert("Prestação de contas copiada.");}catch(e){prompt("Copie a prestação de contas:",txt);} };
+  window.cmfinCopiarPrestacaoConta=async function(key){var g=decodeGroup(key),itens=autoDebts().filter(function(d){return d.credor===g.credor&&(d.origemMes||d.data||"")===g.mes;});var t=itens.reduce(function(a,d){return a+Number(d.valorTotal||0);},0),p=itens.reduce(function(a,d){return a+Number(d.valorPago||0);},0);var linhas=["Conta mês de "+mesNome(g.mes)+" - Devendo "+g.credor,"",...itens.map(function(d){return "• "+(d.descricao||"Despesa")+" - "+brl(d.valorTotal||0)+(Number(d.valorPago||0)>0?" | devolvido: "+brl(d.valorPago):"");}),"","Total adiantado: "+brl(t),"Já reembolsado: "+brl(p),"Saldo devido: "+brl(Math.max(0,t-p))];var txt=linhas.join("\n");try{await navigator.clipboard.writeText(txt);if(typeof mostrarToast==="function")mostrarToast("Prestação de contas copiada.");else alert("Prestação de contas copiada.");}catch(e){prompt("Copie a prestação de contas:",txt);} };
 
   function wrapDebtRender(){var old=window.dtcRenderizar;if(typeof old==="function"&&!old[FLAG]){var n=function(){var r=old.apply(this,arguments);renderReembolsos();return r;};n[FLAG]=true;window.dtcRenderizar=n;try{dtcRenderizar=n;}catch(e){}}}
   function init(){installForms();wrapDebtRender();renderReembolsos();}
@@ -49574,6 +49696,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 <!-- CMFin V59.34 - ajuste de nomenclatura e espaçamento do badge de pagador -->
+<!-- CMFin V59.35 - zoom amplo em Personalização e refinamento visual de Reembolsos -->
 <style id="cmfin-v5932-pago-inline-style">
   #cmfinV5932Pagamento .modal{max-width:620px;padding:0;overflow:hidden;border-radius:24px}
   .cmfin-v5932-shell{padding:22px;background:linear-gradient(180deg,#fff,#f8fbfa)}
