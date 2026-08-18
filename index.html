@@ -1,4 +1,4 @@
-<!-- CMFin V59.46 - Status de Recebimentos corrigido: Não incluir + cores - 2026-08-18 -->
+<!-- CMFin V59.47 - Correção segura do Status de Recebimentos: Não incluir + cores, sem quebrar o HTML - 2026-08-18 -->
 <!-- CMFin V59.32 - Fluxo rápido ao marcar Gasto Fixo/Variável como Pago: identifica pagador, integra Reembolso de Sócios e solicita comprovante sem abrir Editar - 2026-08-17 -->
 <!-- CMFin V59.31 - Correção do login por e-mail/usuário + remoção da rolagem horizontal no login - 2026-08-17 -->
 <!-- CMFin V59.30 - Escala visual adaptativa para notebooks e telas menores, equivalente a ~90% sem depender do zoom do navegador - 2026-08-17 -->
@@ -11639,7 +11639,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         </div>
 
         <div id="campoBancoRecebimento"><label>Banco</label><select id="recebBanco"></select></div>
-        <div><label>Status</label><select id="recebStatus"><option value="Recebido">Recebido</option><option value="Pendente">Pendente</option></select></div>
+        <div><label>Status</label><select id="recebStatus"><option value="Recebido">Recebido</option><option value="Pendente">Pendente</option><option value="NaoIncluir">Não incluir</option></select></div>
 
         <div id="campoParcelamentoRecebimento" class="field-hidden" style="grid-column:1 / -1;">
           <div class="grid-2">
@@ -14372,31 +14372,33 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function statusRecebimentoSelect(id, status) {
-      const valor = ["Pago", "Recebido"].includes(status) ? "Pago" : "Pendente";
-      const classe = valor === "Pago" ? "status-pago" : "status-pendente";
+      const valor = ["Pago", "Recebido"].includes(status) ? "Pago" : ((status === "NaoIncluir" || status === "Não incluir") ? "NaoIncluir" : "Pendente");
+      const classe = valor === "Pago" ? "status-pago" : (valor === "NaoIncluir" ? "status-nao-incluir" : "status-pendente");
       return `
         <select class="status-select receb-inline-select ${classe}" title="Alterar status" onchange="alterarStatusRecebimento(${id}, this.value)">
           <option value="Pendente" ${valor === "Pendente" ? "selected" : ""}>Pendente</option>
           <option value="Pago" ${valor === "Pago" ? "selected" : ""}>Pago</option>
+          <option value="NaoIncluir" ${valor === "NaoIncluir" ? "selected" : ""}>Não incluir</option>
         </select>
       `;
     }
 
     function alterarStatusRecebimento(id, status) {
-      const novoStatus = status === "Pago" || status === "Recebido" ? "Pago" : "Pendente";
-      recebimentos = recebimentos.map(item => item.id === Number(id) ? { ...item, status: novoStatus } : item);
+      const novoStatus = (status === "Pago" || status === "Recebido") ? "Pago" : ((status === "NaoIncluir" || status === "Não incluir") ? "NaoIncluir" : "Pendente");
+      recebimentos = recebimentos.map(item => Number(item.id) === Number(id) ? { ...item, status: novoStatus } : item);
       salvarDados();
       renderizarTudo();
     }
 
 
     function statusParcelaRecebimentoSelect(id, parcela, status) {
-      const valor = ["Pago", "Recebido"].includes(status) ? "Pago" : "Pendente";
-      const classe = valor === "Pago" ? "status-pago" : "status-pendente";
+      const valor = ["Pago", "Recebido"].includes(status) ? "Pago" : ((status === "NaoIncluir" || status === "Não incluir") ? "NaoIncluir" : "Pendente");
+      const classe = valor === "Pago" ? "status-pago" : (valor === "NaoIncluir" ? "status-nao-incluir" : "status-pendente");
       return `
         <select class="status-select receb-inline-select ${classe}" title="Alterar status da parcela" onchange="alterarStatusParcelaRecebimento(${id}, ${parcela}, this.value)">
           <option value="Pendente" ${valor === "Pendente" ? "selected" : ""}>Pendente</option>
           <option value="Pago" ${valor === "Pago" ? "selected" : ""}>Pago</option>
+          <option value="NaoIncluir" ${valor === "NaoIncluir" ? "selected" : ""}>Não incluir</option>
         </select>
       `;
     }
@@ -14405,7 +14407,19 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       recebimentos = recebimentos.map(item => {
         if (Number(item.id) !== Number(id)) return item;
         const resumo = resumoParcelamentoRecebimento(item);
-        if (!resumo.parcelavel) return { ...item, status: status === "Pago" ? "Pago" : "Pendente" };
+        const statusParcelas = { ...(item.statusParcelas || {}) };
+        const chaveParcela = String(Number(parcela));
+
+        if (status === "NaoIncluir" || status === "Não incluir") {
+          statusParcelas[chaveParcela] = "NaoIncluir";
+          return { ...item, statusParcelas };
+        }
+
+        delete statusParcelas[chaveParcela];
+        if (!resumo.parcelavel) {
+          return { ...item, status: (status === "Pago" || status === "Recebido") ? "Pago" : "Pendente", statusParcelas };
+        }
+
         let historico = Array.isArray(item.historicoPagamentos) ? [...item.historicoPagamentos] : [];
         let parcelasPagas = Number(item.parcelasPagas || 0);
         if (status === "Pago" || status === "Recebido") {
@@ -14424,7 +14438,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         const totalPagoParcelas = historico.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
         const novoTotalRecebido = entradaAtual + totalPagoParcelas;
         const novoStatus = (novoTotalRecebido >= (Number(item.valor) || 0) || parcelasPagas >= totalParcelas) ? "Pago" : "Pendente";
-        return { ...item, parcelasPagas, valorEntrada: entradaAtual, valorPago: entradaAtual, historicoPagamentos: historico, status: novoStatus };
+        return { ...item, parcelasPagas, valorEntrada: entradaAtual, valorPago: entradaAtual, historicoPagamentos: historico, status: novoStatus, statusParcelas };
       });
       salvarDados();
       renderizarTudo();
@@ -15484,15 +15498,19 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const forma = document.getElementById("recebForma").value;
       const parcelavel = recebimentoFormaParcelavel(forma);
       const totalParcelas = parcelavel ? Math.max(Number(document.getElementById("recebTotalParcelas")?.value || 1), 1) : 1;
-      const parcelasPagas = parcelavel ? Math.min(Math.max(Number(document.getElementById("recebParcelasPagas")?.value || 0), 0), totalParcelas) : (document.getElementById("recebStatus").value === "Recebido" ? 1 : 0);
+      const statusBase = document.getElementById("recebStatus").value;
+      const statusEhPago = statusBase === "Recebido" || statusBase === "Pago";
+      const statusEhNaoIncluir = statusBase === "NaoIncluir" || statusBase === "Não incluir";
+      const parcelasPagas = parcelavel ? Math.min(Math.max(Number(document.getElementById("recebParcelasPagas")?.value || 0), 0), totalParcelas) : (statusEhPago ? 1 : 0);
       const valorParcelaInformado = limparMoeda(document.getElementById("recebValorParcela")?.value || "");
       const valorPagoInformado = limparMoeda(document.getElementById("recebValorPago")?.value || "");
       const valorParcela = parcelavel ? (valorParcelaInformado || (valor / totalParcelas)) : valor;
-      const valorPago = parcelavel ? valorPagoInformado : (document.getElementById("recebStatus").value === "Recebido" ? valor : 0);
-      const statusBase = document.getElementById("recebStatus").value;
-      const statusCalculado = parcelavel
-        ? ((valorPago >= valor || parcelasPagas >= totalParcelas) ? "Pago" : (parcelasPagas > 0 || valorPago > 0 ? "Pendente" : statusBase))
-        : statusBase;
+      const valorPago = parcelavel ? valorPagoInformado : (statusEhPago ? valor : 0);
+      const statusCalculado = statusEhNaoIncluir
+        ? "NaoIncluir"
+        : (parcelavel
+          ? ((valorPago >= valor || parcelasPagas >= totalParcelas) ? "Pago" : (parcelasPagas > 0 || valorPago > 0 ? "Pendente" : statusBase))
+          : (statusEhPago ? "Pago" : "Pendente"));
 
       const editId = document.getElementById("recebEditId")?.value || "";
       const existente = editId ? recebimentos.find(i => Number(i.id) === Number(editId)) : null;
@@ -15512,6 +15530,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         valorEntrada: valorPago,
         valorPago,
         historicoPagamentos: existente?.historicoPagamentos || [],
+        statusParcelas: existente?.statusParcelas || {},
         projetoId: document.getElementById("recebProjetoId")?.value || existente?.projetoId || ""
       };
 
@@ -19224,22 +19243,26 @@ Os outros lançamentos não serão alterados.`;
       recebimentos.forEach(item => {
         const resumo = resumoParcelamentoRecebimento(item);
         const mesBase = (item.data || hoje()).slice(0,7);
+        const itemNaoIncluir = item.status === "NaoIncluir" || item.status === "Não incluir";
         if (!resumo.parcelavel) {
-          if (mesBase === mesRef) linhas.push({ item, tipo: "avista", mes: mesBase, valorPrevisto: Number(item.valor) || 0, valorRecebido: recebimentoEstaPago(item) ? (Number(item.valor) || 0) : 0, statusLinha: item.status || "Pendente" });
+          if (mesBase === mesRef) linhas.push({ item, tipo: "avista", mes: mesBase, valorPrevisto: Number(item.valor) || 0, valorRecebido: itemNaoIncluir ? 0 : (recebimentoEstaPago(item) ? (Number(item.valor) || 0) : 0), statusLinha: itemNaoIncluir ? "NaoIncluir" : (item.status || "Pendente") });
           return;
         }
 
         if (mesBase === mesRef && resumo.valorEntrada > 0) {
-          linhas.push({ item, tipo: "entrada", mes: mesBase, valorPrevisto: resumo.valorEntrada, valorRecebido: resumo.valorEntrada, statusLinha: "Pago" });
+          linhas.push({ item, tipo: "entrada", mes: mesBase, valorPrevisto: resumo.valorEntrada, valorRecebido: itemNaoIncluir ? 0 : resumo.valorEntrada, statusLinha: itemNaoIncluir ? "NaoIncluir" : "Pago" });
         }
 
         for (let parcela = 1; parcela <= resumo.totalParcelas; parcela++) {
           const mesParcela = adicionarMeses(mesBase, parcela);
           if (mesParcela !== mesRef) continue;
           const hist = historicoParcelaRecebimento(item, parcela);
-          const paga = parcela <= resumo.parcelasPagas;
+          const statusParcela = item.statusParcelas?.[String(Number(parcela))] || "";
+          const parcelaNaoIncluir = statusParcela === "NaoIncluir" || statusParcela === "Não incluir";
+          const naoIncluir = itemNaoIncluir || parcelaNaoIncluir;
+          const paga = !naoIncluir && parcela <= resumo.parcelasPagas;
           const valorRecebido = paga ? (Number(hist?.valor) || resumo.valorPrevistoParcela || 0) : 0;
-          linhas.push({ item, tipo: "parcela", mes: mesParcela, parcela, valorPrevisto: resumo.valorPrevistoParcela || 0, valorRecebido, statusLinha: paga ? "Pago" : "Pendente" });
+          linhas.push({ item, tipo: "parcela", mes: mesParcela, parcela, valorPrevisto: resumo.valorPrevistoParcela || 0, valorRecebido, statusLinha: naoIncluir ? "NaoIncluir" : (paga ? "Pago" : "Pendente") });
         }
       });
       return linhas;
@@ -19300,9 +19323,11 @@ Os outros lançamentos não serão alterados.`;
         const valorPrevistoLinha = Number(linha.valorPrevisto ?? valorRecebidoLinha ?? 0);
         const valorExibidoLinha = valorPrevistoLinha || valorRecebidoLinha;
         const valorPendenteLinha = Math.max(valorPrevistoLinha - valorRecebidoLinha, 0);
-        const valorLegendaLinha = valorPendenteLinha > 0
-          ? `<div class="muted" style="font-size:10px; margin-top:3px; font-weight:700;">Previsto / pendente</div>`
-          : `<div class="muted" style="font-size:10px; margin-top:3px; font-weight:700;">Recebido</div>`;
+        const valorLegendaLinha = (statusAtual === "NaoIncluir" || statusAtual === "Não incluir")
+          ? `<div class="muted" style="font-size:10px; margin-top:3px; font-weight:700;">Não incluir</div>`
+          : (valorPendenteLinha > 0
+            ? `<div class="muted" style="font-size:10px; margin-top:3px; font-weight:700;">Previsto / pendente</div>`
+            : `<div class="muted" style="font-size:10px; margin-top:3px; font-weight:700;">Recebido</div>`);
 
         let infoParcelas = `<span class="muted">À vista</span>`;
         if (resumo.parcelavel && linha.tipo === "entrada") {
@@ -19322,7 +19347,7 @@ Os outros lançamentos não serão alterados.`;
             </div>`;
         }
 
-        const botaoParcela = resumo.parcelavel && linha.tipo === "parcela" && statusAtual !== "Pago"
+        const botaoParcela = resumo.parcelavel && linha.tipo === "parcela" && statusAtual !== "Pago" && statusAtual !== "NaoIncluir" && statusAtual !== "Não incluir"
           ? `<button class="btn btn-primary btn-small" onclick="registrarPagamentoRecebimento(${i.id})">Receber</button>`
           : "";
         const complementoTitulo = resumo.parcelavel && linha.tipo === "parcela" ? `<div class="receb-subtitle">${i.fonte || "Sem fonte informada"} · Parcela ${linha.parcela}/${resumo.totalParcelas}</div>` : `<div class="receb-subtitle">${i.fonte || "Sem fonte informada"}</div>`;
@@ -25853,145 +25878,6 @@ Os outros lançamentos não serão alterados.`;
 .secondary-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px;margin-top:18px}.mix-row+.mix-row{margin-top:14px}.mix-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px}.mix-head strong{font-size:14px}.mix-head span{color:#607381;font-size:12px}.mix-bar{height:11px;background:#e8efec;border-radius:999px;overflow:hidden}.mix-bar.blue i{background:linear-gradient(90deg,#0f766e,#38c99a)}.mix-bar.amber i{background:linear-gradient(90deg,#cf7b16,#f0ac46)}.mix-bar.teal i{background:linear-gradient(90deg,#0f766e,#38c99a)}.mix-bar.violet i{background:linear-gradient(90deg,#1b8f6c,#49c69b)}.cats-card{background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%)}.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cat{position:relative;border-radius:22px;padding:16px;background:#fff;border:1px solid var(--line-soft);box-shadow:var(--shadow-soft)}.cat.featured{background:linear-gradient(180deg,#f7fffd 0%,#ffffff 100%);border-color:#cce7dc}.cat-rank{position:absolute;top:12px;right:12px;font-size:11px;font-weight:900;color:#5f7c87;background:#f3f8f5;border:1px solid var(--line-soft);padding:5px 8px;border-radius:999px}.cat-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding-right:54px}.cat strong{display:block;font-size:14px}.cat span{display:block;margin-top:5px;color:#607381;font-size:12px}.cat em{font-style:normal;font-weight:1000;font-size:17px;white-space:nowrap}.bar{height:8px;background:#e8efec;border-radius:999px;overflow:hidden;margin:12px 0}.bar i{background:linear-gradient(90deg,#0d3b34,#2dd4bf)}.cat-foot{display:flex;justify-content:space-between;gap:12px;color:#7c8b96;font-size:11px}.report-footer{margin-top:18px;text-align:center;font-size:12px;color:#607381;padding:14px 10px 4px}
 @page{size:A4 landscape;margin:10mm}@media print{body{background:#fff}.print{display:none}.page{max-width:none;padding:0;margin:0}.hero,.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{box-shadow:none}.hero{margin-top:0;padding:16px;border-radius:22px;break-inside:avoid;page-break-inside:avoid}.hero-title{font-size:20px}.hero-value{font-size:31px}.hero-logo-img{width:150px}.hero-chip-row,.hero-kpis,.premium-grid,.spotlights{gap:6px}.hero-sub{font-size:12px;margin-top:10px}.spot-card,.metric,.summary-card,.sec,.mix-card,.cats-card,.panel-card{padding:12px;border-radius:18px}.spot-helper,.metric .helper,.sec-head p,.footnote,.hero-chip span{font-size:10px}.spotlights,.metrics{grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.metric .val{font-size:22px}.executive-grid,.secondary-grid{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.hero-body{grid-template-columns:1.12fr .88fr;gap:10px}.hero-chip small,.hero-kpi small,.premium-tile small,.pulse-top small{font-size:9px}.hero-chip strong,.pulse-top strong{font-size:12px}.premium-tile b{font-size:14px}.sec-head h2{font-size:18px}.tag{font-size:9px;padding:5px 7px}.cats{grid-template-columns:1fr 1fr;gap:8px}.cat{padding:10px;border-radius:14px}.cat em{font-size:15px}.bar{height:6px;margin:8px 0}.cat-foot{font-size:9.5px}.report-footer{font-size:10px;margin-top:8px;padding-top:8px}.spot-card,.metric,.summary-card,.sec,.cat,.mix-card,.cats-card,.panel-card{break-inside:avoid;page-break-inside:avoid}}</style></head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Exportar PDF</button><section class="hero"><div class="hero-grid"></div><div class="hero-orb-a"></div><div class="hero-orb-b"></div><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div class="hero-main"><img class="hero-logo-img" src="${logoData}" alt="Logo CMFin"><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><p class="hero-sub">${txtModo.subtitulo}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-chip-row"><div class="hero-chip"><small>${txtModo.insightItem1}</small><strong>${esc(topCategoria[0])}</strong><span>${topCategoriaPct} do total classificado</span></div><div class="hero-chip"><small>${txtModo.insightItem2}</small><strong>${formatPct(shareReceitaSaidas)}</strong><span>${leituraSaidas}</span></div><div class="hero-chip"><small>${txtModo.insightItem3}</small><strong>${formatPct(shareLucro)}</strong><span>${leituraSaldo}</span></div></div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Folga do mês</small><strong>${brl(economiaPotencial)}</strong></div></div></div><div class="hero-side"><div class="panel-card"><div class="panel-head"><h3>${txtModo.painelTitulo}</h3><span>CMFin</span></div><div class="premium-grid"><div class="premium-tile"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="premium-tile"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="premium-tile"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="premium-tile"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div><div class="panel-divider"></div><div class="panel-head" style="margin:0 0 8px"><h3>${txtModo.radarTitulo}</h3><span>${pulseText}</span></div><div class="pulse-stack"><div class="pulse-item"><div class="pulse-top"><div><small>Categoria líder</small><strong>${esc(topCategoria[0])}</strong></div><b>${topCategoriaPct}</b></div><div class="pulse-bar ok"><i style="width:${Math.max(8,clamp(pct(topCategoria[1],totalCat),0,100))}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saídas sobre entradas</small><strong>${leituraSaidas}</strong></div><b>${formatPct(shareReceitaSaidas)}</b></div><div class="pulse-bar ${pulseClass}"><i style="width:${Math.max(8,shareReceitaSaidas)}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saúde do resultado</small><strong>${leituraSaldo}</strong></div><b>${formatPct(shareLucro)}</b></div><div class="pulse-bar ${d.lucro>=0?'ok':'warn'}"><i style="width:${Math.max(8,shareLucro)}%"></i></div></div></div></div></div></div></section><section class="spotlights"><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.recebimentos}</div><div class="spot-icon icon-receita">R</div></div><div class="spot-value">${brl(d.receita)}</div><div class="spot-helper">${txtModo.recebimentosAjuda}</div><div class="mini-track teal"><i style="width:100%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.saidas}</div><div class="spot-icon icon-saida">S</div></div><div class="spot-value">${brl(d.saidas)}</div><div class="spot-helper">${txtModo.saidasAjuda}</div><div class="mini-track amber"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.fixos}</div><div class="spot-icon icon-fixo">F</div></div><div class="spot-value">${brl(d.fixos)}</div><div class="spot-helper">${txtModo.fixosAjuda}</div><div class="mini-track blue"><i style="width:${shareFixos}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.variaveis}</div><div class="spot-icon icon-var">V</div></div><div class="spot-value">${brl(d.variaveis)}</div><div class="spot-helper">${txtModo.variaveisAjuda}</div><div class="mini-track purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">Saldo / Resultado</div><div class="helper">${txtModo.resultadoSub}</div></div><span class="pill ${d.lucro>=0?'receita':'saidas'}">${d.lucro>=0?'Positivo':'Atenção'}</span></div><div class="val">${brl(d.lucro)}</div><div class="progress ${d.lucro>=0?'green':'orange'}"><i style="width:${Math.max(6,shareLucro)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Participação das saídas</div><div class="helper">Quanto das entradas foi consumido pelas saídas do período.</div></div><span class="pill saidas">Ratio</span></div><div class="val">${formatPct(shareReceitaSaidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Categoria líder</div><div class="helper">Categoria com maior concentração entre as saídas classificadas.</div></div><span class="pill fixos">Top</span></div><div class="val">${topCategoriaPct}</div><div class="progress blue"><i style="width:${clamp(pct(topCategoria[1],totalCat),4,100)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Folga do mês</div><div class="helper">Diferença positiva entre entradas/receita e saídas pagas.</div></div><span class="pill vars">Livre</span></div><div class="val">${brl(economiaPotencial)}</div><div class="progress purple"><i style="width:${Math.max(5,shareLucro)}%"></i></div></div></section><section class="executive-grid"><div class="summary-card"><div class="sec-head"><div><h2>Resumo Executivo</h2><p>Leitura consolidada do período em linguagem gerencial e objetiva.</p></div><span class="tag">Executive</span></div><div class="summary-list"><div class="summary-row"><div><strong>${txtModo.resultadoPrincipal}</strong><span>Resultado principal do período</span></div><b>${brl(d.lucro)}</b></div><div class="summary-row"><div><strong>${txtModo.maiorSaida}</strong><span>Maior pressão dentro das saídas do mês</span></div><b>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</b></div><div class="summary-row"><div><strong>Categoria líder</strong><span>Maior concentração dentro do histórico classificado</span></div><b>${esc(topCategoria[0])}</b></div><div class="summary-row"><div><strong>Leitura do mês</strong><span>Resumo rápido para tomada de decisão</span></div><b>${leituraSaldo}</b></div></div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFoot}</div></div></section><section class="secondary-grid"><div class="mix-card"><div class="sec-head"><div><h2>${txtModo.composicaoTitulo}</h2><p>${txtModo.composicaoSub}</p></div><span class="tag">Mix</span></div>${composicaoHtml}</div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="cats-card" style="margin-top:18px"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section><footer class="report-footer">Relatório gerado automaticamente pela plataforma CMFin • Gestão Financeira Inteligente</footer></div>
 
-
-
-
-<!-- CMFin V59.46 - Correção do Status em Recebimentos: cores e persistência de "Não incluir", inclusive por parcela - 2026-08-18 -->
-<style id="cmfin-v59-46-status-recebimentos-style">
-  #recebimentos .status-select.status-nao-incluir {
-    background: #f1f5f9 !important;
-    color: #64748b !important;
-    border-color: #cbd5e1 !important;
-  }
-</style>
-<script id="cmfin-v59-46-status-recebimentos-fix">
-(function(){
-  function normalizarStatusRecebimento(status){
-    const v = String(status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '');
-    if(v === 'pago' || v === 'recebido') return 'Pago';
-    if(v === 'naoincluir' || v === 'naoincluso' || v === 'naoincluido' || v === 'desconsiderado') return 'NaoIncluir';
-    return 'Pendente';
-  }
-
-  function classeStatusRecebimento(valor){
-    return valor === 'Pago' ? 'status-pago' : (valor === 'NaoIncluir' ? 'status-nao-incluir' : 'status-pendente');
-  }
-
-  function garantirOpcaoNaoIncluirRecebimento(){
-    const sel = document.getElementById('recebStatus');
-    if(!sel) return;
-    if(!Array.from(sel.options).some(o => o.value === 'NaoIncluir')){
-      const opt = document.createElement('option');
-      opt.value = 'NaoIncluir';
-      opt.textContent = 'Não incluir';
-      sel.appendChild(opt);
-    }
-  }
-
-  window.statusRecebimentoSelect = statusRecebimentoSelect = function(id, status){
-    const valor = normalizarStatusRecebimento(status);
-    const classe = classeStatusRecebimento(valor);
-    return `
-      <select class="status-select receb-inline-select ${classe}" title="Alterar status" onchange="alterarStatusRecebimento(${Number(id)}, this.value)">
-        <option value="Pendente" ${valor === 'Pendente' ? 'selected' : ''}>Pendente</option>
-        <option value="Pago" ${valor === 'Pago' ? 'selected' : ''}>Pago</option>
-        <option value="NaoIncluir" ${valor === 'NaoIncluir' ? 'selected' : ''}>Não incluir</option>
-      </select>
-    `;
-  };
-
-  window.alterarStatusRecebimento = alterarStatusRecebimento = function(id, status){
-    const novoStatus = normalizarStatusRecebimento(status);
-    recebimentos = (Array.isArray(recebimentos) ? recebimentos : []).map(item =>
-      Number(item.id) === Number(id) ? { ...item, status: novoStatus } : item
-    );
-    try { if(typeof salvarDados === 'function') salvarDados(); } catch(e) { console.error(e); }
-    try { if(typeof renderizarTudo === 'function') renderizarTudo(); } catch(e) { console.error(e); }
-  };
-
-  window.statusParcelaRecebimentoSelect = statusParcelaRecebimentoSelect = function(id, parcela, status){
-    const valor = normalizarStatusRecebimento(status);
-    const classe = classeStatusRecebimento(valor);
-    return `
-      <select class="status-select receb-inline-select ${classe}" title="Alterar status da parcela" onchange="alterarStatusParcelaRecebimento(${Number(id)}, ${Number(parcela)}, this.value)">
-        <option value="Pendente" ${valor === 'Pendente' ? 'selected' : ''}>Pendente</option>
-        <option value="Pago" ${valor === 'Pago' ? 'selected' : ''}>Pago</option>
-        <option value="NaoIncluir" ${valor === 'NaoIncluir' ? 'selected' : ''}>Não incluir</option>
-      </select>
-    `;
-  };
-
-  const alterarStatusParcelaAnterior = window.alterarStatusParcelaRecebimento;
-  window.alterarStatusParcelaRecebimento = alterarStatusParcelaRecebimento = function(id, parcela, status){
-    const novoStatus = normalizarStatusRecebimento(status);
-    const chave = String(Number(parcela));
-
-    if(novoStatus === 'NaoIncluir'){
-      recebimentos = (Array.isArray(recebimentos) ? recebimentos : []).map(item => {
-        if(Number(item.id) !== Number(id)) return item;
-        const statusParcelas = { ...(item.statusParcelas || {}) };
-        statusParcelas[chave] = 'NaoIncluir';
-        return { ...item, statusParcelas };
-      });
-      try { if(typeof salvarDados === 'function') salvarDados(); } catch(e) { console.error(e); }
-      try { if(typeof renderizarTudo === 'function') renderizarTudo(); } catch(e) { console.error(e); }
-      return;
-    }
-
-    recebimentos = (Array.isArray(recebimentos) ? recebimentos : []).map(item => {
-      if(Number(item.id) !== Number(id)) return item;
-      const statusParcelas = { ...(item.statusParcelas || {}) };
-      delete statusParcelas[chave];
-      return { ...item, statusParcelas };
-    });
-
-    if(typeof alterarStatusParcelaAnterior === 'function'){
-      return alterarStatusParcelaAnterior.call(this, id, parcela, novoStatus);
-    }
-
-    try { if(typeof salvarDados === 'function') salvarDados(); } catch(e) { console.error(e); }
-    try { if(typeof renderizarTudo === 'function') renderizarTudo(); } catch(e) { console.error(e); }
-  };
-
-  const linhasRecebimentoDoMesAnterior = window.linhasRecebimentoDoMes;
-  if(typeof linhasRecebimentoDoMesAnterior === 'function'){
-    window.linhasRecebimentoDoMes = linhasRecebimentoDoMes = function(mesRef){
-      const linhas = linhasRecebimentoDoMesAnterior.call(this, mesRef) || [];
-      return linhas.map(linha => {
-        const item = linha && linha.item;
-        if(!item) return linha;
-
-        // "Não incluir" no recebimento inteiro tira entrada e parcelas dos cálculos.
-        if(normalizarStatusRecebimento(item.status) === 'NaoIncluir'){
-          return { ...linha, statusLinha: 'NaoIncluir', status: 'NaoIncluir', valorRecebido: 0 };
-        }
-
-        // Em parcelados, o status pode ser independente por parcela.
-        if(linha.tipo === 'parcela'){
-          const statusParcela = item.statusParcelas && item.statusParcelas[String(Number(linha.parcela))];
-          if(normalizarStatusRecebimento(statusParcela) === 'NaoIncluir'){
-            return { ...linha, statusLinha: 'NaoIncluir', status: 'NaoIncluir', valorRecebido: 0 };
-          }
-        }
-        return linha;
-      });
-    };
-  }
-
-  function atualizarCoresRecebimentos(){
-    document.querySelectorAll('#recebimentos select.status-select').forEach(sel => {
-      const valor = normalizarStatusRecebimento(sel.value);
-      sel.classList.remove('status-pago','status-pendente','status-nao-incluir');
-      sel.classList.add(classeStatusRecebimento(valor));
-    });
-  }
-
-  garantirOpcaoNaoIncluirRecebimento();
-  atualizarCoresRecebimentos();
-  setTimeout(function(){ garantirOpcaoNaoIncluirRecebimento(); atualizarCoresRecebimentos(); }, 0);
-  setTimeout(function(){ garantirOpcaoNaoIncluirRecebimento(); atualizarCoresRecebimentos(); }, 400);
-})();
-</script>
 
 </body></html>`;
 
