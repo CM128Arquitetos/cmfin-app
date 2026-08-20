@@ -1,4 +1,5 @@
-<!-- CMFin V59.51 - Nome dos gastos mais limpo + pagador minimalista - 2026-08-20 -->
+<!-- CMFin V59.52 - Pagador em cinza chumbo + símbolos neutralizados - 2026-08-20 -->
+<!-- Base: CMFin V59.51 - Nome dos gastos mais limpo + pagador minimalista - 2026-08-20 -->
 <!-- Base V59.50 - responsividade por largura/zoom, tabelas sem grid e alinhamento refinado. -->
 <!-- CMFin V59.49 - Gastos Fixos e Variáveis: alinhamento à esquerda, maior respiro e separação visual das informações - 2026-08-20 -->
 <!-- CMFin V59.48 - Cores de Status padronizadas globalmente (Pago/Pendente/Não incluir) - 2026-08-18 -->
@@ -50547,6 +50548,36 @@ Os outros lançamentos não serão alterados.`;
   @media (max-width:1180px){
     #gastosFixos .cmfin-pagador-nome,
     #gastosVariaveis .cmfin-pagador-nome{max-width:110px !important;}
+  }
+</style>
+
+
+<!-- CMFin V59.52 - Pagador em cinza chumbo -->
+<style id="cmfin-v5952-pagador-chumbo">
+  /* Pagador: tom neutro para reduzir o peso visual sem perder legibilidade. */
+  #gastosFixos .cmfin-pagador-badge,
+  #gastosVariaveis .cmfin-pagador-badge{
+    color:#4b5563 !important;
+  }
+
+  /* Ponto minimalista da V59.51 em cinza chumbo. */
+  #gastosFixos .cmfin-pagador-dot,
+  #gastosVariaveis .cmfin-pagador-dot{
+    background:#4b5563 !important;
+    box-shadow:0 0 0 2px rgba(75,85,99,.10) !important;
+  }
+
+  /* Neutraliza também o símbolo legado de pagador, caso ainda seja renderizado. */
+  #gastosFixos .cmfin-pagador-badge::before,
+  #gastosVariaveis .cmfin-pagador-badge::before{
+    background:#e5e7eb !important;
+    color:#4b5563 !important;
+    box-shadow:none !important;
+  }
+
+  #gastosFixos .cmfin-pagador-nome,
+  #gastosVariaveis .cmfin-pagador-nome{
+    color:#4b5563 !important;
   }
 </style>
 </body>
