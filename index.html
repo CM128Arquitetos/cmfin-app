@@ -1,3 +1,4 @@
+<!-- CMFin V59.50 - Responsividade por largura/zoom + tabelas sem grid + alinhamento esquerdo refinado - 2026-08-20 -->
 <!-- CMFin V59.49 - Gastos Fixos e Variáveis: alinhamento à esquerda, maior respiro e separação visual das informações - 2026-08-20 -->
 <!-- CMFin V59.48 - Cores de Status padronizadas globalmente (Pago/Pendente/Não incluir) - 2026-08-18 -->
 <!-- CMFin V59.47 - Correção segura do Status de Recebimentos: Não incluir + cores, sem quebrar o HTML - 2026-08-18 -->
@@ -18219,7 +18220,7 @@ Os outros lançamentos não serão alterados.`;
         const infoParcela = parcelaFixaAtual(i, mes);
         tbody.innerHTML += `
           <tr>
-            <td><strong>${i.nome}</strong>${typeof cmfinPagadorBadgeFixo==="function"?cmfinPagadorBadgeFixo(i, mes):""}<div class="muted">${i.forma || "Cartão de Crédito"} · ${i.tipo || "Recorrente"}${infoParcela ? ` · <button type="button" class="parcel-inline-btn" style="${estiloParcelaMarca(i.banco)}" title="Alterar parcela deste mês sem abrir edição" onclick="alterarParcelaFixaInline(${i.id}, '${mes}')">Parcela ${infoParcela}</button>` : ""}</div>${i.banco ? `<div class="muted">${nomeMarcaColorido(i.banco)}</div>` : ""}${linkBoleto(obterBoletoDoItem(i, mes), i.id, mes)}${linkComprovante(obterComprovanteDoItem(i, "fixos", mes), "fixos", i.id, mes)}</td>
+            <td><strong>${i.nome}</strong>${typeof cmfinPagadorBadgeFixo==="function"?cmfinPagadorBadgeFixo(i, mes):""}<div class="muted">${i.forma || "Cartão de Crédito"} · ${i.tipo || "Recorrente"}${infoParcela ? `<button type="button" class="parcel-inline-btn" style="${estiloParcelaMarca(i.banco)}" title="Alterar parcela deste mês sem abrir edição" onclick="alterarParcelaFixaInline(${i.id}, '${mes}')">Parcela ${infoParcela}</button>` : ""}</div>${i.banco ? `<div class="muted">${nomeMarcaColorido(i.banco)}</div>` : ""}${linkBoleto(obterBoletoDoItem(i, mes), i.id, mes)}${linkComprovante(obterComprovanteDoItem(i, "fixos", mes), "fixos", i.id, mes)}</td>
             <td>
               ${categoriaSaidaSelect("fixos", i.id, i.categoria)}
               <div class="typology-cell">${tipologiaSaidaSelect("fixos", i.id, i.tipologia, i.categoria)}</div>
@@ -50166,6 +50167,300 @@ Os outros lançamentos não serão alterados.`;
     }
   }
 </style>
+
+
+
+<!-- CMFin V59.50 - Tabelas responsivas ao espaço/zoom + limpeza visual dos gastos - 2026-08-20 -->
+<style id="cmfin-v5950-responsive-zoom-tables">
+  /*
+    V59.50
+    - Usa a largura REAL disponível do módulo (com ResizeObserver abaixo), portanto reage a zoom,
+      notebook, sidebar e redimensionamento sem esmagar conteúdo.
+    - Recebimentos: redistribui Mês / Valor / Parcelas / Status e evita cortes.
+    - Gastos Fixos/Variáveis: remove o aspecto de grade introduzido na V59.49.
+    - Gastos Fixos: Pagador, parcela e banco passam a compartilhar o mesmo eixo à esquerda.
+  */
+
+  /* =========================================================
+     GASTOS FIXOS / VARIÁVEIS — LIMPEZA DO "GRID"
+     ========================================================= */
+  #gastosFixos .finance-standard-table th + th,
+  #gastosVariaveis .finance-standard-table th + th,
+  #gastosFixos .finance-standard-table td + td,
+  #gastosVariaveis .finance-standard-table td + td{
+    border-left:0 !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody tr:nth-child(even) td,
+  #gastosVariaveis .finance-standard-table tbody tr:nth-child(even) td{
+    background:#fff !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody tr:hover td,
+  #gastosVariaveis .finance-standard-table tbody tr:hover td{
+    background:#fafbfc !important;
+  }
+
+  /* Mantém somente uma separação horizontal leve entre registros. */
+  #gastosFixos .finance-standard-table tbody td,
+  #gastosVariaveis .finance-standard-table tbody td{
+    border-bottom:1px solid #edf1f5 !important;
+  }
+
+  /* =========================================================
+     GASTOS FIXOS — TODO O BLOCO PRINCIPAL NO MESMO EIXO ESQUERDO
+     ========================================================= */
+  #gastosFixos .finance-standard-table tbody td:first-child{
+    text-align:left !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody td:first-child > strong{
+    display:block !important;
+    width:100% !important;
+    margin:0 !important;
+    text-align:left !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody td:first-child > .cmfin-pagador-badge{
+    display:flex !important;
+    width:max-content !important;
+    max-width:100% !important;
+    margin:7px 0 2px 0 !important;
+    align-self:flex-start !important;
+    text-align:left !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody td:first-child > .muted{
+    display:block !important;
+    width:100% !important;
+    margin-left:0 !important;
+    padding-left:0 !important;
+    text-align:left !important;
+  }
+
+  #gastosFixos .finance-standard-table .parcel-inline-btn{
+    display:block !important;
+    width:max-content !important;
+    max-width:100% !important;
+    margin:6px 0 0 0 !important;
+    text-align:left !important;
+  }
+
+  #gastosFixos .finance-standard-table tbody td:first-child .attachment-link{
+    margin-left:0 !important;
+  }
+
+  /* Variáveis: se houver "Pago por", ele também fica abaixo do nome e alinhado à esquerda. */
+  #gastosVariaveis .finance-standard-table .cmfin-inline-name-badge{
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:flex-start !important;
+    gap:6px !important;
+  }
+
+  #gastosVariaveis .finance-standard-table .cmfin-inline-name-badge .cmfin-pagador-badge{
+    margin:0 !important;
+    align-self:flex-start !important;
+  }
+
+  /* =========================================================
+     LARGURAS NORMALIZADAS — SEM SOMAS ACIMA DE 100%
+     ========================================================= */
+  #gastosFixos .finance-table-wrap,
+  #gastosVariaveis .finance-table-wrap,
+  #recebimentos .receb-table-wrap{
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  /* Gastos Fixos: 8 colunas = 100%. */
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table{
+    width:100% !important;
+    min-width:1080px !important;
+    table-layout:fixed !important;
+  }
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(1),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(1){width:22% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(2),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(2){width:16% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(3),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(3){width:15% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(4),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(4){width:9% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(5),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(5){width:10% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(6),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(6){width:13% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(7),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(7){width:8% !important;}
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(8),
+  #gastosFixos:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(8){width:7% !important;}
+
+  /* Gastos Variáveis: 9 colunas = 100%. */
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table{
+    width:100% !important;
+    min-width:1120px !important;
+    table-layout:fixed !important;
+  }
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(1),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(1){width:23% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(2),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(2){width:15% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(3),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(3){width:10% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(4),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(4){width:8% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(5),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(5){width:12% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(6),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(6){width:8% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(7),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(7){width:9% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(8),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(8){width:8% !important;}
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table th:nth-child(9),
+  #gastosVariaveis:not(.cmfin-selection-ready) .finance-standard-table td:nth-child(9){width:7% !important;}
+
+  /* Modo de seleção: reserva espaço real para o checkbox sem deformar as demais colunas. */
+  #gastosFixos.cmfin-selection-ready .finance-standard-table,
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table{
+    table-layout:fixed !important;
+  }
+  #gastosFixos.cmfin-selection-ready .finance-standard-table th.cmfin-select-col,
+  #gastosFixos.cmfin-selection-ready .finance-standard-table td.cmfin-select-col,
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table th.cmfin-select-col,
+  #gastosVariaveis.cmfin-selection-ready .finance-standard-table td.cmfin-select-col{
+    width:44px !important;
+    min-width:44px !important;
+    max-width:44px !important;
+  }
+
+  /* =========================================================
+     RECEBIMENTOS — DISTRIBUIÇÃO REFEITA
+     ========================================================= */
+  #recebimentos .receb-table-wrap{
+    width:100% !important;
+    overflow-x:auto !important;
+    scrollbar-gutter:stable;
+  }
+
+  #recebimentos .receb-table{
+    width:100% !important;
+    min-width:1160px !important;
+    table-layout:fixed !important;
+  }
+
+  #recebimentos .receb-table thead th,
+  #recebimentos .receb-table tbody td{
+    box-sizing:border-box !important;
+    padding-left:10px !important;
+    padding-right:10px !important;
+  }
+
+  /* 7 + 11 + 16 + 13 + 9 + 8 + 9 + 10 + 9 + 8 = 100 */
+  #recebimentos .receb-table th:nth-child(1), #recebimentos .receb-table td:nth-child(1){width:7% !important;}
+  #recebimentos .receb-table th:nth-child(2), #recebimentos .receb-table td:nth-child(2){width:11% !important; padding-left:8px !important; padding-right:8px !important;}
+  #recebimentos .receb-table th:nth-child(3), #recebimentos .receb-table td:nth-child(3){width:16% !important;}
+  #recebimentos .receb-table th:nth-child(4), #recebimentos .receb-table td:nth-child(4){width:13% !important;}
+  #recebimentos .receb-table th:nth-child(5), #recebimentos .receb-table td:nth-child(5){width:9% !important;}
+  #recebimentos .receb-table th:nth-child(6), #recebimentos .receb-table td:nth-child(6){width:8% !important;}
+  #recebimentos .receb-table th:nth-child(7), #recebimentos .receb-table td:nth-child(7){width:9% !important; padding-right:12px !important;}
+  #recebimentos .receb-table th:nth-child(8), #recebimentos .receb-table td:nth-child(8){width:10% !important; padding-left:12px !important; padding-right:8px !important;}
+  #recebimentos .receb-table th:nth-child(9), #recebimentos .receb-table td:nth-child(9){width:9% !important; padding-left:8px !important;}
+  #recebimentos .receb-table th:nth-child(10), #recebimentos .receb-table td:nth-child(10){width:8% !important;}
+
+  #recebimentos .month-row-select{
+    display:flex !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    justify-content:center !important;
+    padding:6px 8px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  #recebimentos .receb-table td:nth-child(7),
+  #recebimentos .receb-table th:nth-child(7),
+  #recebimentos .receb-table td:nth-child(8),
+  #recebimentos .receb-table th:nth-child(8){
+    text-align:left !important;
+  }
+
+  /* O conteúdo de Parcelas não reserva espaço desnecessário antes do Status. */
+  #recebimentos .receb-parcel-info{
+    width:100% !important;
+    max-width:100% !important;
+    gap:3px !important;
+  }
+
+  /* =========================================================
+     ESTADOS COMPACTOS — DEFINIDOS PELA LARGURA REAL DO CARD
+     (as classes são aplicadas pelo ResizeObserver abaixo)
+     ========================================================= */
+  .cmfin-table-compact .finance-standard-table thead th,
+  .cmfin-table-compact .finance-standard-table tbody td,
+  .cmfin-table-compact .receb-table thead th,
+  .cmfin-table-compact .receb-table tbody td{
+    padding-top:11px !important;
+    padding-bottom:11px !important;
+  }
+
+  #recebimentos .receb-table-wrap.cmfin-table-compact .receb-table thead th{
+    font-size:10.5px !important;
+  }
+  #recebimentos .receb-table-wrap.cmfin-table-compact .receb-table tbody td{
+    font-size:11.5px !important;
+  }
+  #recebimentos .receb-table-wrap.cmfin-table-compact .receb-value-strong{
+    font-size:15px !important;
+  }
+
+  /* Se o espaço ficar realmente estreito, prefere rolagem horizontal a cortar/sobrepor dados. */
+  #recebimentos .receb-table-wrap.cmfin-table-narrow .receb-table{min-width:1160px !important;}
+  #gastosFixos .finance-table-wrap.cmfin-table-narrow .finance-standard-table{min-width:1080px !important;}
+  #gastosVariaveis .finance-table-wrap.cmfin-table-narrow .finance-standard-table{min-width:1120px !important;}
+</style>
+
+<script id="cmfin-v5950-responsive-zoom-observer">
+(function(){
+  'use strict';
+  function classificar(el){
+    if(!el) return;
+    var w = Math.round(el.getBoundingClientRect().width || el.clientWidth || 0);
+    el.classList.toggle('cmfin-table-compact', w > 0 && w < 1320);
+    el.classList.toggle('cmfin-table-narrow',  w > 0 && w < 1160);
+    el.style.setProperty('--cmfin-table-space', w + 'px');
+  }
+
+  function iniciar(){
+    var seletores = [
+      '#gastosFixos .finance-table-wrap',
+      '#gastosVariaveis .finance-table-wrap',
+      '#recebimentos .receb-table-wrap'
+    ];
+    var elementos = seletores.map(function(s){ return document.querySelector(s); }).filter(Boolean);
+    elementos.forEach(classificar);
+
+    if('ResizeObserver' in window){
+      var ro = new ResizeObserver(function(entries){
+        entries.forEach(function(entry){ classificar(entry.target); });
+      });
+      elementos.forEach(function(el){ ro.observe(el); });
+      window.__cmfinV5950TableResizeObserver = ro;
+    }else{
+      window.addEventListener('resize', function(){ elementos.forEach(classificar); }, {passive:true});
+    }
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar, {once:true});
+  else iniciar();
+})();
+</script>
 
 </body>
 </html>
