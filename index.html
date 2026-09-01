@@ -1,3 +1,4 @@
+<!-- CMFin V59.53 - Somar Despesas em Gastos por Terceiros + exclusao parcelada segura em Gastos Fixos/Variaveis - 2026-09-01 -->
 <!-- CMFin V59.52 - Pagador em cinza chumbo + símbolos neutralizados - 2026-08-20 -->
 <!-- Base: CMFin V59.51 - Nome dos gastos mais limpo + pagador minimalista - 2026-08-20 -->
 <!-- Base V59.50 - responsividade por largura/zoom, tabelas sem grid e alinhamento refinado. -->
@@ -50580,6 +50581,540 @@ Os outros lançamentos não serão alterados.`;
     color:#4b5563 !important;
   }
 </style>
+
+<!-- CMFin V59.53 - Somar Despesas em Gastos por Terceiros + exclusao parcelada segura em Fixos/Variaveis - 2026-09-01 -->
+<style id="cmfin-v5953-soma-terceiros-exclusao-parcelada-css">
+  /* Soma de despesas em Gastos por Terceiros: camada aditiva, sem alterar a estrutura de dados. */
+  #terceiros .cmfin-terc-selection-bar{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    flex-wrap:wrap;
+    margin:0 0 14px;
+    padding:14px 16px;
+    border:1px solid #dbe7e4;
+    border-radius:16px;
+    background:#f8fbfa;
+  }
+  #terceiros.cmfin-terc-selection-mode .cmfin-terc-selection-bar{display:flex;}
+  #terceiros .cmfin-terc-selection-copy{display:flex;align-items:center;gap:10px;min-width:220px;}
+  #terceiros .cmfin-terc-selection-icon{
+    width:34px;height:34px;border-radius:12px;display:grid;place-items:center;
+    background:#e8f5f2;color:#087f70;font-weight:950;flex:0 0 34px;
+  }
+  #terceiros .cmfin-terc-selection-copy strong{display:block;color:#173c34;font-size:13px;}
+  #terceiros .cmfin-terc-selection-copy small{display:block;margin-top:2px;color:#64748b;font-size:11px;}
+  #terceiros .cmfin-terc-selection-totals{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;}
+  #terceiros .cmfin-terc-selection-stat{
+    min-width:125px;padding:9px 12px;border-radius:12px;border:1px solid #dbe7e4;background:#fff;
+  }
+  #terceiros .cmfin-terc-selection-stat span{display:block;color:#64748b;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.04em;}
+  #terceiros .cmfin-terc-selection-stat b{display:block;margin-top:3px;color:#173c34;font-size:13px;}
+  #terceiros .cmfin-terc-selection-stat.total{background:#0f766e;border-color:#0f766e;}
+  #terceiros .cmfin-terc-selection-stat.total span,
+  #terceiros .cmfin-terc-selection-stat.total b{color:#fff;}
+  #terceiros .cmfin-terc-selection-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  #terceiros .cmfin-terc-select-control{display:none;align-items:center;gap:6px;}
+  #terceiros.cmfin-terc-selection-mode .cmfin-terc-select-control{display:inline-flex;}
+  #terceiros .cmfin-terc-pay-checkbox{width:16px;height:16px;accent-color:#0f766e;cursor:pointer;}
+  #terceiros .cmfin-terc-pay-checkbox:disabled{opacity:.35;cursor:not-allowed;}
+  #terceiros .terc-row-card.cmfin-terc-row-selected{outline:2px solid rgba(15,118,110,.18);background:#fbfefd;}
+  #terceiros #cmfinSumToggle-terceiros.is-active{border-color:#0f766e;color:#0f766e;background:#eef9f6;}
+
+  /* Modal independente para Gastos Fixos/Variaveis parcelados. */
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-modal{
+    width:min(620px,calc(100vw - 32px));max-width:620px;padding:0;overflow:hidden;border-radius:24px;
+  }
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-shell{padding:22px;background:linear-gradient(180deg,#fff,#f8fbfa);}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-top{display:flex;align-items:flex-start;gap:13px;margin-bottom:14px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-icon{
+    width:42px;height:42px;flex:0 0 42px;border-radius:14px;display:grid;place-items:center;
+    background:#fff1f2;color:#be123c;font-size:20px;font-weight:950;border:1px solid #fecdd3;
+  }
+  #cmfinModalExclusaoSaidaParceladaV5953 h2{margin:0 0 4px;color:#172a25;font-size:20px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-sub{margin:0;color:#64748b;line-height:1.45;font-size:12px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-ident{
+    padding:13px 14px;margin-bottom:12px;border:1px solid #dbe7e4;border-radius:15px;background:#fff;
+  }
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-ident strong{display:block;color:#173c34;font-size:14px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-ident span{display:block;margin-top:3px;color:#64748b;font-size:11px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-options{display:grid;gap:10px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;
+    padding:14px 15px;border:1px solid #dbe7e4;border-radius:16px;background:#fff;cursor:pointer;
+  }
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option:hover{border-color:#b9cec8;background:#fbfefd;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option strong{display:block;color:#172a25;font-size:13px;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option span span{display:block;margin-top:3px;color:#64748b;font-size:11px;line-height:1.4;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option.cmfin-v5953-all{border-color:#fecdd3;background:#fffafa;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-option.cmfin-v5953-all strong{color:#be123c;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-arrow{font-size:20px;font-weight:950;color:#64748b;flex:0 0 auto;}
+  #cmfinModalExclusaoSaidaParceladaV5953 .cmfin-v5953-footer{display:flex;justify-content:flex-end;margin-top:14px;}
+
+  @media(max-width:760px){
+    #terceiros .cmfin-terc-selection-bar{align-items:stretch;}
+    #terceiros .cmfin-terc-selection-totals{width:100%;}
+    #terceiros .cmfin-terc-selection-stat{flex:1;min-width:110px;}
+    #terceiros .cmfin-terc-selection-actions{width:100%;}
+    #terceiros .cmfin-terc-selection-actions .btn{flex:1;justify-content:center;}
+  }
+</style>
+
+<div class="modal-backdrop" id="cmfinModalExclusaoSaidaParceladaV5953" onclick="if(event.target===this) cmfinV5953FecharExclusaoSaidaParcelada()">
+  <div class="modal cmfin-v5953-modal" role="dialog" aria-modal="true" aria-labelledby="cmfinV5953ExclusaoTitulo">
+    <div class="cmfin-v5953-shell">
+      <div class="cmfin-v5953-top">
+        <div class="cmfin-v5953-icon">!</div>
+        <div>
+          <h2 id="cmfinV5953ExclusaoTitulo">Como deseja excluir?</h2>
+          <p class="cmfin-v5953-sub">Escolha se deseja apagar todo o parcelamento ou somente a parcela selecionada e as seguintes.</p>
+        </div>
+      </div>
+      <div class="cmfin-v5953-ident">
+        <strong id="cmfinV5953ExclusaoDescricao">Lançamento parcelado</strong>
+        <span id="cmfinV5953ExclusaoDetalhe">Parcelamento</span>
+      </div>
+      <div class="cmfin-v5953-options">
+        <button type="button" class="cmfin-v5953-option cmfin-v5953-all" onclick="cmfinV5953ConfirmarExclusaoSaidaParcelada('tudo')">
+          <span><strong>Excluir tudo</strong><span id="cmfinV5953ExclusaoTudoDetalhe">Remove todo o parcelamento.</span></span>
+          <span class="cmfin-v5953-arrow">→</span>
+        </button>
+        <button type="button" class="cmfin-v5953-option" onclick="cmfinV5953ConfirmarExclusaoSaidaParcelada('futuras')">
+          <span><strong id="cmfinV5953ExclusaoFuturasTitulo">Excluir desta parcela em diante</strong><span id="cmfinV5953ExclusaoFuturasDetalhe">As parcelas anteriores serão mantidas.</span></span>
+          <span class="cmfin-v5953-arrow">→</span>
+        </button>
+      </div>
+      <div class="cmfin-v5953-footer">
+        <button type="button" class="btn btn-secondary" onclick="cmfinV5953FecharExclusaoSaidaParcelada()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="cmfin-v5953-soma-terceiros-exclusao-parcelada-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5953SomaTerceirosExclusaoParcelada) return;
+  window.__cmfinV5953SomaTerceirosExclusaoParcelada=true;
+
+  function el(id){ return document.getElementById(id); }
+  function numero(v){ var n=Number(v); return Number.isFinite(n)?n:0; }
+  function dinheiro(v){
+    try{ if(typeof moeda==='function') return moeda(numero(v)); }catch(_){ }
+    return numero(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function modoAtualSeguro(){
+    try{ return (typeof modoAtual!=='undefined'&&modoAtual==='empresarial')?'empresarial':'pessoal'; }catch(_){ return 'pessoal'; }
+  }
+  function mesFiltro(prefixo){
+    try{ if(typeof obterMesReferenciaFiltro==='function') return obterMesReferenciaFiltro(prefixo); }catch(_){ }
+    var mes=el(prefixo+'Mes')?.value||'';
+    var ano=el(prefixo+'Ano')?.value||'';
+    if(ano&&mes) return String(ano)+'-'+String(mes).padStart(2,'0');
+    try{ if(typeof mesAtual==='function') return mesAtual(); }catch(_){ }
+    return new Date().toISOString().slice(0,7);
+  }
+  function listaTerceiros(){
+    try{ if(typeof terceiros!=='undefined'&&Array.isArray(terceiros)) return terceiros; }catch(_){ }
+    return Array.isArray(window.terceiros)?window.terceiros:[];
+  }
+  function itemTerceiro(id){
+    return listaTerceiros().find(function(item){ return item&&String(item.id)===String(id); })||null;
+  }
+  function valorMensalTerceiroSeguro(item){
+    try{ if(typeof window.cmfinValorMensalTerceiro==='function') return numero(window.cmfinValorMensalTerceiro(item)); }catch(_){ }
+    if(numero(item&&item.valorParcela)>0) return numero(item.valorParcela);
+    return numero(item&&(item.valorTotal!=null?item.valorTotal:item.valor));
+  }
+  function statusTerceiroSeguro(item,mes){
+    try{ if(typeof statusTerceiroNoMes==='function') return statusTerceiroNoMes(item,mes); }catch(_){ }
+    return item&&item.status||'Pendente';
+  }
+
+  /* ============================================================
+     1) SOMAR DESPESAS - GASTOS POR TERCEIROS
+     ============================================================ */
+  var selecoesTerceiros=new Map();
+  var somaTerceirosAtiva=false;
+
+  function chaveTerceiro(id,mes){ return [modoAtualSeguro(),'terceiros',String(id),String(mes||'')].join('|'); }
+
+  function garantirBotaoSomaTerceiros(){
+    var acoes=document.querySelector('#terceiros .terc-table-panel .terc-export-actions');
+    if(!acoes) return null;
+    var botao=el('cmfinSumToggle-terceiros');
+    if(!botao){
+      botao=document.createElement('button');
+      botao.type='button';
+      botao.id='cmfinSumToggle-terceiros';
+      botao.className='btn btn-secondary btn-small';
+      botao.textContent='Somar Despesas';
+      botao.setAttribute('aria-pressed','false');
+      botao.addEventListener('click',function(){ window.cmfinV5953AlternarSomaTerceiros(); });
+      var saldo=acoes.querySelector('.terc-btn-saldo-geral');
+      if(saldo) acoes.insertBefore(botao,saldo); else acoes.appendChild(botao);
+    }
+    var pessoal=modoAtualSeguro()==='pessoal';
+    botao.hidden=!pessoal;
+    botao.classList.toggle('is-active',pessoal&&somaTerceirosAtiva);
+    botao.setAttribute('aria-pressed',(pessoal&&somaTerceirosAtiva)?'true':'false');
+    botao.title=somaTerceirosAtiva?'Ocultar seleção e total dos lançamentos':'Selecionar lançamentos para calcular o total';
+    return botao;
+  }
+
+  function garantirBarraSomaTerceiros(){
+    var lista=el('listaTerceirosCards');
+    if(!lista||!lista.parentElement) return null;
+    var barra=el('cmfinSelectionBar-terceiros');
+    if(!barra){
+      barra=document.createElement('div');
+      barra.id='cmfinSelectionBar-terceiros';
+      barra.className='cmfin-terc-selection-bar';
+      barra.innerHTML=''
+        +'<div class="cmfin-terc-selection-copy">'
+        +'<div class="cmfin-terc-selection-icon">✓</div>'
+        +'<div><strong>Somar despesas selecionadas</strong><small>Marque os lançamentos de terceiros que deseja somar.</small></div>'
+        +'</div>'
+        +'<div class="cmfin-terc-selection-totals">'
+        +'<div class="cmfin-terc-selection-stat"><span>Selecionados</span><b data-cmfin-terc-sel="qtd">0 itens</b></div>'
+        +'<div class="cmfin-terc-selection-stat total"><span>Total selecionado</span><b data-cmfin-terc-sel="total">R$ 0,00</b></div>'
+        +'</div>'
+        +'<div class="cmfin-terc-selection-actions">'
+        +'<button type="button" class="btn btn-secondary btn-small" data-cmfin-terc-action="selecionar">Selecionar pendentes visíveis</button>'
+        +'<button type="button" class="btn btn-secondary btn-small" data-cmfin-terc-action="limpar">Limpar seleção</button>'
+        +'</div>';
+      barra.querySelector('[data-cmfin-terc-action="selecionar"]').addEventListener('click',selecionarTerceirosVisiveis);
+      barra.querySelector('[data-cmfin-terc-action="limpar"]').addEventListener('click',limparSelecaoTerceiros);
+      lista.parentElement.insertBefore(barra,lista);
+    }
+    return barra;
+  }
+
+  function idTerceiroDoCard(card){
+    if(!card) return '';
+    var botao=card.querySelector('button[onclick*="excluirTerceiro("]');
+    var codigo=botao?String(botao.getAttribute('onclick')||''):'';
+    var m=codigo.match(/excluirTerceiro\(\s*([0-9]+)\s*\)/);
+    return m?m[1]:'';
+  }
+
+  function configurarCardTerceiro(card,mes){
+    var id=idTerceiroDoCard(card);
+    if(!id) return;
+    var item=itemTerceiro(id);
+    if(!item) return;
+    var acoes=card.querySelector('.terc-row-actions');
+    if(!acoes) return;
+    var controle=acoes.querySelector('.cmfin-terc-select-control');
+    if(!controle){
+      controle=document.createElement('label');
+      controle.className='btn btn-secondary btn-small cmfin-terc-select-control';
+      var input=document.createElement('input');
+      input.type='checkbox';
+      input.className='cmfin-terc-pay-checkbox';
+      var span=document.createElement('span');
+      span.textContent='Somar';
+      controle.appendChild(input);
+      controle.appendChild(span);
+      acoes.insertBefore(controle,acoes.firstChild);
+    }
+    var input=controle.querySelector('input.cmfin-terc-pay-checkbox');
+    var chave=chaveTerceiro(id,mes);
+    var habilitado=statusTerceiroSeguro(item,mes)!=='Recebido';
+    input.disabled=!habilitado;
+    input.title=habilitado?'Incluir este lançamento no total':'Este lançamento já está recebido';
+    if(!habilitado) selecoesTerceiros.delete(chave);
+    if(selecoesTerceiros.has(chave)){
+      selecoesTerceiros.set(chave,{modo:modoAtualSeguro(),id:String(id),mes:String(mes),valor:valorMensalTerceiroSeguro(item)});
+      input.checked=true;
+      card.classList.add('cmfin-terc-row-selected');
+    }else{
+      input.checked=false;
+      card.classList.remove('cmfin-terc-row-selected');
+    }
+    if(!input.dataset.cmfinV5953Bind){
+      input.dataset.cmfinV5953Bind='1';
+      input.addEventListener('change',function(){
+        var atual=itemTerceiro(id);
+        if(input.checked&&atual&&statusTerceiroSeguro(atual,mes)!=='Recebido'){
+          selecoesTerceiros.set(chave,{modo:modoAtualSeguro(),id:String(id),mes:String(mes),valor:valorMensalTerceiroSeguro(atual)});
+          card.classList.add('cmfin-terc-row-selected');
+        }else{
+          selecoesTerceiros.delete(chave);
+          card.classList.remove('cmfin-terc-row-selected');
+        }
+        atualizarResumoTerceiros();
+      });
+    }
+  }
+
+  function limparSelecoesTerceirosInexistentes(){
+    var existentes=new Set(listaTerceiros().map(function(x){return String(x&&x.id);}));
+    Array.from(selecoesTerceiros.entries()).forEach(function(par){
+      var reg=par[1];
+      if(!reg||!existentes.has(String(reg.id))) selecoesTerceiros.delete(par[0]);
+    });
+  }
+
+  function atualizarResumoTerceiros(){
+    limparSelecoesTerceirosInexistentes();
+    var modulo=el('terceiros');
+    var pessoal=modoAtualSeguro()==='pessoal';
+    if(modulo) modulo.classList.toggle('cmfin-terc-selection-mode',pessoal&&somaTerceirosAtiva);
+    garantirBotaoSomaTerceiros();
+    var barra=garantirBarraSomaTerceiros();
+    if(!barra) return;
+    var regs=Array.from(selecoesTerceiros.values()).filter(function(r){return r&&r.modo===modoAtualSeguro();});
+    var total=regs.reduce(function(s,r){return s+numero(r.valor);},0);
+    var q=barra.querySelector('[data-cmfin-terc-sel="qtd"]');
+    var t=barra.querySelector('[data-cmfin-terc-sel="total"]');
+    if(q) q.textContent=regs.length+' '+(regs.length===1?'item':'itens');
+    if(t) t.textContent=dinheiro(total);
+  }
+
+  function aprimorarTerceiros(){
+    garantirBotaoSomaTerceiros();
+    garantirBarraSomaTerceiros();
+    var mes=mesFiltro('filtroTerc');
+    document.querySelectorAll('#listaTerceirosCards .terc-row-card').forEach(function(card){configurarCardTerceiro(card,mes);});
+    atualizarResumoTerceiros();
+  }
+
+  function selecionarTerceirosVisiveis(){
+    document.querySelectorAll('#listaTerceirosCards .cmfin-terc-pay-checkbox:not(:disabled)').forEach(function(input){
+      if(!input.checked){ input.checked=true; input.dispatchEvent(new Event('change',{bubbles:true})); }
+    });
+  }
+
+  function limparSelecaoTerceiros(){
+    var modo=modoAtualSeguro();
+    Array.from(selecoesTerceiros.entries()).forEach(function(par){if(par[1]&&par[1].modo===modo) selecoesTerceiros.delete(par[0]);});
+    document.querySelectorAll('#listaTerceirosCards .cmfin-terc-pay-checkbox').forEach(function(input){input.checked=false;});
+    document.querySelectorAll('#listaTerceirosCards .cmfin-terc-row-selected').forEach(function(card){card.classList.remove('cmfin-terc-row-selected');});
+    atualizarResumoTerceiros();
+  }
+
+  window.cmfinV5953AlternarSomaTerceiros=function(){
+    if(modoAtualSeguro()!=='pessoal') return;
+    somaTerceirosAtiva=!somaTerceirosAtiva;
+    aprimorarTerceiros();
+  };
+  window.cmfinV5953LimparSelecaoTerceiros=limparSelecaoTerceiros;
+
+  var renderTerceirosAnterior=window.renderizarTerceiros;
+  if(typeof renderTerceirosAnterior==='function'&&!renderTerceirosAnterior.__cmfinV5953SomaTerceiros){
+    var renderTerceirosNovo=function(){
+      var retorno=renderTerceirosAnterior.apply(this,arguments);
+      aprimorarTerceiros();
+      return retorno;
+    };
+    renderTerceirosNovo.__cmfinV5953SomaTerceiros=true;
+    window.renderizarTerceiros=renderTerceirosNovo;
+    try{renderizarTerceiros=renderTerceirosNovo;}catch(_){ }
+  }
+
+  /* ============================================================
+     2) EXCLUSAO PARCELADA - GASTOS FIXOS E GASTOS VARIAVEIS
+     ============================================================ */
+  var estadoExclusaoSaida=null;
+
+  function listaFixos(){
+    try{ if(typeof gastosFixos!=='undefined'&&Array.isArray(gastosFixos)) return gastosFixos; }catch(_){ }
+    return Array.isArray(window.gastosFixos)?window.gastosFixos:[];
+  }
+  function listaVariaveis(){
+    try{ if(typeof gastosVariaveis!=='undefined'&&Array.isArray(gastosVariaveis)) return gastosVariaveis; }catch(_){ }
+    return Array.isArray(window.gastosVariaveis)?window.gastosVariaveis:[];
+  }
+  function gravarFixos(nova){ try{gastosFixos=nova;}catch(_){ } try{window.gastosFixos=nova;}catch(_){ } }
+  function gravarVariaveis(nova){ try{gastosVariaveis=nova;}catch(_){ } try{window.gastosVariaveis=nova;}catch(_){ } }
+
+  function numeroParcelaTexto(item){
+    var partes=String(item&&item.parcela||'').split('/');
+    var atual=numero(partes[0]);
+    return atual>0?atual:1;
+  }
+  function totalParcelasItem(item){
+    var total=numero(item&&item.totalParcelas);
+    if(total>0) return total;
+    var partes=String(item&&item.parcela||'').split('/');
+    total=numero(partes[1]);
+    return total>0?total:1;
+  }
+  function cronogramaFixoSeguro(item,mes){
+    try{ if(typeof cronogramaParcelasFixas==='function') return cronogramaParcelasFixas(item,mes)||{}; }catch(_){ }
+    var total=Math.max(1,totalParcelasItem(item));
+    var inicio=String(item&& (item.mesInicial||item.mesReferencia) || mes || '');
+    var out={};
+    if(!/^\d{4}-\d{2}$/.test(inicio)) return out;
+    for(var p=1;p<=total;p++){
+      try{ out[String(p)]=typeof adicionarMeses==='function'?adicionarMeses(inicio,p-1):inicio; }catch(_){ out[String(p)]=inicio; }
+    }
+    return out;
+  }
+  function parcelaFixaNoMes(item,mes){
+    var cron=cronogramaFixoSeguro(item,mes);
+    var entrada=Object.entries(cron).find(function(par){return String(par[1])===String(mes);});
+    return entrada?numero(entrada[0]):0;
+  }
+  function limparMesesMapa(obj,campo,meses){
+    var mapa=Object.assign({},obj&&obj[campo]||{});
+    meses.forEach(function(m){delete mapa[m];});
+    return mapa;
+  }
+  function limparOverridesFuturos(item,parcelaAtual){
+    var mapa=Object.assign({},item&&item.mesParcelaOverrides||{});
+    Object.keys(mapa).forEach(function(k){if(numero(k)>=parcelaAtual) delete mapa[k];});
+    return mapa;
+  }
+
+  function preencherModalExclusao(estado){
+    estadoExclusaoSaida=estado;
+    var desc=el('cmfinV5953ExclusaoDescricao');
+    var det=el('cmfinV5953ExclusaoDetalhe');
+    var tudo=el('cmfinV5953ExclusaoTudoDetalhe');
+    var futTitulo=el('cmfinV5953ExclusaoFuturasTitulo');
+    var futDet=el('cmfinV5953ExclusaoFuturasDetalhe');
+    if(desc) desc.textContent=estado.descricao||'Lançamento parcelado';
+    if(det) det.textContent=estado.detalhe||'Parcelamento';
+    if(tudo) tudo.textContent=estado.tudoDetalhe||'Remove todo o parcelamento.';
+    if(futTitulo) futTitulo.textContent=estado.futurasTitulo||'Excluir desta parcela em diante';
+    if(futDet) futDet.textContent=estado.futurasDetalhe||'As parcelas anteriores serão mantidas.';
+    var modal=el('cmfinModalExclusaoSaidaParceladaV5953');
+    if(modal) modal.style.display='flex';
+  }
+
+  function abrirExclusaoFixo(id){
+    var item=listaFixos().find(function(x){return x&&String(x.id)===String(id);});
+    if(!item||(item.tipo||'Recorrente')!=='Parcelado'||totalParcelasItem(item)<=1) return false;
+    var mes=mesFiltro('filtroFixo');
+    var atual=parcelaFixaNoMes(item,mes);
+    var total=totalParcelasItem(item);
+    if(!(atual>0)) return false;
+    var cron=cronogramaFixoSeguro(item,mes);
+    var removidas=[];
+    for(var p=atual;p<=total;p++){ if(cron[String(p)]) removidas.push(cron[String(p)]); }
+    preencherModalExclusao({
+      tipo:'fixos',id:String(id),mes:mes,parcelaAtual:atual,total:total,mesesRemovidos:removidas,
+      descricao:item.nome||'Gasto Fixo parcelado',
+      detalhe:'Gasto Fixo · Parcela '+atual+'/'+total+' · '+mes,
+      tudoDetalhe:'Remove todo o parcelamento, da parcela 1/'+total+' até '+total+'/'+total+'.',
+      futurasTitulo:'Excluir somente '+atual+'/'+total+' até '+total+'/'+total,
+      futurasDetalhe:'Mantém as parcelas 1/'+total+' até '+Math.max(atual-1,0)+'/'+total+' e remove a atual e as seguintes.'
+    });
+    return true;
+  }
+
+  function abrirExclusaoVariavel(id){
+    var item=listaVariaveis().find(function(x){return x&&String(x.id)===String(id);});
+    if(!item) return false;
+    var compraId=item.compraId;
+    var total=totalParcelasItem(item);
+    if(compraId===undefined||compraId===null||total<=1) return false;
+    var grupo=listaVariaveis().filter(function(x){return x&&String(x.compraId)===String(compraId);});
+    if(grupo.length<=1) return false;
+    var atual=numeroParcelaTexto(item);
+    var futuras=grupo.filter(function(x){return numeroParcelaTexto(x)>=atual;});
+    if(!futuras.length) return false;
+    preencherModalExclusao({
+      tipo:'variaveis',id:String(id),compraId:String(compraId),parcelaAtual:atual,total:total,
+      grupoIds:grupo.map(function(x){return String(x.id);}),
+      futurasIds:futuras.map(function(x){return String(x.id);}),
+      descricao:item.descricao||'Gasto Variável parcelado',
+      detalhe:'Gasto Variável · Parcela '+atual+'/'+total+' · '+(item.banco||item.forma||''),
+      tudoDetalhe:'Remove todas as parcelas existentes deste lançamento.',
+      futurasTitulo:'Excluir somente '+atual+'/'+total+' até '+total+'/'+total,
+      futurasDetalhe:'Mantém as parcelas anteriores e remove '+futuras.length+' parcela(s), incluindo a selecionada.'
+    });
+    return true;
+  }
+
+  window.cmfinV5953FecharExclusaoSaidaParcelada=function(){
+    var modal=el('cmfinModalExclusaoSaidaParceladaV5953');
+    if(modal) modal.style.display='none';
+    estadoExclusaoSaida=null;
+  };
+
+  function salvarERenderizarExclusao(mensagem,detalhe){
+    try{if(typeof salvarDados==='function') salvarDados();}catch(_){ }
+    try{if(typeof renderizarTudo==='function') renderizarTudo();}catch(_){ }
+    try{if(typeof mostrarToast==='function') mostrarToast(mensagem,detalhe);else alert(mensagem+'\n'+detalhe);}catch(_){ }
+  }
+
+  window.cmfinV5953ConfirmarExclusaoSaidaParcelada=function(opcao){
+    var estado=estadoExclusaoSaida;
+    if(!estado) return;
+
+    if(estado.tipo==='variaveis'){
+      var ids=opcao==='tudo'?estado.grupoIds:estado.futurasIds;
+      var conjunto=new Set((ids||[]).map(String));
+      gravarVariaveis(listaVariaveis().filter(function(x){return !x||!conjunto.has(String(x.id));}));
+      window.cmfinV5953FecharExclusaoSaidaParcelada();
+      var detalheVar=opcao==='tudo'
+        ? 'Todo o parcelamento foi removido.'
+        : 'Parcelas '+estado.parcelaAtual+'/'+estado.total+' até '+estado.total+'/'+estado.total+' removidas; as anteriores foram mantidas.';
+      salvarERenderizarExclusao('Gasto variável excluído.',detalheVar);
+      return;
+    }
+
+    if(estado.tipo==='fixos'){
+      if(opcao==='tudo'||estado.parcelaAtual<=1){
+        gravarFixos(listaFixos().filter(function(x){return !x||String(x.id)!==String(estado.id);}));
+        window.cmfinV5953FecharExclusaoSaidaParcelada();
+        salvarERenderizarExclusao('Gasto fixo excluído.','Todo o parcelamento foi removido.');
+        return;
+      }
+
+      var novoTotal=Math.max(estado.parcelaAtual-1,0);
+      var meses=new Set((estado.mesesRemovidos||[]).map(String));
+      var novaLista=listaFixos().map(function(item){
+        if(!item||String(item.id)!==String(estado.id)) return item;
+        var atualizado=Object.assign({},item,{
+          totalParcelas:novoTotal,
+          mesParcelaOverrides:limparOverridesFuturos(item,estado.parcelaAtual),
+          statusMes:limparMesesMapa(item,'statusMes',meses),
+          comprovantesPorMes:limparMesesMapa(item,'comprovantesPorMes',meses),
+          boletosPorMes:limparMesesMapa(item,'boletosPorMes',meses),
+          pagadoresPorMes:limparMesesMapa(item,'pagadoresPorMes',meses)
+        });
+        return atualizado;
+      });
+      gravarFixos(novaLista);
+      window.cmfinV5953FecharExclusaoSaidaParcelada();
+      salvarERenderizarExclusao('Gasto fixo atualizado.','Parcelas '+estado.parcelaAtual+'/'+estado.total+' até '+estado.total+'/'+estado.total+' removidas; as anteriores foram preservadas.');
+    }
+  };
+
+  var excluirItemAnterior=window.excluirItem;
+  if(typeof excluirItemAnterior==='function'&&!excluirItemAnterior.__cmfinV5953Parcelado){
+    var excluirItemNovo=function(lista,id){
+      if(lista==='gastosFixos'&&abrirExclusaoFixo(id)) return;
+      if(lista==='gastosVariaveis'&&abrirExclusaoVariavel(id)) return;
+      return excluirItemAnterior.apply(this,arguments);
+    };
+    excluirItemNovo.__cmfinV5953Parcelado=true;
+    window.excluirItem=excluirItemNovo;
+    try{excluirItem=excluirItemNovo;}catch(_){ }
+  }
+
+  document.addEventListener('keydown',function(evento){
+    if(evento.key==='Escape'){
+      var modal=el('cmfinModalExclusaoSaidaParceladaV5953');
+      if(modal&&modal.style.display==='flex') window.cmfinV5953FecharExclusaoSaidaParcelada();
+    }
+  });
+
+  function iniciar(){
+    aprimorarTerceiros();
+    try{if(window.CMFin) CMFin.version='59.53.0';}catch(_){ }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true}); else iniciar();
+  setTimeout(iniciar,180);
+  setTimeout(iniciar,800);
+})();
+</script>
+
 </body>
 </html>
 
