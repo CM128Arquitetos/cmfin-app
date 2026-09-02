@@ -52631,6 +52631,56 @@ Os outros lançamentos não serão alterados.`;
   else marcarVersao();
 })();
 </script>
+
+<!-- CMFin V59.59 - Rótulos de metadados mais legíveis nos cards - 2026-09-02 -->
+<style id="cmfin-v5959-rotulos-metadados-css">
+  /*
+    V59.59 — refinamento exclusivamente tipográfico.
+    Aumenta a leitura dos rótulos solicitados sem alterar grid, dados ou controles.
+  */
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-purchase::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-bank::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-due::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-form::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-status::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-value::before,
+  #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-due::before,
+  #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-status::before,
+  #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-value::before{
+    color:#66758a!important;
+    font-size:11.5px!important;
+    font-weight:950!important;
+    line-height:1.05!important;
+    letter-spacing:.075em!important;
+    margin-bottom:7px!important;
+  }
+
+  /* Mantém o destaque elegante em telas menores sem ocupar espaço excessivo. */
+  @media(max-width:980px){
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-purchase::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-bank::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-due::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-form::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-status::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-value::before,
+    #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-due::before,
+    #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-status::before,
+    #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card .cmfin-v5956-value::before{
+      font-size:11px!important;
+      letter-spacing:.065em!important;
+    }
+  }
+</style>
+<script id="cmfin-v5959-versao-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5959RotulosMetadados) return;
+  window.__cmfinV5959RotulosMetadados=true;
+  function marcar(){ try{ if(window.CMFin) CMFin.version='59.59.0'; }catch(_){ } }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true});
+  else marcar();
+})();
+</script>
 </body>
 </html>
 
