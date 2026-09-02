@@ -1,3 +1,4 @@
+<!-- CMFin V59.62 - Padronização final Fixos/Variáveis: competência editável em Variáveis, cor do banco em Fixos e tipografia da forma unificada - 2026-09-02 -->
 <!-- CMFin V59.55 - Selecao Somar unificada: checkbox de selecao em Fixos, Variaveis e Terceiros + barra visual padronizada - 2026-09-01 -->
 <!-- CMFin V59.61 - Card unificado entre Gastos Fixos e Gastos Variáveis - 2026-09-02 -->
 <!-- CMFin V59.54 - Somar em Terceiros padronizado + exclusao de Fixos/Variaveis no mesmo modelo visual de Terceiros - 2026-09-01 -->
@@ -52874,10 +52875,34 @@ Os outros lançamentos não serão alterados.`;
   }
   #gastosFixos .cmfin-v5956-period select,
   #gastosFixos .cmfin-v5956-status select,
+  #gastosVariaveis .cmfin-v5961-competence select,
   #gastosVariaveis .cmfin-v5956-status select{
     width:100%!important;
     min-width:0!important;
     max-width:none!important;
+  }
+
+  /* V59.62: a Forma de Variáveis usa exatamente a mesma escala do campo virtual de Fixos. */
+  #gastosVariaveis .cmfin-v5956-form{
+    color:#536276!important;
+    font-size:12.5px!important;
+    font-weight:650!important;
+    line-height:1.3!important;
+  }
+
+  /* Competência de Variáveis com a mesma aparência do seletor de Fixos. */
+  #gastosVariaveis .cmfin-v5961-competence .category-select,
+  #gastosVariaveis .cmfin-v5961-competence .month-row-select{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:34px!important;
+    padding:7px 26px 7px 10px!important;
+    background:#f8fafc!important;
+    color:var(--ink)!important;
+    border-color:#d8e1eb!important;
+    font-size:12px!important;
+    font-weight:800!important;
   }
 
   /* O valor deixa de ficar isolado à direita e passa a ler como o quinto metadado. */
@@ -53055,7 +53080,9 @@ Os outros lançamentos não serão alterados.`;
   }
   function setCor(box,cor){
     var val=box&&box.querySelector('.cmfin-v5961-meta-value');
-    if(val) val.style.color=cor||'';
+    if(!val) return;
+    if(cor) val.style.setProperty('color',cor,'important');
+    else val.style.removeProperty('color');
   }
   function corBanco(nome){try{if(typeof corMarcaFinanceira==='function') return corMarcaFinanceira(nome);}catch(_){ }return '#536276';}
 
@@ -53081,6 +53108,21 @@ Os outros lançamentos não serão alterados.`;
     var futuros=grupo.filter(function(x){return parcelaNumero(x)>atual;});
     var saldo=futuros.length?futuros.reduce(function(s,x){return s+n(x.valor);},0):Math.max(total-atual,0)*n(item.valor);
     return {parcela:(String(item.parcela||'').trim()||(atual+'/'+total)),saldo:dinheiro(saldo)};
+  }
+
+  function competenciaVariavelEditavel(box,item,mes){
+    if(!box||!item) return;
+    var val=box.querySelector('.cmfin-v5961-meta-value');
+    if(!val){val=document.createElement('span');val.className='cmfin-v5961-meta-value';box.appendChild(val);}
+    var existente=val.querySelector('select.month-row-select');
+    if(existente&&String(existente.value||'')===String(mes||'')) return;
+    try{
+      if(typeof mesReferenciaSaidaSelect==='function'){
+        val.innerHTML=mesReferenciaSaidaSelect('variaveis',Number(item.id),mes);
+        return;
+      }
+    }catch(_){ }
+    setTexto(box,textoCompetencia(mes));
   }
 
   function labelsReais(linha,tipo){
@@ -53124,7 +53166,7 @@ Os outros lançamentos não serão alterados.`;
       }else setTexto(parcel,ps.parcela);
       setTexto(celulaVirtual(linha,'balance','Saldo'),ps.saldo);
     }else{
-      setTexto(celulaVirtual(linha,'competence','Competência'),textoCompetencia(mes));
+      competenciaVariavelEditavel(celulaVirtual(linha,'competence','Competência'),item,mes);
       var psv=saldoVariavel(item);
       setTexto(celulaVirtual(linha,'parcel','Parcelas'),psv.parcela);
       setTexto(celulaVirtual(linha,'balance','Saldo'),psv.saldo);
@@ -53154,6 +53196,15 @@ Os outros lançamentos não serão alterados.`;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',instalar,{once:true}); else instalar();
   setTimeout(instalar,120);setTimeout(instalar,700);setTimeout(instalar,1600);
+})();
+</script>
+
+<!-- CMFin V59.62 - marcador de versão; sem alteração adicional de lógica -->
+<script id="cmfin-v5962-versao-js">
+(function(){
+  'use strict';
+  function marcar(){try{if(window.CMFin) CMFin.version='59.62.0';}catch(_){ }}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
 })();
 </script>
 </body>
