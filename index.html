@@ -52681,6 +52681,45 @@ Os outros lançamentos não serão alterados.`;
   else marcar();
 })();
 </script>
+
+
+<!-- CMFin V59.60 - Rótulos de metadados unificados entre Gastos Fixos e Variáveis - 2026-09-02 -->
+<style id="cmfin-v5960-rotulos-unificados-css">
+  /*
+    V59.60 — padronização tipográfica definitiva dos metadados dos cards.
+    A regra é genérica para Fixos e Variáveis: todo rótulo de metadado criado
+    pela camada de cards V59.56 recebe o mesmo tamanho, peso e contraste.
+  */
+  #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before,
+  #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before{
+    color:#66758a!important;
+    font-size:11.5px!important;
+    font-weight:950!important;
+    line-height:1.05!important;
+    letter-spacing:.075em!important;
+    margin-bottom:7px!important;
+    text-transform:uppercase!important;
+    white-space:nowrap!important;
+  }
+
+  @media(max-width:980px){
+    #gastosFixos .finance-table-wrap tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before,
+    #gastosVariaveis .finance-table-wrap tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before{
+      font-size:11px!important;
+      letter-spacing:.065em!important;
+    }
+  }
+</style>
+<script id="cmfin-v5960-versao-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5960RotulosUnificados) return;
+  window.__cmfinV5960RotulosUnificados=true;
+  function marcar(){ try{ if(window.CMFin) CMFin.version='59.60.0'; }catch(_){ } }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true});
+  else marcar();
+})();
+</script>
 </body>
 </html>
 
