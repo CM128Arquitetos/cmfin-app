@@ -1,4 +1,5 @@
 <!-- CMFin V59.55 - Selecao Somar unificada: checkbox de selecao em Fixos, Variaveis e Terceiros + barra visual padronizada - 2026-09-01 -->
+<!-- CMFin V59.61 - Card unificado entre Gastos Fixos e Gastos Variáveis - 2026-09-02 -->
 <!-- CMFin V59.54 - Somar em Terceiros padronizado + exclusao de Fixos/Variaveis no mesmo modelo visual de Terceiros - 2026-09-01 -->
 <!-- CMFin V59.53 - Somar Despesas em Gastos por Terceiros + exclusao parcelada segura em Gastos Fixos/Variaveis - 2026-09-01 -->
 <!-- CMFin V59.52 - Pagador em cinza chumbo + símbolos neutralizados - 2026-08-20 -->
@@ -52718,6 +52719,441 @@ Os outros lançamentos não serão alterados.`;
   function marcar(){ try{ if(window.CMFin) CMFin.version='59.60.0'; }catch(_){ } }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true});
   else marcar();
+})();
+</script>
+
+
+<!-- CMFin V59.61 - Card unificado entre Gastos Fixos e Gastos Variáveis - 2026-09-02 -->
+<style id="cmfin-v5961-cards-unificados-css">
+  /*
+    V59.61 — um único desenho de card para Fixos e Variáveis.
+    A estrutura de dados e os controles originais permanecem intactos.
+    O card apenas reorganiza os campos no mesmo mapa visual:
+      1ª linha: Competência · Banco / Cartão · Forma · Status · Valor
+      2ª linha: Data da Compra · Vencimento · Parcelas · Saldo
+  */
+
+  #gastosFixos tr.cmfin-v5956-expense-card,
+  #gastosVariaveis tr.cmfin-v5956-expense-card{
+    display:grid!important;
+    grid-template-columns:minmax(260px,1.50fr) minmax(0,.86fr) minmax(0,.90fr) minmax(0,.90fr) minmax(0,.82fr) minmax(105px,.66fr) minmax(220px,auto)!important;
+    grid-template-areas:
+      "primary competence bank form status value actions"
+      "category purchase due parcel saldo . actions"!important;
+    column-gap:18px!important;
+    row-gap:12px!important;
+    align-items:center!important;
+  }
+
+  /* Identificação e categorias permanecem no mesmo lugar nos dois módulos. */
+  #gastosFixos .cmfin-v5956-primary,
+  #gastosVariaveis .cmfin-v5956-primary{grid-area:primary!important;align-self:start!important;}
+  #gastosFixos .cmfin-v5956-category,
+  #gastosVariaveis .cmfin-v5956-category{grid-area:category!important;align-self:end!important;}
+
+  /* Campos reais reaproveitados. */
+  #gastosFixos .cmfin-v5956-period{grid-area:competence!important;}
+  #gastosFixos .cmfin-v5956-due,
+  #gastosVariaveis .cmfin-v5956-due{grid-area:due!important;}
+  #gastosFixos .cmfin-v5956-status,
+  #gastosVariaveis .cmfin-v5956-status{grid-area:status!important;}
+  #gastosFixos .cmfin-v5956-value,
+  #gastosVariaveis .cmfin-v5956-value{grid-area:value!important;}
+  #gastosVariaveis .cmfin-v5956-purchase{grid-area:purchase!important;}
+  #gastosVariaveis .cmfin-v5956-bank{grid-area:bank!important;}
+  #gastosVariaveis .cmfin-v5956-form{grid-area:form!important;}
+  #gastosFixos .cmfin-v5956-actions,
+  #gastosVariaveis .cmfin-v5956-actions{
+    grid-area:actions!important;
+    align-self:center!important;
+  }
+
+  /* A antiga célula combinada Parcela/Saldo de Fixos deixa de ser exibida;
+     os mesmos dados são apresentados separadamente nas células virtuais abaixo. */
+  #gastosFixos .cmfin-v5956-installments{display:none!important;}
+
+  /* Banco agora possui coluna própria em Fixos. */
+  #gastosFixos .cmfin-v5956-primary .cmfin-bank-line{display:none!important;}
+
+  /* Em Variáveis a parcela sai de baixo de Forma e ganha campo próprio. */
+  #gastosVariaveis .cmfin-v5956-form .muted{display:none!important;}
+
+  /* Metadados virtuais — usados somente para os campos ausentes no DOM original. */
+  #gastosFixos tr.cmfin-v5956-expense-card > .cmfin-v5961-meta,
+  #gastosVariaveis tr.cmfin-v5956-expense-card > .cmfin-v5961-meta{
+    min-width:0!important;
+    align-self:center!important;
+    color:#536276!important;
+    font-size:12.5px!important;
+    line-height:1.3!important;
+    overflow:visible!important;
+  }
+  #gastosFixos tr.cmfin-v5956-expense-card > .cmfin-v5961-meta::before,
+  #gastosVariaveis tr.cmfin-v5956-expense-card > .cmfin-v5961-meta::before{
+    content:attr(data-cmfin-v5961-label)!important;
+    display:block!important;
+    margin-bottom:7px!important;
+    color:#66758a!important;
+    font-size:11.5px!important;
+    font-weight:950!important;
+    line-height:1.05!important;
+    letter-spacing:.075em!important;
+    text-transform:uppercase!important;
+    white-space:nowrap!important;
+  }
+  .cmfin-v5961-competence{grid-area:competence!important;}
+  .cmfin-v5961-bank{grid-area:bank!important;}
+  .cmfin-v5961-form{grid-area:form!important;}
+  .cmfin-v5961-purchase{grid-area:purchase!important;}
+  .cmfin-v5961-parcel{grid-area:parcel!important;}
+  .cmfin-v5961-balance{grid-area:saldo!important;}
+
+  #gastosFixos .cmfin-v5961-meta-value,
+  #gastosVariaveis .cmfin-v5961-meta-value{
+    display:block!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    color:#536276!important;
+    font-size:12.5px!important;
+    font-weight:650!important;
+  }
+  #gastosFixos .cmfin-v5961-bank .cmfin-v5961-meta-value,
+  #gastosVariaveis .cmfin-v5956-bank{
+    font-weight:850!important;
+  }
+  #gastosFixos .cmfin-v5961-balance .cmfin-v5961-meta-value,
+  #gastosVariaveis .cmfin-v5961-balance .cmfin-v5961-meta-value{
+    color:#334155!important;
+    font-weight:850!important;
+    white-space:nowrap!important;
+  }
+  #gastosFixos .cmfin-v5961-parcel .cmfin-v5961-meta-value,
+  #gastosVariaveis .cmfin-v5961-parcel .cmfin-v5961-meta-value{
+    color:#334155!important;
+    font-weight:800!important;
+  }
+
+  /* O botão de parcela de Fixos continua funcional, só muda de posição. */
+  #gastosFixos .cmfin-v5961-parcel .parcel-inline-btn{
+    display:inline-flex!important;
+    width:auto!important;
+    max-width:100%!important;
+    margin:0!important;
+    min-height:28px!important;
+    padding:5px 9px!important;
+    border-radius:9px!important;
+    font-size:11.5px!important;
+    font-weight:850!important;
+    white-space:nowrap!important;
+  }
+
+  /* Todas as células reais passam a obedecer a mesma escala. */
+  #gastosFixos tr.cmfin-v5956-expense-card > td:not(.cmfin-select-col),
+  #gastosVariaveis tr.cmfin-v5956-expense-card > td:not(.cmfin-select-col){
+    min-width:0!important;
+    max-width:none!important;
+    width:auto!important;
+    overflow:visible!important;
+  }
+  #gastosFixos .cmfin-v5956-period,
+  #gastosFixos .cmfin-v5956-status,
+  #gastosFixos .cmfin-v5956-due,
+  #gastosFixos .cmfin-v5956-value,
+  #gastosVariaveis .cmfin-v5956-purchase,
+  #gastosVariaveis .cmfin-v5956-bank,
+  #gastosVariaveis .cmfin-v5956-form,
+  #gastosVariaveis .cmfin-v5956-due,
+  #gastosVariaveis .cmfin-v5956-status,
+  #gastosVariaveis .cmfin-v5956-value{
+    min-width:0!important;
+    max-width:none!important;
+  }
+  #gastosFixos .cmfin-v5956-period select,
+  #gastosFixos .cmfin-v5956-status select,
+  #gastosVariaveis .cmfin-v5956-status select{
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+
+  /* O valor deixa de ficar isolado à direita e passa a ler como o quinto metadado. */
+  #gastosFixos .cmfin-v5956-value,
+  #gastosVariaveis .cmfin-v5956-value{
+    text-align:left!important;
+    align-self:center!important;
+  }
+  #gastosFixos .cmfin-v5956-value strong,
+  #gastosVariaveis .cmfin-v5956-value strong{
+    font-size:19px!important;
+    line-height:1.05!important;
+  }
+
+  /* Rótulos reais com exatamente a mesma tipografia dos virtuais. */
+  #gastosFixos tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before,
+  #gastosVariaveis tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before{
+    color:#66758a!important;
+    font-size:11.5px!important;
+    font-weight:950!important;
+    line-height:1.05!important;
+    letter-spacing:.075em!important;
+    margin-bottom:7px!important;
+    text-transform:uppercase!important;
+    white-space:nowrap!important;
+  }
+
+  /* Mantém ações fortes, mas verticalmente centralizadas no novo mapa. */
+  #gastosFixos .cmfin-v5956-actions > div,
+  #gastosVariaveis .cmfin-v5956-actions > div{
+    height:100%!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+  }
+
+  /* Tablets / notebooks: mesma ordem, reorganizada em três linhas sem cortar conteúdo. */
+  @media(max-width:1280px){
+    #gastosFixos tr.cmfin-v5956-expense-card,
+    #gastosVariaveis tr.cmfin-v5956-expense-card{
+      grid-template-columns:minmax(245px,1.35fr) repeat(3,minmax(0,1fr)) minmax(210px,auto)!important;
+      grid-template-areas:
+        "primary competence status value actions"
+        "category bank form saldo actions"
+        "category purchase due parcel actions"!important;
+    }
+  }
+
+  @media(max-width:920px){
+    #gastosFixos tr.cmfin-v5956-expense-card,
+    #gastosVariaveis tr.cmfin-v5956-expense-card{
+      grid-template-columns:minmax(220px,1.2fr) repeat(2,minmax(0,1fr))!important;
+      grid-template-areas:
+        "primary primary primary"
+        "category category category"
+        "competence bank form"
+        "purchase due parcel"
+        "status value saldo"
+        "actions actions actions"!important;
+    }
+    #gastosFixos .cmfin-v5956-actions > div,
+    #gastosVariaveis .cmfin-v5956-actions > div{justify-content:flex-start!important;}
+  }
+
+  @media(max-width:640px){
+    #gastosFixos tr.cmfin-v5956-expense-card,
+    #gastosVariaveis tr.cmfin-v5956-expense-card{
+      grid-template-columns:1fr 1fr!important;
+      grid-template-areas:
+        "primary primary"
+        "category category"
+        "competence bank"
+        "form status"
+        "purchase due"
+        "parcel saldo"
+        "value value"
+        "actions actions"!important;
+      column-gap:12px!important;
+      row-gap:12px!important;
+    }
+    #gastosFixos .cmfin-v5956-value strong,
+    #gastosVariaveis .cmfin-v5956-value strong{font-size:18px!important;}
+    #gastosFixos tr.cmfin-v5956-expense-card > .cmfin-v5961-meta::before,
+    #gastosVariaveis tr.cmfin-v5956-expense-card > .cmfin-v5961-meta::before,
+    #gastosFixos tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before,
+    #gastosVariaveis tr.cmfin-v5956-expense-card > td[data-cmfin-v5956-label]:not(.cmfin-v5956-primary):not(.cmfin-v5956-category):not(.cmfin-v5956-actions)::before{
+      font-size:10.5px!important;
+      letter-spacing:.06em!important;
+    }
+  }
+</style>
+
+<script id="cmfin-v5961-cards-unificados-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5961CardsUnificados) return;
+  window.__cmfinV5961CardsUnificados=true;
+
+  function arrFixos(){try{return (typeof gastosFixos!=='undefined'&&Array.isArray(gastosFixos))?gastosFixos:[];}catch(_){return [];}}
+  function arrVariaveis(){try{return (typeof gastosVariaveis!=='undefined'&&Array.isArray(gastosVariaveis))?gastosVariaveis:[];}catch(_){return [];}}
+  function n(v){v=Number(v);return Number.isFinite(v)?v:0;}
+  function dinheiro(v){
+    try{if(typeof moeda==='function') return moeda(n(v));}catch(_){ }
+    return n(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function textoCompetencia(mes){
+    var s=String(mes||'');
+    if(!/^\d{4}-\d{2}$/.test(s)) return s||'—';
+    try{if(typeof nomeMes==='function') return nomeMes(s);}catch(_){ }
+    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var p=s.split('-');
+    return (nomes[Number(p[1])-1]||p[1])+' de '+p[0];
+  }
+  function textoData(valor){
+    var s=String(valor||'');
+    if(!s) return '—';
+    try{if(typeof formatarData==='function'&&/^\d{4}-\d{2}-\d{2}$/.test(s)) return formatarData(s);}catch(_){ }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+      var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];
+    }
+    return s;
+  }
+  function parcelaNumero(item){
+    var x=n(item&&item.numeroParcela);
+    if(x>0) return x;
+    var p=String(item&&item.parcela||'').split('/');
+    x=n(p[0]);
+    return x>0?x:0;
+  }
+
+  function infoLinha(linha,tipo){
+    if(tipo==='fixos'){
+      var b=linha.querySelector('button[onclick*="editarGastoFixo"]');
+      var c=String(b&&b.getAttribute('onclick')||'');
+      var m=c.match(/editarGastoFixo\(\s*(\d+)\s*,\s*['\"]([^'\"]+)['\"]\s*\)/);
+      if(!m) return null;
+      var item=arrFixos().find(function(x){return Number(x&&x.id)===Number(m[1]);});
+      return item?{item:item,mes:m[2]}:null;
+    }
+    var bv=linha.querySelector('button[onclick*="editarGastoVariavel"]');
+    var cv=String(bv&&bv.getAttribute('onclick')||'');
+    var mv=cv.match(/editarGastoVariavel\(\s*(\d+)\s*\)/);
+    if(!mv) return null;
+    var it=arrVariaveis().find(function(x){return Number(x&&x.id)===Number(mv[1]);});
+    if(!it) return null;
+    var mes='';
+    try{if(typeof mesReferenciaVariavel==='function') mes=mesReferenciaVariavel(it);}catch(_){ }
+    mes=mes||it.mesReferencia||it.primeiraFatura||String(it.data||it.dataCompra||'').slice(0,7)||'';
+    return {item:it,mes:mes};
+  }
+
+  function celulaVirtual(linha,chave,label){
+    var seletor=':scope > .cmfin-v5961-'+chave;
+    var box=null;
+    try{box=linha.querySelector(seletor);}catch(_){box=linha.querySelector('.cmfin-v5961-'+chave);}
+    if(!box){
+      box=document.createElement('td');
+      box.className='cmfin-v5961-meta cmfin-v5961-'+chave;
+      box.setAttribute('data-cmfin-v5961-label',label);
+      var val=document.createElement('span');
+      val.className='cmfin-v5961-meta-value';
+      box.appendChild(val);
+      linha.appendChild(box);
+    }else if(box.getAttribute('data-cmfin-v5961-label')!==label){
+      box.setAttribute('data-cmfin-v5961-label',label);
+    }
+    return box;
+  }
+  function setTexto(box,texto){
+    if(!box) return;
+    var val=box.querySelector('.cmfin-v5961-meta-value');
+    if(!val){val=document.createElement('span');val.className='cmfin-v5961-meta-value';box.appendChild(val);}
+    var novo=String(texto==null?'—':texto);
+    if(val.childNodes.length!==1||val.firstChild.nodeType!==3||val.textContent!==novo) val.textContent=novo;
+  }
+  function setCor(box,cor){
+    var val=box&&box.querySelector('.cmfin-v5961-meta-value');
+    if(val) val.style.color=cor||'';
+  }
+  function corBanco(nome){try{if(typeof corMarcaFinanceira==='function') return corMarcaFinanceira(nome);}catch(_){ }return '#536276';}
+
+  function saldoFixo(item,mes){
+    if(!item||(item.tipo||'Recorrente')!=='Parcelado') return {parcela:'Recorrente',saldo:'—'};
+    var atual=0;
+    try{if(typeof obterParcelaFixaNumero==='function') atual=n(obterParcelaFixaNumero(item,mes));}catch(_){ }
+    if(!atual){
+      try{var txt=typeof parcelaFixaAtual==='function'?parcelaFixaAtual(item,mes):'';atual=n(String(txt||'').split('/')[0]);}catch(_){ }
+    }
+    atual=atual||1;
+    var total=Math.max(1,n(item.totalParcelas||1));
+    var saldo=Math.max(total-atual,0)*n(item.valor);
+    return {parcela:atual+'/'+total,saldo:dinheiro(saldo)};
+  }
+  function saldoVariavel(item){
+    var total=Math.max(1,n(item&&item.totalParcelas||1));
+    var atual=parcelaNumero(item);
+    var ehParcelado=!!(item&&(item.compraId!=null)&&(total>1||String(item.parcela||'').includes('/')));
+    if(!ehParcelado) return {parcela:String(item&&item.parcela||'').trim()||'À vista',saldo:dinheiro(0)};
+    atual=atual||1;
+    var grupo=arrVariaveis().filter(function(x){return x&&String(x.compraId)===String(item.compraId);});
+    var futuros=grupo.filter(function(x){return parcelaNumero(x)>atual;});
+    var saldo=futuros.length?futuros.reduce(function(s,x){return s+n(x.valor);},0):Math.max(total-atual,0)*n(item.valor);
+    return {parcela:(String(item.parcela||'').trim()||(atual+'/'+total)),saldo:dinheiro(saldo)};
+  }
+
+  function labelsReais(linha,tipo){
+    var q=function(c){return linha.querySelector('.'+c);};
+    if(tipo==='fixos'){
+      var period=q('cmfin-v5956-period'),due=q('cmfin-v5956-due'),status=q('cmfin-v5956-status'),value=q('cmfin-v5956-value');
+      if(period) period.setAttribute('data-cmfin-v5956-label','Competência');
+      if(due) due.setAttribute('data-cmfin-v5956-label','Vencimento');
+      if(status) status.setAttribute('data-cmfin-v5956-label','Status');
+      if(value) value.setAttribute('data-cmfin-v5956-label','Valor');
+    }else{
+      var purchase=q('cmfin-v5956-purchase'),bank=q('cmfin-v5956-bank'),form=q('cmfin-v5956-form'),duev=q('cmfin-v5956-due'),statusv=q('cmfin-v5956-status'),valuev=q('cmfin-v5956-value');
+      if(purchase) purchase.setAttribute('data-cmfin-v5956-label','Data da Compra');
+      if(bank) bank.setAttribute('data-cmfin-v5956-label','Banco / Cartão');
+      if(form) form.setAttribute('data-cmfin-v5956-label','Forma');
+      if(duev) duev.setAttribute('data-cmfin-v5956-label','Vencimento');
+      if(statusv) statusv.setAttribute('data-cmfin-v5956-label','Status');
+      if(valuev) valuev.setAttribute('data-cmfin-v5956-label','Valor');
+    }
+  }
+
+  function decorar(linha,tipo){
+    if(!linha||!linha.classList.contains('cmfin-v5956-expense-card')||linha.querySelector('td.empty')) return;
+    var info=infoLinha(linha,tipo);
+    if(!info) return;
+    var item=info.item,mes=info.mes;
+    labelsReais(linha,tipo);
+
+    if(tipo==='fixos'){
+      var bank=celulaVirtual(linha,'bank','Banco / Cartão');
+      setTexto(bank,item.banco||'—');setCor(bank,corBanco(item.banco));
+      setTexto(celulaVirtual(linha,'form','Forma'),item.forma||'—');
+      setTexto(celulaVirtual(linha,'purchase','Data da Compra'),textoData(item.dataCompra||item.data||''));
+
+      var ps=saldoFixo(item,mes);
+      var parcel=celulaVirtual(linha,'parcel','Parcelas');
+      var val=parcel.querySelector('.cmfin-v5961-meta-value');
+      var btn=linha.querySelector('.cmfin-v5956-primary .parcel-inline-btn');
+      if(btn){
+        if(val.firstChild!==btn||val.childNodes.length!==1){val.textContent='';val.appendChild(btn);}
+      }else setTexto(parcel,ps.parcela);
+      setTexto(celulaVirtual(linha,'balance','Saldo'),ps.saldo);
+    }else{
+      setTexto(celulaVirtual(linha,'competence','Competência'),textoCompetencia(mes));
+      var psv=saldoVariavel(item);
+      setTexto(celulaVirtual(linha,'parcel','Parcelas'),psv.parcela);
+      setTexto(celulaVirtual(linha,'balance','Saldo'),psv.saldo);
+    }
+  }
+
+  function decorarModulo(tipo){
+    var corpo=document.getElementById(tipo==='fixos'?'tabelaGastosFixos':'tabelaGastosVariaveis');
+    if(!corpo) return;
+    Array.prototype.forEach.call(corpo.querySelectorAll(':scope > tr.cmfin-v5956-expense-card'),function(l){decorar(l,tipo);});
+  }
+  function instalarObserver(tipo){
+    var corpo=document.getElementById(tipo==='fixos'?'tabelaGastosFixos':'tabelaGastosVariaveis');
+    if(!corpo||corpo.dataset.cmfinV5961Observer==='1') return;
+    corpo.dataset.cmfinV5961Observer='1';
+    var pendente=false;
+    new MutationObserver(function(){
+      if(pendente) return;
+      pendente=true;
+      requestAnimationFrame(function(){pendente=false;decorarModulo(tipo);});
+    }).observe(corpo,{childList:true,subtree:true});
+  }
+  function instalar(){
+    decorarModulo('fixos');decorarModulo('variaveis');
+    instalarObserver('fixos');instalarObserver('variaveis');
+    try{if(window.CMFin) CMFin.version='59.61.0';}catch(_){ }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',instalar,{once:true}); else instalar();
+  setTimeout(instalar,120);setTimeout(instalar,700);setTimeout(instalar,1600);
 })();
 </script>
 </body>
