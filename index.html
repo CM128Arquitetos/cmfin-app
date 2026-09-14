@@ -53235,6 +53235,109 @@ Os outros lançamentos não serão alterados.`;
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
 })();
 </script>
+
+
+<!-- CMFin V59.65 - Minimizar/Expandir individualmente cada mês em Reembolsos de Sócios - 2026-09-14 -->
+<style id="cmfin-v5965-reembolso-mes-collapse-css">
+  #cmfinReembolsoGrupos .cmfin-reembolso-grupo.is-month-collapsed .cmfin-reembolso-resumo,
+  #cmfinReembolsoGrupos .cmfin-reembolso-grupo.is-month-collapsed .cmfin-reembolso-itens{
+    display:none !important;
+  }
+  #cmfinReembolsoGrupos .cmfin-reembolso-grupo.is-month-collapsed .cmfin-reembolso-grupo-head{
+    border-bottom:0 !important;
+  }
+  #cmfinReembolsoGrupos .cmfin-reembolso-mes-toggle{
+    min-width:82px;
+  }
+</style>
+<script id="cmfin-v5965-reembolso-mes-collapse-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5965ReembolsoMesCollapse) return;
+  window.__cmfinV5965ReembolsoMesCollapse=true;
+
+  var recolhidos = window.__cmfinV5965ReembolsoMesRecolhidos || new Set();
+  window.__cmfinV5965ReembolsoMesRecolhidos = recolhidos;
+
+  function chaveGrupo(grupo){
+    var titulo=grupo && grupo.querySelector('.cmfin-reembolso-grupo-head h3');
+    return String(titulo && titulo.textContent || '').replace(/\s+/g,' ').trim();
+  }
+
+  function aplicarEstado(grupo, botao){
+    var chave=chaveGrupo(grupo);
+    var fechado=!!(chave && recolhidos.has(chave));
+    grupo.classList.toggle('is-month-collapsed',fechado);
+    botao.textContent=fechado?'Expandir':'Minimizar';
+    botao.setAttribute('aria-expanded',fechado?'false':'true');
+    botao.setAttribute('title',fechado?'Expandir este mês':'Minimizar este mês');
+  }
+
+  function alternar(grupo, botao){
+    var chave=chaveGrupo(grupo);
+    if(!chave) return;
+    if(recolhidos.has(chave)) recolhidos.delete(chave);
+    else recolhidos.add(chave);
+    aplicarEstado(grupo,botao);
+  }
+
+  function decorarGrupo(grupo){
+    if(!grupo) return;
+    var acoes=grupo.querySelector('.cmfin-reembolso-grupo-actions');
+    if(!acoes) return;
+    var botao=acoes.querySelector('.cmfin-reembolso-mes-toggle');
+    if(!botao){
+      botao=document.createElement('button');
+      botao.type='button';
+      botao.className='cmfin-reembolso-mes-toggle';
+      botao.addEventListener('click',function(){ alternar(grupo,botao); });
+      acoes.appendChild(botao);
+    }
+    aplicarEstado(grupo,botao);
+  }
+
+  function decorarTodos(){
+    var host=document.getElementById('cmfinReembolsoGrupos');
+    if(!host) return;
+    host.querySelectorAll('.cmfin-reembolso-grupo').forEach(decorarGrupo);
+  }
+
+  function instalar(){
+    var host=document.getElementById('cmfinReembolsoGrupos');
+    if(!host) return;
+    decorarTodos();
+    if(host.dataset.cmfinV5965Observer==='1') return;
+    host.dataset.cmfinV5965Observer='1';
+    var pendente=false;
+    new MutationObserver(function(){
+      if(pendente) return;
+      pendente=true;
+      requestAnimationFrame(function(){
+        pendente=false;
+        decorarTodos();
+      });
+    }).observe(host,{childList:true,subtree:true});
+  }
+
+  function iniciar(){
+    instalar();
+    setTimeout(instalar,120);
+    setTimeout(instalar,700);
+    try{if(window.CMFin) CMFin.version='59.65.0';}catch(_){ }
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+})();
+</script>
+<script id="cmfin-v5965-versao-js">
+(function(){
+  'use strict';
+  function marcar(){try{if(window.CMFin) CMFin.version='59.65.0';}catch(_){ }}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
+})();
+</script>
+
 </body>
 </html>
 
