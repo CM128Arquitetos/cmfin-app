@@ -1,3 +1,5 @@
+<!-- CMFin V59.64 - Somar Despesas liberado também no Modo Empresarial, com seleção isolada por modo - 2026-09-14 -->
+<!-- CMFin V59.63 - Padronização visual dos meios pessoais de pagamento: iniciais maiúsculas e “Outro Meio Pessoal” - 2026-09-14 -->
 <!-- CMFin V59.62 - Padronização final Fixos/Variáveis: competência editável em Variáveis, cor do banco em Fixos e tipografia da forma unificada - 2026-09-02 -->
 <!-- CMFin V59.55 - Selecao Somar unificada: checkbox de selecao em Fixos, Variaveis e Terceiros + barra visual padronizada - 2026-09-01 -->
 <!-- CMFin V59.61 - Card unificado entre Gastos Fixos e Gastos Variáveis - 2026-09-02 -->
@@ -11166,11 +11168,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
                   <div id="fixoPagadorInstrumentoWrap" style="display:none;">
                     <label>Como ela pagou?</label>
                     <select id="fixoPagadorInstrumento">
-                      <option value="Cartão pessoal">Cartão pessoal</option>
-                      <option value="Pix pessoal">Pix pessoal</option>
-                      <option value="Dinheiro pessoal">Dinheiro pessoal</option>
-                      <option value="Transferência pessoal">Transferência pessoal</option>
-                      <option value="Outro">Outro</option>
+                      <option value="Cartão pessoal">Cartão Pessoal</option>
+                      <option value="Pix pessoal">Pix Pessoal</option>
+                      <option value="Dinheiro pessoal">Dinheiro Pessoal</option>
+                      <option value="Transferência pessoal">Transferência Pessoal</option>
+                      <option value="Outro">Outro Meio Pessoal</option>
                     </select>
                   </div>
                   <div id="fixoPagadorObsWrap" style="display:none;">
@@ -11368,11 +11370,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             <div id="varPagadorInstrumentoWrap" style="display:none;">
               <label>Como ela pagou?</label>
               <select id="varPagadorInstrumento">
-                <option value="Cartão pessoal">Cartão pessoal</option>
-                <option value="Pix pessoal">Pix pessoal</option>
-                <option value="Dinheiro pessoal">Dinheiro pessoal</option>
-                <option value="Transferência pessoal">Transferência pessoal</option>
-                <option value="Outro">Outro</option>
+                <option value="Cartão pessoal">Cartão Pessoal</option>
+                <option value="Pix pessoal">Pix Pessoal</option>
+                <option value="Dinheiro pessoal">Dinheiro Pessoal</option>
+                <option value="Transferência pessoal">Transferência Pessoal</option>
+                <option value="Outro">Outro Meio Pessoal</option>
               </select>
             </div>
             <div id="varPagadorObsWrap" style="display:none;">
@@ -42642,7 +42644,15 @@ Os outros lançamentos não serão alterados.`;
 (function(){
   'use strict';
   var selecoes = new Map();
-  var modosSelecao = { fixos:false, variaveis:false };
+  /* V59.64: o estado do modo de seleção é independente entre Pessoal e Empresarial. */
+  var modosSelecao = {
+    pessoal:{ fixos:false, variaveis:false },
+    empresarial:{ fixos:false, variaveis:false }
+  };
+  function estadoSelecaoAtual(){
+    var modo=modoAtualSeguro();
+    return modosSelecao[modo] || modosSelecao.pessoal;
+  }
 
   function modoAtualSeguro(){
     try { return (typeof modoAtual !== 'undefined' && modoAtual === 'empresarial') ? 'empresarial' : 'pessoal'; }
@@ -42675,13 +42685,14 @@ Os outros lançamentos não serão alterados.`;
     return valor!=='pago' && valor!=='naoincluir' && valor!=='naoincluso' && valor!=='desconsiderado';
   }
   function aplicarEstadoModoSelecao(tipo){
-    var pessoal=modoAtualSeguro()==='pessoal';
-    var ativo=pessoal && !!modosSelecao[tipo];
+    var estado=estadoSelecaoAtual();
+    var ativo=!!estado[tipo];
     var modulo=document.getElementById(tipo==='fixos'?'gastosFixos':'gastosVariaveis');
     var botao=document.getElementById('cmfinSumToggle-'+tipo);
     if(modulo) modulo.classList.toggle('cmfin-selection-mode',ativo);
     if(botao){
-      botao.hidden=!pessoal;
+      /* V59.64: disponível tanto no Modo Pessoal quanto no Empresarial. */
+      botao.hidden=false;
       botao.classList.toggle('is-active',ativo);
       botao.setAttribute('aria-pressed',ativo?'true':'false');
       botao.title=ativo?'Ocultar seleção e total das despesas':'Selecionar despesas para calcular o total';
@@ -42691,10 +42702,10 @@ Os outros lançamentos não serão alterados.`;
   }
   function alternarModoSelecao(tipo){
     if(tipo!=='fixos' && tipo!=='variaveis') return;
-    if(modoAtualSeguro()!=='pessoal') return;
-    modosSelecao[tipo]=!modosSelecao[tipo];
+    var estado=estadoSelecaoAtual();
+    estado[tipo]=!estado[tipo];
     aplicarEstadoModoSelecao(tipo);
-    if(modosSelecao[tipo]) aprimorarTabela(tipo);
+    if(estado[tipo]) aprimorarTabela(tipo);
     else atualizarResumo();
   }
 
@@ -42842,7 +42853,7 @@ Os outros lançamentos não serão alterados.`;
     var marcados=lista.filter(function(x){return x.checked;}).length;
     geral.checked=lista.length>0&&marcados===lista.length;
     geral.indeterminate=marcados>0&&marcados<lista.length;
-    geral.disabled=!lista.length||modoAtualSeguro()!=='pessoal';
+    geral.disabled=!lista.length;
   }
   function limparSelecao(){
     var modo=modoAtualSeguro();
@@ -42865,12 +42876,11 @@ Os outros lançamentos não serão alterados.`;
   }
   function atualizarResumo(){
     limparRegistrosInexistentes();
-    var pessoal=modoAtualSeguro()==='pessoal';
+    var modo=modoAtualSeguro();
     ['fixos','variaveis'].forEach(function(tipo){
       aplicarEstadoModoSelecao(tipo);
     });
-    if(!pessoal) return;
-    var regs=Array.from(selecoes.values()).filter(function(r){return r.modo==='pessoal';});
+    var regs=Array.from(selecoes.values()).filter(function(r){return r.modo===modo;});
     var fixos=regs.filter(function(r){return r.tipo==='fixos';}).reduce(function(s,r){return s+(Number(r.valor)||0);},0);
     var variaveis=regs.filter(function(r){return r.tipo==='variaveis';}).reduce(function(s,r){return s+(Number(r.valor)||0);},0);
     document.querySelectorAll('.cmfin-selection-bar').forEach(function(barra){
@@ -49940,7 +49950,7 @@ Os outros lançamentos não serão alterados.`;
       '<section id="cmfinV5932Etapa1" class="cmfin-v5932-card"><h4>1. Quem desembolsou esta despesa?</h4><p>Se um sócio ou terceiro pagou do próprio bolso, o CMFin criará automaticamente o valor a reembolsar em Dívidas com Terceiros.</p><div class="cmfin-v5932-grid">'+
       '<div class="cmfin-v5932-field full"><label>Pagamento realizado por</label><select id="cmfinV5932Tipo" onchange="cmfinV5932AtualizarPagador()"><option value="empresa">Empresa / Caixa do Escritório</option><option value="externo">Sócio / Terceiro</option></select></div>'+
       '<div class="cmfin-v5932-field" id="cmfinV5932PessoaWrap" style="display:none"><label>Pessoa que adiantou</label><select id="cmfinV5932Pessoa" onchange="cmfinV5932AtualizarOutro()"></select><input id="cmfinV5932Outro" style="display:none;margin-top:7px" placeholder="Nome da pessoa"></div>'+
-      '<div class="cmfin-v5932-field" id="cmfinV5932InstrumentoWrap" style="display:none"><label>Como ela pagou</label><select id="cmfinV5932Instrumento"><option>Cartão pessoal</option><option>Pix pessoal</option><option>Dinheiro pessoal</option><option>Transferência pessoal</option><option>Outro meio pessoal</option></select></div>'+
+      '<div class="cmfin-v5932-field" id="cmfinV5932InstrumentoWrap" style="display:none"><label>Como ela pagou</label><select id="cmfinV5932Instrumento"><option value="Cartão pessoal">Cartão Pessoal</option><option value="Pix pessoal">Pix Pessoal</option><option value="Dinheiro pessoal">Dinheiro Pessoal</option><option value="Transferência pessoal">Transferência Pessoal</option><option value="Outro meio pessoal">Outro Meio Pessoal</option></select></div>'+
       '<div class="cmfin-v5932-field full" id="cmfinV5932ObsWrap" style="display:none"><label>Observação</label><input id="cmfinV5932Obs" placeholder="Ex.: pago no cartão pessoal do sócio"></div></div><div class="cmfin-v5932-note" id="cmfinV5932Nota" style="display:none">O fornecedor ficará quitado, mas o escritório passará a dever este valor à pessoa informada.</div></section>'+
       '<section id="cmfinV5932Etapa2" class="cmfin-v5932-card" style="display:none"><h4>2. Comprovante de pagamento</h4><p>Anexe o comprovante agora. O arquivo aparecerá junto da despesa na tabela. O anexo é recomendado, mas não é obrigatório.</p><div class="cmfin-v5932-field full"><label>Comprovante</label><input id="cmfinV5932Arquivo" type="file" multiple accept="image/*,.pdf,application/pdf" onchange="cmfinV5932ArquivosSelecionados()"><div class="cmfin-v5932-proof-list" id="cmfinV5932ArquivoInfo">Nenhum arquivo selecionado.</div></div></section>'+
       '<div class="cmfin-v5932-actions"><button type="button" class="cmfin-v5932-secondary" onclick="cmfinV5932Cancelar()">Cancelar</button><button type="button" class="cmfin-v5932-secondary" id="cmfinV5932Voltar" style="display:none" onclick="cmfinV5932Voltar()">Voltar</button><button type="button" class="cmfin-v5932-primary" id="cmfinV5932Avancar" onclick="cmfinV5932Avancar()">Continuar</button><button type="button" class="cmfin-v5932-primary" id="cmfinV5932Confirmar" style="display:none" onclick="cmfinV5932Confirmar()">Confirmar como Pago</button></div>'+
@@ -53204,6 +53214,24 @@ Os outros lançamentos não serão alterados.`;
 (function(){
   'use strict';
   function marcar(){try{if(window.CMFin) CMFin.version='59.62.0';}catch(_){ }}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
+})();
+</script>
+
+<!-- CMFin V59.63 - marcador de versão; padronização visual dos meios pessoais de pagamento -->
+<script id="cmfin-v5963-versao-js">
+(function(){
+  'use strict';
+  function marcar(){try{if(window.CMFin) CMFin.version='59.63.0';}catch(_){ }}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
+})();
+</script>
+
+<!-- CMFin V59.64 - marcador de versão; Somar Despesas também no Modo Empresarial -->
+<script id="cmfin-v5964-versao-js">
+(function(){
+  'use strict';
+  function marcar(){try{if(window.CMFin) CMFin.version='59.64.0';}catch(_){ }}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
 })();
 </script>
