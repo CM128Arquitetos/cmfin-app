@@ -1,3 +1,4 @@
+<!-- CMFin V59.66 - Reembolsos de Sócios: meses iniciam minimizados por padrão e podem ser expandidos individualmente - 2026-09-14 -->
 <!-- CMFin V59.64 - Somar Despesas liberado também no Modo Empresarial, com seleção isolada por modo - 2026-09-14 -->
 <!-- CMFin V59.63 - Padronização visual dos meios pessoais de pagamento: iniciais maiúsculas e “Outro Meio Pessoal” - 2026-09-14 -->
 <!-- CMFin V59.62 - Padronização final Fixos/Variáveis: competência editável em Variáveis, cor do banco em Fixos e tipografia da forma unificada - 2026-09-02 -->
@@ -53237,8 +53238,8 @@ Os outros lançamentos não serão alterados.`;
 </script>
 
 
-<!-- CMFin V59.65 - Minimizar/Expandir individualmente cada mês em Reembolsos de Sócios - 2026-09-14 -->
-<style id="cmfin-v5965-reembolso-mes-collapse-css">
+<!-- CMFin V59.66 - Minimizar/Expandir individualmente cada mês em Reembolsos de Sócios, iniciando minimizado por padrão - 2026-09-14 -->
+<style id="cmfin-v5966-reembolso-mes-collapse-css">
   #cmfinReembolsoGrupos .cmfin-reembolso-grupo.is-month-collapsed .cmfin-reembolso-resumo,
   #cmfinReembolsoGrupos .cmfin-reembolso-grupo.is-month-collapsed .cmfin-reembolso-itens{
     display:none !important;
@@ -53250,14 +53251,16 @@ Os outros lançamentos não serão alterados.`;
     min-width:82px;
   }
 </style>
-<script id="cmfin-v5965-reembolso-mes-collapse-js">
+<script id="cmfin-v5966-reembolso-mes-collapse-js">
 (function(){
   'use strict';
-  if(window.__cmfinV5965ReembolsoMesCollapse) return;
-  window.__cmfinV5965ReembolsoMesCollapse=true;
+  if(window.__cmfinV5966ReembolsoMesCollapse) return;
+  window.__cmfinV5966ReembolsoMesCollapse=true;
 
-  var recolhidos = window.__cmfinV5965ReembolsoMesRecolhidos || new Set();
-  window.__cmfinV5965ReembolsoMesRecolhidos = recolhidos;
+  // V59.66: cada grupo mensal nasce minimizado. O estado fica em memória durante a sessão
+  // para que, após uma nova renderização, um mês expandido pelo usuário continue expandido.
+  var estadoMes = window.__cmfinV5966ReembolsoMesEstado || new Map();
+  window.__cmfinV5966ReembolsoMesEstado = estadoMes;
 
   function chaveGrupo(grupo){
     var titulo=grupo && grupo.querySelector('.cmfin-reembolso-grupo-head h3');
@@ -53266,7 +53269,10 @@ Os outros lançamentos não serão alterados.`;
 
   function aplicarEstado(grupo, botao){
     var chave=chaveGrupo(grupo);
-    var fechado=!!(chave && recolhidos.has(chave));
+    if(!chave) return;
+    // Ausência de estado significa minimizado por padrão.
+    if(!estadoMes.has(chave)) estadoMes.set(chave,true);
+    var fechado=estadoMes.get(chave)!==false;
     grupo.classList.toggle('is-month-collapsed',fechado);
     botao.textContent=fechado?'Expandir':'Minimizar';
     botao.setAttribute('aria-expanded',fechado?'false':'true');
@@ -53276,8 +53282,8 @@ Os outros lançamentos não serão alterados.`;
   function alternar(grupo, botao){
     var chave=chaveGrupo(grupo);
     if(!chave) return;
-    if(recolhidos.has(chave)) recolhidos.delete(chave);
-    else recolhidos.add(chave);
+    var fechadoAtual=!estadoMes.has(chave) || estadoMes.get(chave)!==false;
+    estadoMes.set(chave,!fechadoAtual);
     aplicarEstado(grupo,botao);
   }
 
@@ -53323,17 +53329,17 @@ Os outros lançamentos não serão alterados.`;
     instalar();
     setTimeout(instalar,120);
     setTimeout(instalar,700);
-    try{if(window.CMFin) CMFin.version='59.65.0';}catch(_){ }
+    try{if(window.CMFin) CMFin.version='59.66.0';}catch(_){ }
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true});
   else iniciar();
 })();
 </script>
-<script id="cmfin-v5965-versao-js">
+<script id="cmfin-v5966-versao-js">
 (function(){
   'use strict';
-  function marcar(){try{if(window.CMFin) CMFin.version='59.65.0';}catch(_){ }}
+  function marcar(){try{if(window.CMFin) CMFin.version='59.66.0';}catch(_){ }}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',marcar,{once:true}); else marcar();
 })();
 </script>
