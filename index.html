@@ -53344,6 +53344,159 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
+
+
+<!-- CMFin V59.67 - Gastos Fixos recorrentes: valor por competência, com alteração somente no mês ou dali em diante - 2026-09-25 -->
+<script id="cmfin-v5967-valor-fixo-por-competencia-js">
+(function(){
+  'use strict';
+  if(window.__cmfinV5967ValorFixoCompetencia) return;
+  window.__cmfinV5967ValorFixoCompetencia = true;
+
+  var FLAG='__cmfinV5967ValorCompetencia';
+  function el(id){ return document.getElementById(id); }
+  function num(v){ var n=Number(v); return Number.isFinite(n)?n:0; }
+  function limparValor(v){
+    try{ if(typeof limparMoeda==='function') return num(limparMoeda(v)); }catch(_){ }
+    var s=String(v==null?'':v).trim().replace(/[^0-9,.-]/g,'');
+    if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
+    return num(s);
+  }
+  function dinheiro(v){
+    try{ if(typeof moeda==='function') return moeda(num(v)); }catch(_){ }
+    return num(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function mesNome(m){
+    try{ if(typeof nomeMes==='function') return nomeMes(m); }catch(_){ }
+    var nomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var p=String(m||'').split('-');
+    return nomes[Number(p[1])-1] ? nomes[Number(p[1])-1]+' de '+p[0] : String(m||'');
+  }
+  function lista(){ try{return gastosFixos||[];}catch(_){return window.gastosFixos||[];} }
+  function originalPorId(id){ return lista().find(function(i){return String(i&&i.id)===String(id);})||null; }
+  function mesEdicao(item){
+    return el('fixoEditId')?.dataset?.mesComprovante || el('dashboardMes')?.value || item?.mesReferencia || item?.mesInicial || (typeof mesAtual==='function'?mesAtual():'');
+  }
+  function menorOuIgual(a,b){ return /^\d{4}-\d{2}$/.test(String(a||'')) && String(a)<=String(b||''); }
+
+  window.valorFixoNoMes=function(item,mes){
+    if(!item) return 0;
+    if((item.tipo||'Recorrente')==='Parcelado') return num(item.valor);
+    var alvo=String(mes||'');
+    var base=num(item.valor);
+    var pontuais=item.valoresExcecaoPorMes||{};
+    if(alvo && Object.prototype.hasOwnProperty.call(pontuais,alvo)) return num(pontuais[alvo]);
+    var vigencias=item.valoresVigentesPorMes||{};
+    var chaves=Object.keys(vigencias).filter(function(k){return menorOuIgual(k,alvo);}).sort();
+    if(chaves.length) return num(vigencias[chaves[chaves.length-1]]);
+    return base;
+  };
+
+  // Toda leitura mensal passa a receber uma cópia com o valor efetivo daquela competência.
+  var fixosMesAnterior=window.gastosFixosDoMes;
+  if(typeof fixosMesAnterior==='function' && !fixosMesAnterior[FLAG]){
+    var fixosMesNovo=function(mes){
+      var m=mes || el('dashboardMes')?.value || (typeof mesAtual==='function'?mesAtual():'');
+      var arr=fixosMesAnterior.apply(this,arguments)||[];
+      return arr.map(function(item){
+        if(!item || (item.tipo||'Recorrente')==='Parcelado') return item;
+        var efetivo=window.valorFixoNoMes(item,m);
+        if(Math.abs(efetivo-num(item.valor))<0.000001) return item;
+        var copia=Object.assign({},item,{valor:efetivo,valorBaseCadastro:num(item.valor),cmfinValorCompetencia:m});
+        return copia;
+      });
+    };
+    fixosMesNovo[FLAG]=true;
+    window.gastosFixosDoMes=fixosMesNovo;
+    try{gastosFixosDoMes=fixosMesNovo;}catch(_){ }
+  }
+
+  // Ao editar um recorrente, mostra o valor vigente no mês clicado, não o valor-base histórico.
+  var editarAnterior=window.editarGastoFixo;
+  if(typeof editarAnterior==='function' && !editarAnterior[FLAG]){
+    var editarNovo=function(id,mes){
+      var item=originalPorId(id);
+      var out=editarAnterior.apply(this,arguments);
+      try{
+        if(item && (item.tipo||'Recorrente')!=='Parcelado'){
+          var alvo=mes || mesEdicao(item);
+          if(el('fixoEditId')) el('fixoEditId').dataset.mesValorEdicao=alvo;
+          if(el('fixoValor')) el('fixoValor').value=dinheiro(window.valorFixoNoMes(item,alvo));
+        }
+      }catch(e){ console.warn('CMFin V59.67 - falha ao preparar valor da competência:',e); }
+      return out;
+    };
+    editarNovo[FLAG]=true;
+    window.editarGastoFixo=editarNovo;
+    try{editarGastoFixo=editarNovo;}catch(_){ }
+  }
+
+  // Salva os demais campos normalmente, mas impede que a edição de Outubro reescreva Setembro e meses anteriores.
+  var salvarAnterior=window.salvarGastoFixo;
+  if(typeof salvarAnterior==='function' && !salvarAnterior[FLAG]){
+    var salvarNovo=async function(){
+      var editId=String(el('fixoEditId')?.value||'');
+      var itemAntes=editId?originalPorId(editId):null;
+      var tipo=el('fixoTipo')?.value||itemAntes?.tipo||'Recorrente';
+      if(!itemAntes || tipo==='Parcelado') return salvarAnterior.apply(this,arguments);
+
+      var alvo=el('fixoEditId')?.dataset?.mesValorEdicao || mesEdicao(itemAntes);
+      var valorAnterior=window.valorFixoNoMes(itemAntes,alvo);
+      var valorNovo=limparValor(el('fixoValor')?.value);
+      var mudou=Math.abs(valorNovo-valorAnterior)>0.000001;
+      var escopo='';
+
+      if(mudou){
+        var daqui=window.confirm(
+          'O valor de '+mesNome(alvo)+' mudou de '+dinheiro(valorAnterior)+' para '+dinheiro(valorNovo)+'.\n\n'+
+          'Deseja aplicar este novo valor de '+mesNome(alvo)+' em diante?\n\n'+
+          'OK = '+mesNome(alvo)+' e meses seguintes\n'+
+          'Cancelar = somente '+mesNome(alvo)
+        );
+        escopo=daqui?'futuro':'mes';
+      }
+
+      // O salvamento legado atualiza item.valor globalmente. Mantemos o valor-base original
+      // e registramos a alteração mensal separadamente para preservar competências anteriores.
+      var input=el('fixoValor');
+      var digitado=input?input.value:'';
+      if(mudou && input) input.value=dinheiro(num(itemAntes.valor));
+      var retorno;
+      try{
+        retorno=await Promise.resolve(salvarAnterior.apply(this,arguments));
+      } finally {
+        // O modal normalmente fecha, mas restaura se o campo ainda existir/estiver visível por algum motivo.
+        if(input && document.body.contains(input)) input.value=digitado;
+      }
+
+      if(mudou){
+        try{
+          var itemDepois=originalPorId(editId);
+          if(itemDepois){
+            itemDepois.valoresVigentesPorMes=Object.assign({},itemDepois.valoresVigentesPorMes||{});
+            itemDepois.valoresExcecaoPorMes=Object.assign({},itemDepois.valoresExcecaoPorMes||{});
+            if(escopo==='futuro'){
+              itemDepois.valoresVigentesPorMes[alvo]=valorNovo;
+              delete itemDepois.valoresExcecaoPorMes[alvo];
+            }else{
+              itemDepois.valoresExcecaoPorMes[alvo]=valorNovo;
+            }
+            if(typeof salvarDados==='function') salvarDados();
+            if(typeof renderizarTudo==='function') renderizarTudo();
+          }
+        }catch(e){ console.warn('CMFin V59.67 - falha ao salvar valor por competência:',e); }
+      }
+      return retorno;
+    };
+    salvarNovo[FLAG]=true;
+    window.salvarGastoFixo=salvarNovo;
+    try{salvarGastoFixo=salvarNovo;}catch(_){ }
+  }
+
+  try{ if(window.CMFin) CMFin.version='59.67.0'; }catch(_){ }
+})();
+</script>
+
 </body>
 </html>
 
