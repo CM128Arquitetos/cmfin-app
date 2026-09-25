@@ -1,3 +1,4 @@
+<!-- CMFin V59.68 - Modais fecham ao clicar fora da janela (backdrop) - 2026-09-25 -->
 <!-- CMFin V59.66 - Reembolsos de Sócios: meses iniciam minimizados por padrão e podem ser expandidos individualmente - 2026-09-14 -->
 <!-- CMFin V59.64 - Somar Despesas liberado também no Modo Empresarial, com seleção isolada por modo - 2026-09-14 -->
 <!-- CMFin V59.63 - Padronização visual dos meios pessoais de pagamento: iniciais maiúsculas e “Outro Meio Pessoal” - 2026-09-14 -->
@@ -53494,6 +53495,48 @@ Os outros lançamentos não serão alterados.`;
   }
 
   try{ if(window.CMFin) CMFin.version='59.67.0'; }catch(_){ }
+})();
+</script>
+
+
+<script>
+/* CMFin V59.68 - Fechamento universal de modais ao clicar no backdrop - 2026-09-25 */
+(function(){
+  const FLAG='cmfinV5968BackdropCloseInstalled';
+  if(window[FLAG]) return;
+  window[FLAG]=true;
+
+  function fecharBackdrop(backdrop){
+    if(!backdrop || backdrop.dataset.cmfinNoOutsideClose==='1') return;
+
+    // Prioriza a rotina própria do modal para preservar limpezas de estado.
+    const seletor=[
+      '[data-modal-close]',
+      '.parcel-close',
+      '.cmfin-v52-modal-close',
+      'button[onclick*="fechar"]',
+      'button[onclick*="Fechar"]',
+      'button[onclick*="cancelar"]',
+      'button[onclick*="Cancelar"]'
+    ].join(',');
+    const btn=backdrop.querySelector(seletor);
+    if(btn){
+      try{ btn.click(); return; }catch(_e){}
+    }
+
+    // Fallback para qualquer modal novo que ainda não tenha botão identificado.
+    backdrop.style.display='none';
+    backdrop.classList.remove('open','show','active','visible');
+  }
+
+  document.addEventListener('click',function(ev){
+    const alvo=ev.target;
+    if(!(alvo instanceof Element)) return;
+    if(!alvo.classList.contains('modal-backdrop')) return;
+    fecharBackdrop(alvo);
+  });
+
+  try{ if(window.CMFin) CMFin.version='59.68.0'; }catch(_e){}
 })();
 </script>
 
