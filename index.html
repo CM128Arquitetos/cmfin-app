@@ -1,3 +1,4 @@
+<!-- CMFin V59.69 - Recebimentos: banco editável na linha + ordenação cronológica por data - 2026-09-29 -->
 <!-- CMFin V59.68 - Modais fecham ao clicar fora da janela (backdrop) - 2026-09-25 -->
 <!-- CMFin V59.66 - Reembolsos de Sócios: meses iniciam minimizados por padrão e podem ser expandidos individualmente - 2026-09-14 -->
 <!-- CMFin V59.64 - Somar Despesas liberado também no Modo Empresarial, com seleção isolada por modo - 2026-09-14 -->
@@ -10120,7 +10121,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
             <div style="min-width:220px;">
               <label>Ordenar por</label>
               <select id="ordemRecebValor" onchange="renderizarRecebimentos()">
-                <option value="cadastro">Ordem Manual / Cadastro</option>
+                <option value="cadastro">Data — mais antiga primeiro</option>
                 <option value="maior">Maior valor</option>
                 <option value="menor">Menor valor</option>
               </select>
@@ -14462,6 +14463,46 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         const novoTotalRecebido = entradaAtual + totalPagoParcelas;
         const novoStatus = (novoTotalRecebido >= (Number(item.valor) || 0) || parcelasPagas >= totalParcelas) ? "Pago" : "Pendente";
         return { ...item, parcelasPagas, valorEntrada: entradaAtual, valorPago: entradaAtual, historicoPagamentos: historico, status: novoStatus, statusParcelas };
+      });
+      salvarDados();
+      renderizarTudo();
+    }
+
+    function bancoRecebimentoSelect(id, bancoAtual, formaAtual) {
+      if (formaAtual === "Dinheiro") {
+        return `
+          <select class="receb-inline-select" title="Banco não se aplica a recebimentos em dinheiro" disabled>
+            <option selected>Dinheiro</option>
+          </select>
+        `;
+      }
+
+      const atual = bancoAtual || "";
+      const nomes = bancos.map(b => b?.nome).filter(Boolean);
+      const opcoes = [...new Set(nomes)];
+      if (atual && !opcoes.includes(atual)) opcoes.unshift(atual);
+
+      if (!opcoes.length) {
+        return `
+          <select class="receb-inline-select" title="Nenhum banco cadastrado" disabled>
+            <option selected>Sem banco</option>
+          </select>
+        `;
+      }
+
+      return `
+        <select class="receb-inline-select" title="Alterar banco do recebimento" onchange="alterarBancoRecebimento(${id}, this.value)">
+          <option value="" ${!atual ? "selected" : ""}>Sem banco</option>
+          ${opcoes.map(nome => `<option value="${nome}" ${nome === atual ? "selected" : ""}>${nome}</option>`).join("")}
+        </select>
+      `;
+    }
+
+    function alterarBancoRecebimento(id, novoBanco) {
+      recebimentos = recebimentos.map(item => {
+        if (Number(item.id) !== Number(id)) return item;
+        if ((item.forma || "Pix") === "Dinheiro") return { ...item, banco: "" };
+        return { ...item, banco: novoBanco || "" };
       });
       salvarDados();
       renderizarTudo();
@@ -19316,6 +19357,15 @@ Os outros lançamentos não serão alterados.`;
         });
       }
 
+      if (ordem === "cadastro") {
+        lista.sort((a,b) => {
+          const dataA = String(a.item?.data || "");
+          const dataB = String(b.item?.data || "");
+          const porData = dataA.localeCompare(dataB);
+          if (porData !== 0) return porData;
+          return Number(a.item?.id || 0) - Number(b.item?.id || 0);
+        });
+      }
       if (ordem === "maior") lista.sort((a,b) => (b.valorRecebido || 0) - (a.valorRecebido || 0));
       if (ordem === "menor") lista.sort((a,b) => (a.valorRecebido || 0) - (b.valorRecebido || 0));
       if (ordem === "recente") lista.sort((a,b) => String(b.mes || "").localeCompare(String(a.mes || "")) || String(b.item.data || "").localeCompare(String(a.item.data || "")));
@@ -19386,7 +19436,7 @@ Os outros lançamentos não serão alterados.`;
             <td>
               <div class="receb-desc-box">${i.observacao || "-"}</div>
             </td>
-            <td>${banco ? nomeMarcaColorido(banco) : "-"}</td>
+            <td>${bancoRecebimentoSelect(i.id, i.banco || "", forma)}</td>
             <td>${formaRecebimentoSelect(i.id, forma)}</td>
             <td class="right"><strong class="receb-value-strong">${moeda(valorExibidoLinha)}</strong>${valorLegendaLinha}</td>
             <td>${infoParcelas}</td>
