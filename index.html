@@ -1,3 +1,4 @@
+<!-- CMFin V59.70.3 - Sócios e Pró-Labore: remoção dos avatares de iniciais e compactação para telas menores - 2026-10-06 -->
 <!-- CMFin V59.70.2 - Upload estilo Google: card focável para Ctrl+V, botão Selecionar arquivo e remoção individual com X - 2026-10-06 -->
 <!-- CMFin V59.70.1 - Correção: upload por arrastar/colar somente dentro dos formulários de cadastro; removido do cabeçalho - 2026-10-06 -->
 <!-- Base V59.70 - Upload por arrastar/colar + status em Sócios/Pró-Labore + duplicação de cadastros + repasses parciais por credor em Dívidas com Terceiros - 2026-10-06 -->
@@ -9156,6 +9157,46 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
   }
 </style>
 
+
+<style id="cmfin-v59703-socios-compacto">
+  /* V59.70.3 - Sócios e Pró-Labore mais compacto em notebooks */
+  #pagamentosArquitetos .pagamentos-arq-table .cmfin-socio-compact-main{
+    display:block !important;
+    min-width:0;
+  }
+  #pagamentosArquitetos .pagamentos-arq-table .cmfin-socio-compact-copy{
+    min-width:0;
+    width:100%;
+  }
+  #pagamentosArquitetos .pagamentos-arq-table .terc-service-title{
+    display:block;
+    line-height:1.18;
+    margin:0 0 4px 0;
+  }
+  #pagamentosArquitetos .pagamentos-arq-table .terc-service-sub{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    flex-wrap:wrap;
+    line-height:1.2;
+  }
+  #pagamentosArquitetos .pagamentos-arq-table .terc-chip{
+    margin:0;
+  }
+  #pagamentosArquitetos .pagamentos-arq-table td:nth-child(2){
+    padding-left:10px;
+    padding-right:10px;
+  }
+  @media (max-width: 1366px){
+    #pagamentosArquitetos .pagamentos-arq-table td:nth-child(2),
+    #pagamentosArquitetos .pagamentos-arq-table th:nth-child(2){
+      min-width:250px !important;
+      width:250px !important;
+    }
+    #pagamentosArquitetos .pagamentos-arq-table .terc-service-title{font-size:12px;}
+    #pagamentosArquitetos .pagamentos-arq-table .terc-service-sub{font-size:10px;}
+  }
+</style>
 </head>
 <body class="cmfin-lock">
 
@@ -19167,9 +19208,8 @@ Os outros lançamentos não serão alterados.`;
         </div>` : "";
       return `
         <div class="terc-service-cell">
-          <div class="terc-service-main">
-            <div class="terc-service-avatar">${escaparHtml(iniciaisArquitetoArquiteto(i.arquiteto))}</div>
-            <div>
+          <div class="terc-service-main cmfin-socio-compact-main">
+            <div class="cmfin-socio-compact-copy">
               <strong class="terc-service-title">${arquiteto}</strong>
               <div class="terc-service-sub"><span class="terc-chip">${tipoRetirada}</span> ${servico}</div>
             </div>
