@@ -53642,7 +53642,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<!-- CMFin V59.70.6 - cards de Repasse e Reembolsos padronizados em colunas equilibradas -->
+<!-- CMFin V59.70.7 - layout Dívidas com Terceiros em proporção 70/30 -->
 <style id="cmfin-v5970-style">
   .cmfin-drop-upload{margin-top:8px;border:2px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#fbfdff 0%,#f8fafc 100%);padding:14px;transition:.18s ease;cursor:pointer;outline:none;position:relative}
   .cmfin-drop-upload:hover,.cmfin-drop-upload:focus,.cmfin-drop-upload.is-dragover{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
@@ -53660,7 +53660,8 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-drop-upload.is-paste-focus{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
   .cmfin-native-file-v5970{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
   .cmfin-duplicate-btn{border-color:#bfdbfe!important;color:#1d4ed8!important;background:#eff6ff!important}
-  .dtc-fluxo-financeiro-v5970{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:0 0 18px}
+  #dividasTerceiros .dtc-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)!important;gap:14px!important}
+  .dtc-fluxo-financeiro-v5970{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,3fr);gap:14px;align-items:start;margin:0 0 18px}
   .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel{margin:0!important;min-width:0}
   .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-kpis{gap:9px;margin:6px 0 14px}
   .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-kpis>div{padding:12px 12px;border-radius:14px}
@@ -53699,7 +53700,7 @@ Os outros lançamentos não serão alterados.`;
 <script id="cmfin-v5970-script">
 (function(){
   'use strict';
-  const V='59.70.6';
+  const V='59.70.7';
   const $=id=>document.getElementById(id);
   const money=v=>{try{return typeof moeda==='function'?moeda(Number(v)||0):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}};
   const parseMoney=v=>{try{return typeof limparMoeda==='function'?limparMoeda(v):Number(String(v||'').replace(/[^0-9,-]/g,'').replace('.','').replace(',','.'))||0;}catch(e){return 0;}};
