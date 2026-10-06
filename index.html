@@ -1,4 +1,5 @@
-<!-- CMFin V59.69 - Recebimentos: banco editável na linha + ordenação cronológica por data - 2026-09-29 -->
+<!-- CMFin V59.70 - Upload por arrastar/colar + status em Sócios/Pró-Labore + duplicação de cadastros + repasses parciais por credor em Dívidas com Terceiros - 2026-10-06 -->
+<!-- Base: CMFin V59.69 - Recebimentos: banco editável na linha + ordenação cronológica por data - 2026-09-29 -->
 <!-- CMFin V59.68 - Modais fecham ao clicar fora da janela (backdrop) - 2026-09-25 -->
 <!-- CMFin V59.66 - Reembolsos de Sócios: meses iniciam minimizados por padrão e podem ser expandidos individualmente - 2026-09-14 -->
 <!-- CMFin V59.64 - Somar Despesas liberado também no Modo Empresarial, com seleção isolada por modo - 2026-09-14 -->
@@ -11570,6 +11571,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         <div id="campoBancoArquiteto"><label>Banco/Cartão</label><select id="arqPgBanco" onchange="atualizarCamposPagamentoArquiteto()"></select></div>
         <div><label>Forma de Pagamento</label><select id="arqPgForma" onchange="atualizarCamposPagamentoArquiteto()"><option value="Débito">Débito</option><option value="Cartão de Crédito">Cartão de Crédito</option><option value="Pix">Pix</option><option value="Boleto">Boleto</option><option value="Promissória">Promissória</option><option value="Dinheiro">Dinheiro</option></select></div>
         <div><label>Valor</label><input id="arqPgValor" placeholder="R$ 0,00" oninput="formatarCampoMoeda(this)" /></div>
+        <div><label>Status</label><select id="arqPgStatus"><option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="NaoIncluir">Não incluir</option></select></div>
         <div id="campoTipoParcelamentoArquiteto" class="payment-mode-box" style="display:none; grid-column:1 / -1;">
           <label>Esse Pix foi à vista ou parcelado?</label>
           <select id="arqPgTipoParcelamento" onchange="atualizarCamposPagamentoArquiteto()">
@@ -15288,6 +15290,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         tipologia: document.getElementById("varTipologia")?.value || tipologiaPorCategoria(document.getElementById("varCategoria").value),
         banco: (forma === "Dinheiro" || forma === "Promissória") ? "" : document.getElementById("varBanco").value,
         forma,
+        status: document.getElementById("arqPgStatus")?.value || "Pendente",
         mesReferencia: mesReferenciaEscolhido,
         vencimento: vencimentoManual,
         comprovante: forma === "Pix" ? (novoComprovante || null) : null,
@@ -18690,7 +18693,7 @@ Os outros lançamentos não serão alterados.`;
             parcela: `${i + 1}/${qtdParcelas}`,
             primeiraFatura,
             totalParcelas: qtdParcelas,
-            status: "Pendente"
+            status: base.status || "Pendente"
           });
         }
       } else {
@@ -18887,6 +18890,7 @@ Os outros lançamentos não serão alterados.`;
       const arqPgTipoParcelamento = document.getElementById("arqPgTipoParcelamento");
       if (arqPgTipoParcelamento) arqPgTipoParcelamento.value = "avista";
       document.getElementById("arqPgValor").value = "";
+      if (document.getElementById("arqPgStatus")) document.getElementById("arqPgStatus").value = "Pendente";
       setValorMes("arqPgPrimeiraFatura", document.getElementById("dashboardMes")?.value || mesAtual());
       const tercPrimeiraFaturaCampo = document.getElementById("arqPgPrimeiraFatura");
       if (tercPrimeiraFaturaCampo) tercPrimeiraFaturaCampo.dataset.sugerido = "1";
@@ -18926,6 +18930,7 @@ Os outros lançamentos não serão alterados.`;
       const arqPgTipoParcelamento = document.getElementById("arqPgTipoParcelamento");
       if (arqPgTipoParcelamento) arqPgTipoParcelamento.value = (item.forma === "Pix" && Number(item.totalParcelas || 1) > 1) ? "parcelado" : "avista";
       document.getElementById("arqPgValor").value = moeda(item.valor || 0);
+      if (document.getElementById("arqPgStatus")) document.getElementById("arqPgStatus").value = item.status || "Pendente";
       setValorMes("arqPgPrimeiraFatura", item.primeiraFatura || (item.data ? item.data.slice(0,7) : mesAtual()));
       const tercPrimeiraEdit = document.getElementById("arqPgPrimeiraFatura");
       if (tercPrimeiraEdit) tercPrimeiraEdit.dataset.sugerido = "0";
@@ -25954,6 +25959,127 @@ Os outros lançamentos não serão alterados.`;
 
 </head><body><div class="page"><button class="print" onclick="window.print()">Salvar / Exportar PDF</button><section class="hero"><div class="hero-grid"></div><div class="hero-orb-a"></div><div class="hero-orb-b"></div><div class="hero-top"><span class="eyebrow"><i></i> ${txtModo.seloTopo}</span><span class="mode-pill">${txtModo.tag}</span></div><div class="hero-body"><div class="hero-main"><img class="hero-logo-img" src="${logoData}" alt="Logo CMFin"><h1 class="hero-title">${txtModo.tituloRelatorio}</h1><p class="hero-meta">${esc(nomeMesSeguro(mes))} • Gerado em ${new Date().toLocaleString('pt-BR')}</p><p class="hero-sub">${txtModo.subtitulo}</p><div class="hero-value-row"><div class="hero-value">${brl(d.lucro)}</div><span class="status-pill ${resultadoClasse}">${resultadoTexto}</span></div><div class="hero-caption">${txtModo.resultadoSub}</div><div class="hero-chip-row"><div class="hero-chip"><small>${txtModo.insightItem1}</small><strong>${esc(topCategoria[0])}</strong><span>${topCategoriaPct} do total classificado</span></div><div class="hero-chip"><small>${txtModo.insightItem2}</small><strong>${formatPct(shareReceitaSaidas)}</strong><span>${leituraSaidas}</span></div><div class="hero-chip"><small>${txtModo.insightItem3}</small><strong>${formatPct(shareLucro)}</strong><span>${leituraSaldo}</span></div></div><div class="hero-kpis"><div class="hero-kpi"><small>${txtModo.margem}</small><strong>${formatPct(margem)}</strong></div><div class="hero-kpi"><small>${txtModo.recebimentos}</small><strong>${brl(d.receita)}</strong></div><div class="hero-kpi"><small>${txtModo.saidas}</small><strong>${brl(d.saidas)}</strong></div><div class="hero-kpi"><small>Folga do mês</small><strong>${brl(economiaPotencial)}</strong></div></div></div><div class="hero-side"><div class="panel-card"><div class="panel-head"><h3>${txtModo.painelTitulo}</h3><span>CMFin</span></div><div class="premium-grid"><div class="premium-tile"><small>${txtModo.resultadoPrincipal}</small><strong>${d.lucro>=0?'Positivo':'Negativo'}</strong><b>${brl(d.lucro)}</b></div><div class="premium-tile"><small>${txtModo.maiorSaida}</small><strong>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</strong><b>${brl(Math.max(d.fixos,d.variaveis))}</b></div><div class="premium-tile"><small>${txtModo.resultadoPrincipal} x mês anterior</small><strong>Comparativo</strong><b>${deltaBadge(d.lucro,ant.lucro,false)}</b></div><div class="premium-tile"><small>${txtModo.saidas} x mês anterior</small><strong>Leitura do período</strong><b>${deltaBadge(d.saidas,ant.saidas,true)}</b></div></div><div class="panel-divider"></div><div class="panel-head" style="margin:0 0 8px"><h3>${txtModo.radarTitulo}</h3><span>${pulseText}</span></div><div class="pulse-stack"><div class="pulse-item"><div class="pulse-top"><div><small>Categoria líder</small><strong>${esc(topCategoria[0])}</strong></div><b>${topCategoriaPct}</b></div><div class="pulse-bar ok"><i style="width:${Math.max(8,clamp(pct(topCategoria[1],totalCat),0,100))}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saídas sobre entradas</small><strong>${leituraSaidas}</strong></div><b>${formatPct(shareReceitaSaidas)}</b></div><div class="pulse-bar ${pulseClass}"><i style="width:${Math.max(8,shareReceitaSaidas)}%"></i></div></div><div class="pulse-item"><div class="pulse-top"><div><small>Saúde do resultado</small><strong>${leituraSaldo}</strong></div><b>${formatPct(shareLucro)}</b></div><div class="pulse-bar ${d.lucro>=0?'ok':'warn'}"><i style="width:${Math.max(8,shareLucro)}%"></i></div></div></div></div></div></div></section><section class="spotlights"><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.recebimentos}</div><div class="spot-icon icon-receita">R</div></div><div class="spot-value">${brl(d.receita)}</div><div class="spot-helper">${txtModo.recebimentosAjuda}</div><div class="mini-track teal"><i style="width:100%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.saidas}</div><div class="spot-icon icon-saida">S</div></div><div class="spot-value">${brl(d.saidas)}</div><div class="spot-helper">${txtModo.saidasAjuda}</div><div class="mini-track amber"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.fixos}</div><div class="spot-icon icon-fixo">F</div></div><div class="spot-value">${brl(d.fixos)}</div><div class="spot-helper">${txtModo.fixosAjuda}</div><div class="mini-track blue"><i style="width:${shareFixos}%"></i></div></div><div class="spot-card"><div class="spot-head"><div class="spot-label">${txtModo.variaveis}</div><div class="spot-icon icon-var">V</div></div><div class="spot-value">${brl(d.variaveis)}</div><div class="spot-helper">${txtModo.variaveisAjuda}</div><div class="mini-track purple"><i style="width:${shareVariaveis}%"></i></div></div></section><section class="metrics"><div class="metric"><div class="metric-top"><div><div class="label">Saldo / Resultado</div><div class="helper">${txtModo.resultadoSub}</div></div><span class="pill ${d.lucro>=0?'receita':'saidas'}">${d.lucro>=0?'Positivo':'Atenção'}</span></div><div class="val">${brl(d.lucro)}</div><div class="progress ${d.lucro>=0?'green':'orange'}"><i style="width:${Math.max(6,shareLucro)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Participação das saídas</div><div class="helper">Quanto das entradas foi consumido pelas saídas do período.</div></div><span class="pill saidas">Ratio</span></div><div class="val">${formatPct(shareReceitaSaidas)}</div><div class="progress orange"><i style="width:${shareReceitaSaidas}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Categoria líder</div><div class="helper">Categoria com maior concentração entre as saídas classificadas.</div></div><span class="pill fixos">Top</span></div><div class="val">${topCategoriaPct}</div><div class="progress blue"><i style="width:${clamp(pct(topCategoria[1],totalCat),4,100)}%"></i></div></div><div class="metric"><div class="metric-top"><div><div class="label">Folga do mês</div><div class="helper">Diferença positiva entre entradas/receita e saídas pagas.</div></div><span class="pill vars">Livre</span></div><div class="val">${brl(economiaPotencial)}</div><div class="progress purple"><i style="width:${Math.max(5,shareLucro)}%"></i></div></div></section><section class="executive-grid"><div class="summary-card"><div class="sec-head"><div><h2>Resumo Executivo</h2><p>Leitura consolidada do período em linguagem gerencial e objetiva.</p></div><span class="tag">Executive</span></div><div class="summary-list"><div class="summary-row"><div><strong>${txtModo.resultadoPrincipal}</strong><span>Resultado principal do período</span></div><b>${brl(d.lucro)}</b></div><div class="summary-row"><div><strong>${txtModo.maiorSaida}</strong><span>Maior pressão dentro das saídas do mês</span></div><b>${d.fixos>=d.variaveis?txtModo.fixos:txtModo.variaveis}</b></div><div class="summary-row"><div><strong>Categoria líder</strong><span>Maior concentração dentro do histórico classificado</span></div><b>${esc(topCategoria[0])}</b></div><div class="summary-row"><div><strong>Leitura do mês</strong><span>Resumo rápido para tomada de decisão</span></div><b>${leituraSaldo}</b></div></div></div><div class="sec"><div class="sec-head"><div><h2>${txtModo.dreTitulo}</h2><p>${txtModo.dreSub}</p></div><span class="tag">${txtModo.tag}</span></div><table>${dreRows}</table><div class="footnote">${txtModo.dreFoot}</div></div></section><section class="secondary-grid"><div class="mix-card"><div class="sec-head"><div><h2>${txtModo.composicaoTitulo}</h2><p>${txtModo.composicaoSub}</p></div><span class="tag">Mix</span></div>${composicaoHtml}</div><div class="sec"><div class="sec-head"><div><h2>${txtModo.comparativoTitulo}</h2><p>${txtModo.comparativoSub}</p></div><span class="tag">Benchmark</span></div><table><tr><th>Indicador</th><th class="r">Atual</th><th class="r">Anterior</th><th class="r">Variação</th></tr><tr><td>${txtModo.recebimentos}</td><td class="r">${brl(d.receita)}</td><td class="r muted">${brl(ant.receita)}</td><td class="r">${deltaBadge(d.receita,ant.receita,false)}</td></tr><tr><td>${txtModo.saidas}</td><td class="r">${brl(d.saidas)}</td><td class="r muted">${brl(ant.saidas)}</td><td class="r">${deltaBadge(d.saidas,ant.saidas,true)}</td></tr><tr><td>${txtModo.lucroLinha}</td><td class="r">${brl(d.lucro)}</td><td class="r muted">${brl(ant.lucro)}</td><td class="r">${deltaBadge(d.lucro,ant.lucro,false)}</td></tr></table><div class="footnote">${txtModo.comparativoFoot}</div></div></section><section class="cats-card" style="margin-top:18px"><div class="sec-head"><div><h2>${txtModo.historicoTitulo}</h2><p>${txtModo.historicoSub}</p></div><span class="tag">Concentração</span></div><div class="cats">${catHtml}</div></section><footer class="report-footer">Relatório gerado automaticamente pela plataforma CMFin • Gestão Financeira Inteligente</footer></div>
 
+
+
+<!-- CMFin V59.70 - melhorias de usabilidade e controle financeiro -->
+<style id="cmfin-v5970-style">
+  .cmfin-drop-upload{margin-top:8px;border:2px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#fbfdff 0%,#f8fafc 100%);padding:14px;transition:.18s ease;cursor:pointer;outline:none;position:relative}
+  .cmfin-drop-upload:hover,.cmfin-drop-upload:focus,.cmfin-drop-upload.is-dragover{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
+  .cmfin-drop-upload .cmfin-drop-title{font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px}
+  .cmfin-drop-upload .cmfin-drop-sub{font-size:12px;color:#64748b;margin-top:4px;line-height:1.45}
+  .cmfin-drop-upload .cmfin-drop-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .cmfin-drop-upload .cmfin-drop-file{font-size:11px;font-weight:700;background:#fff;border:1px solid #dbe4ef;border-radius:999px;padding:5px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cmfin-native-file-v5970{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
+  .cmfin-duplicate-btn{border-color:#bfdbfe!important;color:#1d4ed8!important;background:#eff6ff!important}
+  .dtc-repasse-v5970{margin:0 0 18px;border:1px solid rgba(15,118,110,.18);border-radius:24px;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.05);overflow:hidden}
+  .dtc-repasse-head{padding:18px 20px;background:linear-gradient(135deg,#ecfdf5,#f8fafc);border-bottom:1px solid #dbe7e3;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+  .dtc-repasse-head h3{margin:0 0 4px;font-size:20px}.dtc-repasse-head p{margin:0;color:#64748b;font-size:13px}
+  .dtc-repasse-body{padding:18px 20px}.dtc-repasse-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dtc-repasse-grid .full{grid-column:1/-1}
+  .dtc-repasse-summary{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px}
+  .dtc-repasse-stat span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;font-weight:800}.dtc-repasse-stat strong{display:block;margin-top:4px;font-size:18px;color:#0f172a}.dtc-repasse-stat.saldo strong{color:#047857}
+  .dtc-repasse-history{margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px}.dtc-repasse-history h4{margin:0 0 10px}.dtc-repasse-history-row{display:grid;grid-template-columns:110px 1fr 130px;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;align-items:center;font-size:12px}.dtc-repasse-history-row strong{text-align:right}
+  @media(max-width:800px){.dtc-repasse-grid{grid-template-columns:1fr}.dtc-repasse-summary{grid-template-columns:1fr}.dtc-repasse-history-row{grid-template-columns:1fr}.dtc-repasse-history-row strong{text-align:left}}
+</style>
+<script id="cmfin-v5970-script">
+(function(){
+  'use strict';
+  const V='59.70';
+  const $=id=>document.getElementById(id);
+  const money=v=>{try{return typeof moeda==='function'?moeda(Number(v)||0):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}};
+  const parseMoney=v=>{try{return typeof limparMoeda==='function'?limparMoeda(v):Number(String(v||'').replace(/[^0-9,-]/g,'').replace('.','').replace(',','.'))||0;}catch(e){return 0;}};
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const today=()=>{try{return typeof hoje==='function'?hoje():new Date().toISOString().slice(0,10);}catch(e){return new Date().toISOString().slice(0,10)}};
+
+  // 1) Card universal para arrastar, clicar ou colar arquivos.
+  function updateDrop(input,zone){
+    const box=zone.querySelector('.cmfin-drop-files');
+    const files=Array.from(input.files||[]);
+    box.innerHTML=files.length?files.map(f=>`<span class="cmfin-drop-file">✓ ${esc(f.name)}</span>`).join(''):'<span class="cmfin-drop-sub">Nenhum arquivo selecionado.</span>';
+  }
+  function assignFiles(input,files){
+    try{const dt=new DataTransfer();Array.from(files||[]).forEach(f=>dt.items.add(f));input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){console.warn('CMFin V59.70: navegador não permitiu atribuir arquivos.',e);}
+  }
+  function enhanceFileInput(input){
+    if(!input||input.dataset.cmfinDrop5970==='1') return;
+    input.dataset.cmfinDrop5970='1';
+    input.classList.add('cmfin-native-file-v5970');
+    const zone=document.createElement('div');
+    zone.className='cmfin-drop-upload'; zone.tabIndex=0;
+    zone.innerHTML='<div class="cmfin-drop-title">📎 Anexar arquivo</div><div class="cmfin-drop-sub">Arraste para cá, clique para selecionar ou cole com Ctrl + V.</div><div class="cmfin-drop-files"></div>';
+    input.insertAdjacentElement('afterend',zone); updateDrop(input,zone);
+    zone.addEventListener('click',()=>input.click());
+    zone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}});
+    ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add('is-dragover');}));
+    ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove('is-dragover');}));
+    zone.addEventListener('drop',e=>{if(e.dataTransfer?.files?.length) assignFiles(input,e.dataTransfer.files);});
+    zone.addEventListener('paste',e=>{const fs=Array.from(e.clipboardData?.files||[]);if(fs.length){e.preventDefault();assignFiles(input,fs);}});
+    input.addEventListener('change',()=>updateDrop(input,zone));
+  }
+  function enhanceUploads(root=document){root.querySelectorAll('input[type="file"]').forEach(enhanceFileInput);}
+
+  // 2) Duplicação: abre o cadastro preenchido como novo, sem histórico/comprovantes.
+  window.cmfinDuplicarRecebimento=function(id){
+    if(typeof editarRecebimento!=='function')return; editarRecebimento(Number(id));
+    if($('recebEditId'))$('recebEditId').value=''; if($('recebStatus'))$('recebStatus').value='Pendente';
+    ['recebParcelasPagas','recebValorPago'].forEach(x=>{if($(x))$(x).value='';});
+    if(typeof setValorData==='function')setValorData('recebData',today());else if($('recebData'))$('recebData').value=today();
+    if($('tituloModalRecebimento'))$('tituloModalRecebimento').innerText='Duplicar Recebimento'; if($('btnSalvarRecebimento'))$('btnSalvarRecebimento').innerText='Salvar como Novo'; if($('btnCancelarEdicaoRecebimento'))$('btnCancelarEdicaoRecebimento').style.display='none';
+  };
+  window.cmfinDuplicarFixo=function(id,mes){if(typeof editarGastoFixo!=='function')return;editarGastoFixo(Number(id),mes);if($('fixoEditId')){$('fixoEditId').value='';$('fixoEditId').dataset.mesComprovante='';}if($('fixoStatus'))$('fixoStatus').value='Pendente';['fixoComprovante','fixoBoleto'].forEach(x=>{if($(x)){$(x).value='';$(x).dispatchEvent(new Event('change',{bubbles:true}));}});if($('tituloModalFixo'))$('tituloModalFixo').innerText='Duplicar Gasto Fixo';if($('btnSalvarFixo'))$('btnSalvarFixo').innerText='Salvar como Novo';if($('btnCancelarEdicaoFixo'))$('btnCancelarEdicaoFixo').style.display='none';};
+  window.cmfinDuplicarVariavel=function(id){if(typeof editarGastoVariavel!=='function')return;editarGastoVariavel(Number(id));if($('varEditId'))$('varEditId').value='';if($('varStatus'))$('varStatus').value='Pendente';if(typeof setValorData==='function')setValorData('varData',today());else if($('varData'))$('varData').value=today();['varComprovante','varBoleto'].forEach(x=>{if($(x)){$(x).value='';$(x).dispatchEvent(new Event('change',{bubbles:true}));}});if($('btnSalvarVariavel'))$('btnSalvarVariavel').innerText='Salvar como Novo';if($('btnCancelarEdicaoVariavel'))$('btnCancelarEdicaoVariavel').style.display='none';};
+  window.cmfinDuplicarArquiteto=function(id){if(typeof editarPagamentoArquiteto!=='function')return;editarPagamentoArquiteto(Number(id));if($('arqPgEditId'))$('arqPgEditId').value='';if($('arqPgStatus'))$('arqPgStatus').value='Pendente';if($('arqPgData'))$('arqPgData').value=today();if($('arqPgComprovante')){$('arqPgComprovante').value='';$('arqPgComprovante').dispatchEvent(new Event('change',{bubbles:true}));}if($('tituloModalPagamentoArquiteto'))$('tituloModalPagamentoArquiteto').innerText='Duplicar Retirada / Pró-Labore';if($('btnSalvarArquiteto'))$('btnSalvarArquiteto').innerText='Salvar como Novo';if($('btnCancelarEdicaoArquiteto'))$('btnCancelarEdicaoArquiteto').style.display='none';};
+  window.cmfinDuplicarTerceirizado=function(id){if(typeof editarPagamentoTerceirizado!=='function')return;editarPagamentoTerceirizado(Number(id));if($('tercPgEditId'))$('tercPgEditId').value='';if($('tercPgStatus'))$('tercPgStatus').value='Pendente';if($('tercPgData'))$('tercPgData').value=today();if($('tercPgComprovante')){$('tercPgComprovante').value='';$('tercPgComprovante').dispatchEvent(new Event('change',{bubbles:true}));}if($('btnSalvarTerceirizado'))$('btnSalvarTerceirizado').innerText='Salvar como Novo';if($('btnCancelarEdicaoTerceirizado'))$('btnCancelarEdicaoTerceirizado').style.display='none';};
+
+  function addDuplicateButtons(root=document){
+    root.querySelectorAll('button[onclick^="editarRecebimento("]').forEach(b=>addAfter(b,'Recebimento','cmfinDuplicarRecebimento'));
+    root.querySelectorAll('button[onclick^="editarGastoVariavel("]').forEach(b=>addAfter(b,'Gasto Variável','cmfinDuplicarVariavel'));
+    root.querySelectorAll('button[onclick^="editarPagamentoArquiteto("]').forEach(b=>addAfter(b,'Retirada','cmfinDuplicarArquiteto'));
+    root.querySelectorAll('button[onclick^="editarPagamentoTerceirizado("]').forEach(b=>addAfter(b,'Pagamento','cmfinDuplicarTerceirizado'));
+    root.querySelectorAll('button[onclick^="editarGastoFixo("]').forEach(b=>{
+      if(b.parentElement?.querySelector('.cmfin-duplicate-btn'))return; const m=(b.getAttribute('onclick')||'').match(/editarGastoFixo\(\s*(\d+)\s*,\s*['"]([^'"]+)['"]\s*\)/);if(!m)return;
+      const n=document.createElement('button');n.type='button';n.className='btn btn-secondary btn-small cmfin-duplicate-btn';n.textContent='Duplicar';n.title='Duplicar este gasto como um novo cadastro';n.onclick=()=>window.cmfinDuplicarFixo(Number(m[1]),m[2]);b.insertAdjacentElement('afterend',n);
+    });
+  }
+  function addAfter(b,label,fn){if(b.parentElement?.querySelector('.cmfin-duplicate-btn'))return;const m=(b.getAttribute('onclick')||'').match(/\(\s*(\d+)\s*\)/);if(!m)return;const n=document.createElement('button');n.type='button';n.className='btn btn-secondary btn-small cmfin-duplicate-btn';n.textContent='Duplicar';n.title='Duplicar '+label+' como novo cadastro';n.onclick=()=>window[fn](Number(m[1]));b.insertAdjacentElement('afterend',n);}
+
+  // 3) Repasse parcial por credor em Dívidas com Terceiros.
+  function modo(){try{return (typeof modoAtual!=='undefined'&&modoAtual==='empresarial')?'empresarial':'pessoal';}catch(e){return 'pessoal';}}
+  function debts(){try{return CMFin?.Data?.getModeDebts?CMFin.Data.getModeDebts(modo()):[];}catch(e){return [];}}
+  function saveDebts(v){if(CMFin?.Data?.setModeDebts)CMFin.Data.setModeDebts(modo(),v);}
+  function saldo(d){return Math.max(0,Number(d.valorTotal||0)-Number(d.valorPago||0));}
+  function creditors(){const map=new Map();debts().forEach(d=>{const n=String(d.credor||'').trim();const s=saldo(d);if(n&&s>0.0001)map.set(n,(map.get(n)||0)+s);});return [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));}
+  function ensureRepassePanel(){
+    const mod=$('dividasTerceiros'); if(!mod||$('dtcRepasse5970'))return;
+    const grid=mod.querySelector('.dtc-grid'); if(!grid)return;
+    const p=document.createElement('section');p.id='dtcRepasse5970';p.className='dtc-repasse-v5970';
+    p.innerHTML=`<div class="dtc-repasse-head"><div><h3>Registrar pagamento / repasse</h3><p>Abata um valor do saldo de um credor sem apagar a dívida original. O CMFin distribui o pagamento das dívidas mais antigas para as mais novas.</p></div><span class="dtc-badge">REPASSE</span></div><div class="dtc-repasse-body"><div class="dtc-repasse-grid"><div><label>Credor / Pessoa</label><select id="dtcRepasseCredor" onchange="cmfinAtualizarRepasse5970()"></select></div><div><label>Valor a repassar agora</label><input id="dtcRepasseValor" placeholder="R$ 0,00" oninput="if(typeof formatarCampoMoeda==='function')formatarCampoMoeda(this);cmfinAtualizarRepasse5970()"></div><div><label>Data do pagamento</label><input type="date" id="dtcRepasseData"></div><div><label>Forma de pagamento</label><select id="dtcRepasseForma"><option>Pix</option><option>Transferência</option><option>Débito</option><option>Dinheiro</option><option>Boleto</option><option>Outros</option></select></div><div class="full"><label>Observação</label><input id="dtcRepasseObs" placeholder="Ex.: reembolso parcial das despesas"></div><div class="full"><label>Comprovante</label><input type="file" id="dtcRepasseAnexo" accept="image/*,.pdf,application/pdf"></div><div class="dtc-repasse-summary"><div class="dtc-repasse-stat"><span>Saldo antes</span><strong id="dtcRepasseAntes">R$ 0,00</strong></div><div class="dtc-repasse-stat"><span>Repasse</span><strong id="dtcRepasseAgora">R$ 0,00</strong></div><div class="dtc-repasse-stat saldo"><span>Saldo depois</span><strong id="dtcRepasseDepois">R$ 0,00</strong></div></div><div class="full actions" style="justify-content:flex-end"><button class="btn btn-primary" type="button" onclick="cmfinRegistrarRepasse5970()">Registrar pagamento</button></div></div><div class="dtc-repasse-history"><h4>Histórico de repasses do credor</h4><div id="dtcRepasseHistorico"></div></div></div>`;
+    grid.insertAdjacentElement('beforebegin',p); enhanceUploads(p); if($('dtcRepasseData'))$('dtcRepasseData').value=today(); refreshRepassePanel();
+  }
+  function creditorHistory(name){
+    const grouped=new Map();debts().filter(d=>String(d.credor||'').trim()===name).forEach(d=>(Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[]).forEach(h=>{if(!h||h.tipo!=='repasse_credor')return;const key=String(h.repasseId||h.id);if(!grouped.has(key))grouped.set(key,{data:h.data||'',valor:0,forma:h.forma||'',obs:h.observacao||''});grouped.get(key).valor+=Number(h.valor||0);}));
+    return [...grouped.values()].sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+  }
+  function refreshRepassePanel(){
+    ensureRepassePanel();const sel=$('dtcRepasseCredor');if(!sel)return;const old=sel.value;const cs=creditors();sel.innerHTML=cs.length?cs.map(([n,s])=>`<option value="${esc(n)}">${esc(n)} - ${money(s)}</option>`).join(''):'<option value="">Nenhum credor com saldo pendente</option>';if(cs.some(x=>x[0]===old))sel.value=old;window.cmfinAtualizarRepasse5970();
+  }
+  window.cmfinAtualizarRepasse5970=function(){const name=$('dtcRepasseCredor')?.value||'';const antes=debts().filter(d=>String(d.credor||'').trim()===name).reduce((a,d)=>a+saldo(d),0);const valor=Math.max(0,parseMoney($('dtcRepasseValor')?.value||''));if($('dtcRepasseAntes'))$('dtcRepasseAntes').textContent=money(antes);if($('dtcRepasseAgora'))$('dtcRepasseAgora').textContent=money(Math.min(valor,antes));if($('dtcRepasseDepois'))$('dtcRepasseDepois').textContent=money(Math.max(0,antes-valor));const hist=$('dtcRepasseHistorico');if(hist){const hs=creditorHistory(name);hist.innerHTML=hs.length?hs.map(h=>`<div class="dtc-repasse-history-row"><span>${esc(String(h.data||'').slice(0,10).split('-').reverse().join('/'))}</span><span>${esc(h.forma||'Pagamento')}${h.obs?' · '+esc(h.obs):''}</span><strong>${money(h.valor)}</strong></div>`).join(''):'<div class="muted">Nenhum repasse registrado para este credor.</div>';}};
+  function readFile(input){return new Promise(resolve=>{const f=input?.files?.[0];if(!f)return resolve(null);const r=new FileReader();r.onload=()=>resolve({nome:f.name,tipo:f.type||'application/octet-stream',tamanho:f.size,conteudo:r.result});r.onerror=()=>resolve(null);r.readAsDataURL(f);});}
+  window.cmfinRegistrarRepasse5970=async function(){
+    const name=$('dtcRepasseCredor')?.value||'';let valor=parseMoney($('dtcRepasseValor')?.value||'');if(!name)return alert('Selecione o credor / pessoa.');if(!(valor>0))return alert('Informe o valor a repassar.');
+    const lista=debts();const ids=lista.map((d,i)=>({d,i})).filter(x=>String(x.d.credor||'').trim()===name&&saldo(x.d)>0.0001).sort((a,b)=>String(a.d.data||a.d.cmfinMesCadastro||'').localeCompare(String(b.d.data||b.d.cmfinMesCadastro||''))||String(a.d.id).localeCompare(String(b.d.id)));
+    const total=ids.reduce((a,x)=>a+saldo(x.d),0);if(valor>total+0.001)return alert('O valor informado é maior que o saldo pendente deste credor ('+money(total)+').');
+    const forma=$('dtcRepasseForma')?.value||'Pix',data=$('dtcRepasseData')?.value||today(),obs=$('dtcRepasseObs')?.value?.trim()||'',anexo=await readFile($('dtcRepasseAnexo'));const repasseId='rep_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);let restante=valor;
+    for(const x of ids){if(restante<=0.0001)break;const d=lista[x.i];const aplicar=Math.min(saldo(d),restante);d.valorPago=Math.min(Number(d.valorTotal||0),Number(d.valorPago||0)+aplicar);d.status=d.valorPago>=Number(d.valorTotal||0)-0.0001?'Pago':'Parcial';d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now()+x.i,repasseId,tipo:'repasse_credor',data,mes:data.slice(0,7),valor:aplicar,forma,observacao:obs,anexo});d.atualizadoEm=new Date().toISOString();restante-=aplicar;}
+    saveDebts(lista);try{if(typeof window.dtcRenderizar==='function')window.dtcRenderizar();}catch(e){}try{if(typeof renderizarTudo==='function')renderizarTudo();}catch(e){}if($('dtcRepasseValor'))$('dtcRepasseValor').value='';if($('dtcRepasseObs'))$('dtcRepasseObs').value='';if($('dtcRepasseAnexo')){$('dtcRepasseAnexo').value='';$('dtcRepasseAnexo').dispatchEvent(new Event('change',{bubbles:true}));}refreshRepassePanel();alert('Pagamento de '+money(valor)+' registrado para '+name+'. Saldo restante: '+money(Math.max(0,total-valor))+'.');
+  };
+
+  // Reaplica melhorias após as tabelas serem redesenhadas.
+  let scheduled=false;function enhance(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;enhanceUploads();addDuplicateButtons();ensureRepassePanel();});}
+  const obs=new MutationObserver(enhance);
+  function boot(){enhance();try{const old=window.dtcRenderizar;if(typeof old==='function'&&!old.__cmfinV5970){const wrapped=function(){const r=old.apply(this,arguments);setTimeout(refreshRepassePanel,0);return r;};wrapped.__cmfinV5970=true;window.dtcRenderizar=wrapped;try{dtcRenderizar=wrapped;}catch(e){}}}catch(e){}obs.observe(document.body,{childList:true,subtree:true});console.info('CMFin V'+V+' carregado.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
 
 </body></html>`;
 
