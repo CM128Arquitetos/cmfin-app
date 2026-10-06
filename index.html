@@ -1,4 +1,5 @@
-<!-- CMFin V59.70 - Upload por arrastar/colar + status em Sócios/Pró-Labore + duplicação de cadastros + repasses parciais por credor em Dívidas com Terceiros - 2026-10-06 -->
+<!-- CMFin V59.70.1 - Correção: upload por arrastar/colar somente dentro dos formulários de cadastro; removido do cabeçalho - 2026-10-06 -->
+<!-- Base V59.70 - Upload por arrastar/colar + status em Sócios/Pró-Labore + duplicação de cadastros + repasses parciais por credor em Dívidas com Terceiros - 2026-10-06 -->
 <!-- Base: CMFin V59.69 - Recebimentos: banco editável na linha + ordenação cronológica por data - 2026-09-29 -->
 <!-- CMFin V59.68 - Modais fecham ao clicar fora da janela (backdrop) - 2026-09-25 -->
 <!-- CMFin V59.66 - Reembolsos de Sócios: meses iniciam minimizados por padrão e podem ser expandidos individualmente - 2026-09-14 -->
@@ -53622,7 +53623,7 @@ Os outros lançamentos não serão alterados.`;
 <script id="cmfin-v5970-script">
 (function(){
   'use strict';
-  const V='59.70';
+  const V='59.70.1';
   const $=id=>document.getElementById(id);
   const money=v=>{try{return typeof moeda==='function'?moeda(Number(v)||0):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}};
   const parseMoney=v=>{try{return typeof limparMoeda==='function'?limparMoeda(v):Number(String(v||'').replace(/[^0-9,-]/g,'').replace('.','').replace(',','.'))||0;}catch(e){return 0;}};
@@ -53654,7 +53655,24 @@ Os outros lançamentos não serão alterados.`;
     zone.addEventListener('paste',e=>{const fs=Array.from(e.clipboardData?.files||[]);if(fs.length){e.preventDefault();assignFiles(input,fs);}});
     input.addEventListener('change',()=>updateDrop(input,zone));
   }
-  function enhanceUploads(root=document){root.querySelectorAll('input[type="file"]').forEach(enhanceFileInput);}
+  function fileInputEhDeCadastro(input){
+    // O card de anexos deve existir apenas dentro das telas/formulários de cadastro.
+    // Isso exclui inputs utilitários do cabeçalho, como Importar Dados, e outros controles globais.
+    return !!(input && input.closest && input.closest('.modal-backdrop, .module'));
+  }
+  function limparUploadForaDeCadastro(input){
+    if(!input) return;
+    const zone=input.nextElementSibling;
+    if(zone && zone.classList && zone.classList.contains('cmfin-drop-upload')) zone.remove();
+    input.classList.remove('cmfin-native-file-v5970');
+    delete input.dataset.cmfinDrop5970;
+  }
+  function enhanceUploads(root=document){
+    root.querySelectorAll('input[type="file"]').forEach(input=>{
+      if(fileInputEhDeCadastro(input)) enhanceFileInput(input);
+      else limparUploadForaDeCadastro(input);
+    });
+  }
 
   // 2) Duplicação: abre o cadastro preenchido como novo, sem histórico/comprovantes.
   window.cmfinDuplicarRecebimento=function(id){
