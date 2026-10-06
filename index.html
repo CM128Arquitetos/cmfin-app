@@ -1,3 +1,4 @@
+<!-- CMFin V59.70.2 - Upload estilo Google: card focável para Ctrl+V, botão Selecionar arquivo e remoção individual com X - 2026-10-06 -->
 <!-- CMFin V59.70.1 - Correção: upload por arrastar/colar somente dentro dos formulários de cadastro; removido do cabeçalho - 2026-10-06 -->
 <!-- Base V59.70 - Upload por arrastar/colar + status em Sócios/Pró-Labore + duplicação de cadastros + repasses parciais por credor em Dívidas com Terceiros - 2026-10-06 -->
 <!-- Base: CMFin V59.69 - Recebimentos: banco editável na linha + ordenação cronológica por data - 2026-09-29 -->
@@ -53607,8 +53608,16 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-drop-upload:hover,.cmfin-drop-upload:focus,.cmfin-drop-upload.is-dragover{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
   .cmfin-drop-upload .cmfin-drop-title{font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px}
   .cmfin-drop-upload .cmfin-drop-sub{font-size:12px;color:#64748b;margin-top:4px;line-height:1.45}
-  .cmfin-drop-upload .cmfin-drop-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-  .cmfin-drop-upload .cmfin-drop-file{font-size:11px;font-weight:700;background:#fff;border:1px solid #dbe4ef;border-radius:999px;padding:5px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cmfin-drop-upload .cmfin-drop-actions{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .cmfin-drop-upload .cmfin-drop-select{appearance:none;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;font-size:12px;font-weight:800;padding:8px 12px;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .cmfin-drop-upload .cmfin-drop-select:hover{border-color:#3b82f6;background:#f8fbff}
+  .cmfin-drop-upload .cmfin-drop-hint{font-size:11px;color:#64748b;font-weight:650}
+  .cmfin-drop-upload .cmfin-drop-files{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .cmfin-drop-upload .cmfin-drop-file{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;background:#fff;border:1px solid #dbe4ef;border-radius:999px;padding:5px 5px 5px 9px;max-width:100%}
+  .cmfin-drop-upload .cmfin-drop-file-name{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cmfin-drop-upload .cmfin-drop-remove{width:22px;height:22px;flex:0 0 22px;border:0;border-radius:50%;background:#f1f5f9;color:#475569;font-size:15px;font-weight:900;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}
+  .cmfin-drop-upload .cmfin-drop-remove:hover{background:#fee2e2;color:#b91c1c}
+  .cmfin-drop-upload.is-paste-focus{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
   .cmfin-native-file-v5970{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
   .cmfin-duplicate-btn{border-color:#bfdbfe!important;color:#1d4ed8!important;background:#eff6ff!important}
   .dtc-repasse-v5970{margin:0 0 18px;border:1px solid rgba(15,118,110,.18);border-radius:24px;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.05);overflow:hidden}
@@ -53623,7 +53632,7 @@ Os outros lançamentos não serão alterados.`;
 <script id="cmfin-v5970-script">
 (function(){
   'use strict';
-  const V='59.70.1';
+  const V='59.70.2';
   const $=id=>document.getElementById(id);
   const money=v=>{try{return typeof moeda==='function'?moeda(Number(v)||0):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}};
   const parseMoney=v=>{try{return typeof limparMoeda==='function'?limparMoeda(v):Number(String(v||'').replace(/[^0-9,-]/g,'').replace('.','').replace(',','.'))||0;}catch(e){return 0;}};
@@ -53633,11 +53642,42 @@ Os outros lançamentos não serão alterados.`;
   // 1) Card universal para arrastar, clicar ou colar arquivos.
   function updateDrop(input,zone){
     const box=zone.querySelector('.cmfin-drop-files');
+    if(!box)return;
     const files=Array.from(input.files||[]);
-    box.innerHTML=files.length?files.map(f=>`<span class="cmfin-drop-file">✓ ${esc(f.name)}</span>`).join(''):'<span class="cmfin-drop-sub">Nenhum arquivo selecionado.</span>';
+    if(!files.length){box.innerHTML='<span class="cmfin-drop-sub">Nenhum arquivo selecionado.</span>';return;}
+    box.innerHTML=files.map((f,idx)=>`<span class="cmfin-drop-file"><span class="cmfin-drop-file-name">✓ ${esc(f.name)}</span><button type="button" class="cmfin-drop-remove" data-cmfin-file-index="${idx}" title="Remover este arquivo" aria-label="Remover ${esc(f.name)}">×</button></span>`).join('');
+    box.querySelectorAll('.cmfin-drop-remove').forEach(btn=>btn.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      removeFileAt(input,Number(btn.dataset.cmfinFileIndex));
+    }));
   }
-  function assignFiles(input,files){
-    try{const dt=new DataTransfer();Array.from(files||[]).forEach(f=>dt.items.add(f));input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){console.warn('CMFin V59.70: navegador não permitiu atribuir arquivos.',e);}
+  function assignFiles(input,files,append=false){
+    try{
+      const dt=new DataTransfer();
+      const atuais=append&&input.multiple?Array.from(input.files||[]):[];
+      const todos=[...atuais,...Array.from(files||[])];
+      const limite=input.multiple?todos.length:Math.min(todos.length,1);
+      for(let i=0;i<limite;i++)dt.items.add(todos[i]);
+      input.files=dt.files;
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(e){console.warn('CMFin V59.70.2: navegador não permitiu atribuir arquivos.',e);}
+  }
+  function removeFileAt(input,index){
+    try{
+      const atuais=Array.from(input.files||[]);
+      const dt=new DataTransfer();
+      atuais.forEach((f,i)=>{if(i!==index)dt.items.add(f);});
+      input.files=dt.files;
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(e){
+      input.value='';
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  }
+  function clipboardFiles(e){
+    const direct=Array.from(e.clipboardData?.files||[]);
+    if(direct.length)return direct;
+    return Array.from(e.clipboardData?.items||[]).filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean);
   }
   function enhanceFileInput(input){
     if(!input||input.dataset.cmfinDrop5970==='1') return;
@@ -53645,14 +53685,20 @@ Os outros lançamentos não serão alterados.`;
     input.classList.add('cmfin-native-file-v5970');
     const zone=document.createElement('div');
     zone.className='cmfin-drop-upload'; zone.tabIndex=0;
-    zone.innerHTML='<div class="cmfin-drop-title">📎 Anexar arquivo</div><div class="cmfin-drop-sub">Arraste para cá, clique para selecionar ou cole com Ctrl + V.</div><div class="cmfin-drop-files"></div>';
+    zone.setAttribute('role','group');
+    zone.setAttribute('aria-label','Área para anexar arquivo. Clique aqui e use Control V para colar, arraste um arquivo ou use o botão Selecionar arquivo.');
+    zone.innerHTML='<div class="cmfin-drop-title">📎 Anexar arquivo</div><div class="cmfin-drop-sub">Clique nesta área e use <strong>Ctrl + V</strong> para colar, ou arraste o arquivo para cá.</div><div class="cmfin-drop-actions"><button type="button" class="cmfin-drop-select">Selecionar arquivo</button><span class="cmfin-drop-hint">Também aceita arrastar e soltar</span></div><div class="cmfin-drop-files"></div>';
     input.insertAdjacentElement('afterend',zone); updateDrop(input,zone);
-    zone.addEventListener('click',()=>input.click());
-    zone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}});
+    const selectBtn=zone.querySelector('.cmfin-drop-select');
+    selectBtn?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();input.click();});
+    zone.addEventListener('click',e=>{if(e.target.closest('.cmfin-drop-select,.cmfin-drop-remove'))return;zone.focus();});
+    zone.addEventListener('focus',()=>zone.classList.add('is-paste-focus'));
+    zone.addEventListener('blur',()=>zone.classList.remove('is-paste-focus'));
+    zone.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.ctrlKey){e.preventDefault();input.click();}});
     ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add('is-dragover');}));
     ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove('is-dragover');}));
-    zone.addEventListener('drop',e=>{if(e.dataTransfer?.files?.length) assignFiles(input,e.dataTransfer.files);});
-    zone.addEventListener('paste',e=>{const fs=Array.from(e.clipboardData?.files||[]);if(fs.length){e.preventDefault();assignFiles(input,fs);}});
+    zone.addEventListener('drop',e=>{if(e.dataTransfer?.files?.length) assignFiles(input,e.dataTransfer.files,input.multiple);});
+    zone.addEventListener('paste',e=>{const fs=clipboardFiles(e);if(fs.length){e.preventDefault();assignFiles(input,fs,input.multiple);}});
     input.addEventListener('change',()=>updateDrop(input,zone));
   }
   function fileInputEhDeCadastro(input){
