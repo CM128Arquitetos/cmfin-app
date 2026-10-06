@@ -53642,7 +53642,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<!-- CMFin V59.70 - melhorias de usabilidade e controle financeiro -->
+<!-- CMFin V59.70.6 - cards de Repasse e Reembolsos padronizados em colunas equilibradas -->
 <style id="cmfin-v5970-style">
   .cmfin-drop-upload{margin-top:8px;border:2px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#fbfdff 0%,#f8fafc 100%);padding:14px;transition:.18s ease;cursor:pointer;outline:none;position:relative}
   .cmfin-drop-upload:hover,.cmfin-drop-upload:focus,.cmfin-drop-upload.is-dragover{border-color:#3b82f6;background:#eff6ff;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
@@ -53660,8 +53660,15 @@ Os outros lançamentos não serão alterados.`;
   .cmfin-drop-upload.is-paste-focus{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
   .cmfin-native-file-v5970{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
   .cmfin-duplicate-btn{border-color:#bfdbfe!important;color:#1d4ed8!important;background:#eff6ff!important}
-  .dtc-fluxo-financeiro-v5970{display:grid;grid-template-columns:minmax(420px,.82fr) minmax(0,1.18fr);gap:14px;align-items:start;margin:0 0 18px}
+  .dtc-fluxo-financeiro-v5970{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:0 0 18px}
   .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel{margin:0!important;min-width:0}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-kpis{gap:9px;margin:6px 0 14px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-kpis>div{padding:12px 12px;border-radius:14px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-kpis strong{font-size:16px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-grupos{gap:10px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-grupo-head{padding:13px 14px 12px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-grupo-head h3{font-size:15px}
+  .dtc-fluxo-financeiro-v5970>.cmfin-reembolso-panel .cmfin-reembolso-grupo-head small{margin-top:5px;font-size:11px}
   .dtc-repasse-v5970{margin:0;border:1px solid rgba(15,118,110,.18);border-radius:18px;background:#fff;box-shadow:0 6px 20px rgba(15,23,42,.04);overflow:hidden;min-width:0}
   .dtc-repasse-head{padding:12px 14px;background:linear-gradient(135deg,#ecfdf5,#f8fafc);border-bottom:1px solid #dbe7e3;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
   .dtc-repasse-head h3{margin:0 0 2px;font-size:16px}.dtc-repasse-head p{margin:0;color:#64748b;font-size:11px;line-height:1.35}
@@ -53672,18 +53679,58 @@ Os outros lançamentos não serão alterados.`;
   .dtc-repasse-stat span{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:800}.dtc-repasse-stat strong{display:block;margin-top:2px;font-size:14px;color:#0f172a}.dtc-repasse-stat.saldo strong{color:#047857}
   .dtc-repasse-v5970 .actions{margin-top:0!important}.dtc-repasse-v5970 .actions .btn{padding:8px 11px!important;font-size:10px!important}
   .dtc-repasse-history{margin-top:10px;border-top:1px solid #e2e8f0;padding-top:9px}.dtc-repasse-history h4{margin:0 0 6px;font-size:12px}.dtc-repasse-history-row{display:grid;grid-template-columns:78px 1fr 92px;gap:6px;padding:6px 0;border-bottom:1px solid #f1f5f9;align-items:center;font-size:10px}.dtc-repasse-history-row strong{text-align:right}
+  /* CMFin V59.70.5 - Central visual de notificações */
+  .cmfin-toast-host{position:fixed;top:18px;right:18px;z-index:100000;display:flex;flex-direction:column;gap:10px;width:min(390px,calc(100vw - 28px));pointer-events:none}
+  .cmfin-toast{--toast-accent:#0f766e;position:relative;overflow:hidden;display:grid;grid-template-columns:42px minmax(0,1fr) 28px;gap:11px;align-items:start;background:rgba(255,255,255,.98);border:1px solid rgba(15,118,110,.18);border-radius:16px;padding:14px 13px 13px;box-shadow:0 18px 50px rgba(15,23,42,.20),0 3px 12px rgba(15,23,42,.08);backdrop-filter:blur(14px);pointer-events:auto;transform:translateY(-8px) scale(.985);opacity:0;animation:cmfinToastIn .22s ease forwards}
+  .cmfin-toast.success{--toast-accent:#059669;border-color:rgba(5,150,105,.22)}
+  .cmfin-toast.warning{--toast-accent:#d97706;border-color:rgba(217,119,6,.24)}
+  .cmfin-toast.error{--toast-accent:#dc2626;border-color:rgba(220,38,38,.22)}
+  .cmfin-toast.info{--toast-accent:#0f766e}
+  .cmfin-toast-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--toast-accent) 11%,white);color:var(--toast-accent);font-weight:900;font-size:19px;border:1px solid color-mix(in srgb,var(--toast-accent) 16%,white)}
+  .cmfin-toast-copy{min-width:0;padding-top:1px}.cmfin-toast-title{font-size:13px;line-height:1.2;font-weight:900;color:#0f172a;margin:0 0 4px}.cmfin-toast-message{font-size:11px;line-height:1.45;color:#475569;margin:0}.cmfin-toast-meta{margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cmfin-toast-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:10px;font-weight:800}.cmfin-toast-pill strong{color:var(--toast-accent);font-size:11px}
+  .cmfin-toast-close{appearance:none;border:0;background:transparent;color:#64748b;width:28px;height:28px;border-radius:9px;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.cmfin-toast-close:hover{background:#f1f5f9;color:#0f172a}
+  .cmfin-toast-progress{position:absolute;left:0;bottom:0;height:3px;width:100%;background:color-mix(in srgb,var(--toast-accent) 82%,white);transform-origin:left center;animation:cmfinToastProgress var(--toast-duration,6000ms) linear forwards}
+  .cmfin-toast.is-leaving{animation:cmfinToastOut .18s ease forwards}
+  @keyframes cmfinToastIn{to{opacity:1;transform:translateY(0) scale(1)}}@keyframes cmfinToastOut{to{opacity:0;transform:translateY(-6px) scale(.985)}}@keyframes cmfinToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+  @media(max-width:640px){.cmfin-toast-host{top:10px;left:10px;right:10px;width:auto}.cmfin-toast{grid-template-columns:38px minmax(0,1fr) 28px;padding:12px}.cmfin-toast-icon{width:38px;height:38px;border-radius:11px}}
   @media(max-width:1180px){.dtc-fluxo-financeiro-v5970{grid-template-columns:1fr}}
   @media(max-width:800px){.dtc-repasse-grid{grid-template-columns:1fr}.dtc-repasse-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.dtc-repasse-history-row{grid-template-columns:1fr}.dtc-repasse-history-row strong{text-align:left}}
 </style>
 <script id="cmfin-v5970-script">
 (function(){
   'use strict';
-  const V='59.70.4';
+  const V='59.70.6';
   const $=id=>document.getElementById(id);
   const money=v=>{try{return typeof moeda==='function'?moeda(Number(v)||0):Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}};
   const parseMoney=v=>{try{return typeof limparMoeda==='function'?limparMoeda(v):Number(String(v||'').replace(/[^0-9,-]/g,'').replace('.','').replace(',','.'))||0;}catch(e){return 0;}};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const today=()=>{try{return typeof hoje==='function'?hoje():new Date().toISOString().slice(0,10);}catch(e){return new Date().toISOString().slice(0,10)}};
+
+
+  // Notificações visuais padrão CMFin (substituem alertas nativos neste fluxo).
+  function cmfinToastHost(){
+    let host=document.getElementById('cmfinToastHost');
+    if(!host){host=document.createElement('div');host.id='cmfinToastHost';host.className='cmfin-toast-host';host.setAttribute('aria-live','polite');host.setAttribute('aria-atomic','false');document.body.appendChild(host);}
+    return host;
+  }
+  function cmfinNotificar({tipo='info',titulo='CMFin',mensagem='',meta=[],duracao=6000}={}){
+    const host=cmfinToastHost();
+    const icons={success:'✓',warning:'!',error:'×',info:'i'};
+    const toast=document.createElement('div');
+    toast.className='cmfin-toast '+(tipo||'info');
+    toast.setAttribute('role',tipo==='error'?'alert':'status');
+    toast.style.setProperty('--toast-duration',Math.max(1800,Number(duracao)||6000)+'ms');
+    const safeMeta=Array.isArray(meta)?meta:[];
+    toast.innerHTML=`<div class="cmfin-toast-icon">${icons[tipo]||icons.info}</div><div class="cmfin-toast-copy"><div class="cmfin-toast-title">${esc(titulo)}</div><p class="cmfin-toast-message">${esc(mensagem)}</p>${safeMeta.length?`<div class="cmfin-toast-meta">${safeMeta.map(x=>`<span class="cmfin-toast-pill">${esc(x.label||'')} <strong>${esc(x.valor||'')}</strong></span>`).join('')}</div>`:''}</div><button type="button" class="cmfin-toast-close" aria-label="Fechar notificação" title="Fechar">×</button><div class="cmfin-toast-progress"></div>`;
+    host.appendChild(toast);
+    let closed=false;
+    const close=()=>{if(closed)return;closed=true;toast.classList.add('is-leaving');setTimeout(()=>toast.remove(),190);};
+    toast.querySelector('.cmfin-toast-close')?.addEventListener('click',close);
+    const timer=setTimeout(close,Math.max(1800,Number(duracao)||6000));
+    toast.addEventListener('mouseenter',()=>{clearTimeout(timer);const p=toast.querySelector('.cmfin-toast-progress');if(p)p.style.animationPlayState='paused';},{once:true});
+    return toast;
+  }
+  window.cmfinNotificar=cmfinNotificar;
 
   // 1) Card universal para arrastar, clicar ou colar arquivos.
   function updateDrop(input,zone){
@@ -53820,12 +53867,12 @@ Os outros lançamentos não serão alterados.`;
   window.cmfinAtualizarRepasse5970=function(){const name=$('dtcRepasseCredor')?.value||'';const antes=debts().filter(d=>String(d.credor||'').trim()===name).reduce((a,d)=>a+saldo(d),0);const valor=Math.max(0,parseMoney($('dtcRepasseValor')?.value||''));if($('dtcRepasseAntes'))$('dtcRepasseAntes').textContent=money(antes);if($('dtcRepasseAgora'))$('dtcRepasseAgora').textContent=money(Math.min(valor,antes));if($('dtcRepasseDepois'))$('dtcRepasseDepois').textContent=money(Math.max(0,antes-valor));const hist=$('dtcRepasseHistorico');if(hist){const hs=creditorHistory(name);hist.innerHTML=hs.length?hs.map(h=>`<div class="dtc-repasse-history-row"><span>${esc(String(h.data||'').slice(0,10).split('-').reverse().join('/'))}</span><span>${esc(h.forma||'Pagamento')}${h.obs?' · '+esc(h.obs):''}</span><strong>${money(h.valor)}</strong></div>`).join(''):'<div class="muted">Nenhum repasse registrado para este credor.</div>';}};
   function readFile(input){return new Promise(resolve=>{const f=input?.files?.[0];if(!f)return resolve(null);const r=new FileReader();r.onload=()=>resolve({nome:f.name,tipo:f.type||'application/octet-stream',tamanho:f.size,conteudo:r.result});r.onerror=()=>resolve(null);r.readAsDataURL(f);});}
   window.cmfinRegistrarRepasse5970=async function(){
-    const name=$('dtcRepasseCredor')?.value||'';let valor=parseMoney($('dtcRepasseValor')?.value||'');if(!name)return alert('Selecione o credor / pessoa.');if(!(valor>0))return alert('Informe o valor a repassar.');
+    const name=$('dtcRepasseCredor')?.value||'';let valor=parseMoney($('dtcRepasseValor')?.value||'');if(!name){cmfinNotificar({tipo:'warning',titulo:'Credor não selecionado',mensagem:'Selecione o credor / pessoa antes de registrar o pagamento.',duracao:4500});return;}if(!(valor>0)){cmfinNotificar({tipo:'warning',titulo:'Informe o valor do repasse',mensagem:'Digite um valor maior que zero para continuar.',duracao:4500});return;}
     const lista=debts();const ids=lista.map((d,i)=>({d,i})).filter(x=>String(x.d.credor||'').trim()===name&&saldo(x.d)>0.0001).sort((a,b)=>String(a.d.data||a.d.cmfinMesCadastro||'').localeCompare(String(b.d.data||b.d.cmfinMesCadastro||''))||String(a.d.id).localeCompare(String(b.d.id)));
-    const total=ids.reduce((a,x)=>a+saldo(x.d),0);if(valor>total+0.001)return alert('O valor informado é maior que o saldo pendente deste credor ('+money(total)+').');
+    const total=ids.reduce((a,x)=>a+saldo(x.d),0);if(valor>total+0.001){cmfinNotificar({tipo:'warning',titulo:'Valor acima do saldo pendente',mensagem:'O valor informado ultrapassa o saldo disponível para este credor.',meta:[{label:'Saldo disponível',valor:money(total)}],duracao:5500});return;}
     const forma=$('dtcRepasseForma')?.value||'Pix',data=$('dtcRepasseData')?.value||today(),obs=$('dtcRepasseObs')?.value?.trim()||'',anexo=await readFile($('dtcRepasseAnexo'));const repasseId='rep_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);let restante=valor;
     for(const x of ids){if(restante<=0.0001)break;const d=lista[x.i];const aplicar=Math.min(saldo(d),restante);d.valorPago=Math.min(Number(d.valorTotal||0),Number(d.valorPago||0)+aplicar);d.status=d.valorPago>=Number(d.valorTotal||0)-0.0001?'Pago':'Parcial';d.historicoPagamentos=Array.isArray(d.historicoPagamentos)?d.historicoPagamentos:[];d.historicoPagamentos.push({id:Date.now()+x.i,repasseId,tipo:'repasse_credor',data,mes:data.slice(0,7),valor:aplicar,forma,observacao:obs,anexo});d.atualizadoEm=new Date().toISOString();restante-=aplicar;}
-    saveDebts(lista);try{if(typeof window.dtcRenderizar==='function')window.dtcRenderizar();}catch(e){}try{if(typeof renderizarTudo==='function')renderizarTudo();}catch(e){}if($('dtcRepasseValor'))$('dtcRepasseValor').value='';if($('dtcRepasseObs'))$('dtcRepasseObs').value='';if($('dtcRepasseAnexo')){$('dtcRepasseAnexo').value='';$('dtcRepasseAnexo').dispatchEvent(new Event('change',{bubbles:true}));}refreshRepassePanel();alert('Pagamento de '+money(valor)+' registrado para '+name+'. Saldo restante: '+money(Math.max(0,total-valor))+'.');
+    saveDebts(lista);try{if(typeof window.dtcRenderizar==='function')window.dtcRenderizar();}catch(e){}try{if(typeof renderizarTudo==='function')renderizarTudo();}catch(e){}if($('dtcRepasseValor'))$('dtcRepasseValor').value='';if($('dtcRepasseObs'))$('dtcRepasseObs').value='';if($('dtcRepasseAnexo')){$('dtcRepasseAnexo').value='';$('dtcRepasseAnexo').dispatchEvent(new Event('change',{bubbles:true}));}refreshRepassePanel();cmfinNotificar({tipo:'success',titulo:'Pagamento registrado',mensagem:'O repasse para '+name+' foi registrado com sucesso.',meta:[{label:'Valor pago',valor:money(valor)},{label:'Saldo restante',valor:money(Math.max(0,total-valor))}],duracao:7000});
   };
 
   // Reaplica melhorias após as tabelas serem redesenhadas.
