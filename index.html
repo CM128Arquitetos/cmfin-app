@@ -53889,23 +53889,49 @@ Os outros lançamentos não serão alterados.`;
 })();
 </script>
 
-<!-- CMFin V59.70.9 - Proteção contra fechamento acidental ao clicar/soltar fora dos formulários -->
-<script id="cmfin-v59709-protecao-formularios">
+<!-- CMFin V59.70.12 - Clique intencional no fundo fecha; arrasto/seleção não fecha -->
+<script id="cmfin-v597012-clique-intencional">
 (function(){
   'use strict';
-  if (window.cmfinV59709ProtecaoFormularios) return;
-  window.cmfinV59709ProtecaoFormularios = true;
+  if (window.cmfinV597012CliqueIntencional) return;
+  window.cmfinV597012CliqueIntencional = true;
 
-  // Captura antes das rotinas legadas (inclusive onclick inline) que fecham os modais.
-  // Botões de Fechar/Cancelar/Salvar dentro da janela continuam funcionando.
-  document.addEventListener('click', function(event){
-    var target = event.target;
-    if (!(target instanceof Element)) return;
-    var overlay = target.closest('.modal-backdrop, .cmfin-v52-modal, .cmfin-v53-modal, .cmfin-v59-modal');
-    if (!overlay || target !== overlay) return;
-    // Nunca encaminhar um clique no fundo para os fechamentos automáticos.
-    event.stopImmediatePropagation();
-    event.preventDefault();
+  var SELECTOR = '.modal-backdrop, .cmfin-v52-modal, .cmfin-v53-modal, .cmfin-v59-modal, #cmfin-confirm-overlay';
+  var inicio = null;
+  var LIMITE = 8; // tolerância para o pequeno movimento natural do mouse, em pixels
+
+  // Registra ONDE o usuário começou a pressionar, não apenas onde soltou.
+  document.addEventListener('pointerdown', function(ev){
+    if (ev.button !== 0 || !ev.isPrimary) { inicio = null; return; }
+    inicio = {alvo: ev.target, x: ev.clientX, y: ev.clientY, id: ev.pointerId};
+  }, true);
+  document.addEventListener('pointercancel', function(){ inicio = null; }, true);
+
+  // Atua antes dos handlers antigos que fechavam o modal mesmo após arrastar texto.
+  document.addEventListener('click', function(ev){
+    var alvo = ev.target;
+    if (!(alvo instanceof Element)) return;
+    var fundo = alvo.closest(SELECTOR);
+    if (!fundo || alvo !== fundo) return;
+
+    var legitimo = !!inicio && inicio.alvo === fundo &&
+      Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) <= LIMITE;
+    inicio = null;
+    if (!legitimo) {
+      ev.stopImmediatePropagation();
+      ev.preventDefault();
+      return;
+    }
+
+    // O diálogo visual é gerenciado por uma Promise, portanto fecha pelo botão
+    // Cancelar para resolver corretamente o resultado e liberar o foco.
+    if (fundo.id === 'cmfin-confirm-overlay') {
+      ev.stopImmediatePropagation();
+      ev.preventDefault();
+      var cancelar = fundo.querySelector('.cmfin-confirm-cancel');
+      if (cancelar) cancelar.click();
+    }
+    // Outros modais seguem suas próprias rotinas legadas de fechamento.
   }, true);
 })();
 </script>
