@@ -26006,102 +26006,9 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<!-- CMFin V59.70.9 - Proteção contra fechamento acidental ao clicar/soltar fora dos formulários -->
-<script id="cmfin-v59709-protecao-formularios">
-(function(){
-  'use strict';
-  if (window.cmfinV59709ProtecaoFormularios) return;
-  window.cmfinV59709ProtecaoFormularios = true;
 
-  // Captura antes das rotinas legadas (inclusive onclick inline) que fecham os modais.
-  // Botões de Fechar/Cancelar/Salvar dentro da janela continuam funcionando.
-  document.addEventListener('click', function(event){
-    var target = event.target;
-    if (!(target instanceof Element)) return;
-    var overlay = target.closest('.modal-backdrop, .cmfin-v52-modal, .cmfin-v53-modal, .cmfin-v59-modal');
-    if (!overlay || target !== overlay) return;
-    // Nunca encaminhar um clique no fundo para os fechamentos automáticos.
-    event.stopImmediatePropagation();
-    event.preventDefault();
-  }, true);
-})();
-</script>
 
-<!-- CMFin V59.70.10 - Confirmações visuais padronizadas, sem alteração das regras financeiras -->
-<style>
-#cmfin-confirm-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(11,24,35,.62);backdrop-filter:blur(3px);font-family:inherit}
-#cmfin-confirm-overlay[hidden]{display:none!important}
-.cmfin-confirm-panel{width:min(100%,495px);max-height:min(88vh,730px);overflow-y:auto;border-radius:18px;background:#fff;box-shadow:0 24px 90px rgba(8,20,30,.25);color:#192a33;border:1px solid rgba(224,233,234,.95);animation:cmfinConfirmIn .16s ease-out}
-@keyframes cmfinConfirmIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
-.cmfin-confirm-top{display:flex;align-items:flex-start;gap:13px;padding:24px 24px 12px}
-.cmfin-confirm-symbol{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:#e7f5f2;color:#087f75}
-.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-symbol{background:#fff0ef;color:#cd4040}
-.cmfin-confirm-head{flex:1;min-width:0}
-.cmfin-confirm-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.1px;color:#6e858a;text-transform:uppercase;margin-bottom:5px}
-.cmfin-confirm-title{font-size:20px;font-weight:800;line-height:1.28;letter-spacing:-.45px;color:#172e30;margin:0}
-.cmfin-confirm-desc{font-size:13px;line-height:1.65;color:#607279;padding:0 24px 12px;white-space:pre-line}
-.cmfin-confirm-information{margin:4px 24px 20px;padding:15px 16px;border-radius:12px;border:1px solid #e7ecec;background:#f8fbfa}
-.cmfin-confirm-sum-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#637c7d;margin-bottom:5px}
-.cmfin-confirm-amount{font-size:29px;letter-spacing:-.8px;color:#087f75;font-weight:850;line-height:1.25;font-variant-numeric:tabular-nums}
-.cmfin-confirm-meta{margin-top:12px;display:grid;gap:10px;border-top:1px solid #e2e9e9;padding-top:12px}
-.cmfin-confirm-meta-row{display:flex;align-items:start;justify-content:space-between;gap:16px;font-size:12px}
-.cmfin-confirm-meta-row span{color:#74868b}.cmfin-confirm-meta-row strong{text-align:right;color:#1d3234;font-weight:750;overflow-wrap:anywhere}
-.cmfin-confirm-warning{margin:0 24px 20px;background:#fff7ed;border:1px solid #f4dfbd;border-radius:10px;color:#855c24;font-size:12px;line-height:1.5;padding:11px 13px}
-.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-warning{background:#fff5f4;border-color:#f5d8d6;color:#a74640}
-.cmfin-confirm-bottom{padding:16px 24px 20px;border-top:1px solid #ebeff0;display:flex;justify-content:flex-end;gap:10px;background:#fcfdfd}
-.cmfin-confirm-bottom button{font:inherit;font-size:13px;font-weight:750;border-radius:10px;padding:12px 18px;cursor:pointer;min-height:43px;transition:filter .15s,transform .15s}
-.cmfin-confirm-bottom button:active{transform:scale(.98)}
-.cmfin-confirm-cancel{border:1px solid #dae3e4;color:#263b40;background:white}
-.cmfin-confirm-ok{border:1px solid #087c72;background:#087c72;color:#fff;box-shadow:0 2px 7px #087c722a}
-.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-ok{border-color:#d13d42;background:#d13d42;box-shadow:0 2px 7px #d13d422a}
-.cmfin-confirm-bottom button:hover{filter:brightness(.96)}
-@media(max-width:520px){.cmfin-confirm-top{padding:19px 18px 12px}.cmfin-confirm-title{font-size:18px}.cmfin-confirm-desc{padding-left:18px;padding-right:18px}.cmfin-confirm-information{margin-left:18px;margin-right:18px}.cmfin-confirm-warning{margin-left:18px;margin-right:18px}.cmfin-confirm-bottom{padding:14px 18px;flex-wrap:wrap}.cmfin-confirm-bottom button{flex:1}}
-</style>
-<script>
-(function(){
-  'use strict';
-  function el(tag,cls,txt){var node=document.createElement(tag);if(cls)node.className=cls;if(txt!=null)node.textContent=String(txt);return node;}
-  function addRow(parent,label,value){if(value==null||value==='')return;var row=el('div','cmfin-confirm-meta-row');row.append(el('span','',label),el('strong','',value));parent.append(row);}
-  window.cmfinConfirmarVisual=function(mensagem,config){
-    config=config||{};
-    return new Promise(function(resolve){
-      var tipo=config.tipo==='exclusao'?'exclusao':'recebimento';
-      var before=document.activeElement;
-      var overlay=el('div');overlay.id='cmfin-confirm-overlay';overlay.setAttribute('role','presentation');
-      var panel=el('section','cmfin-confirm-panel');panel.dataset.tipo=tipo;panel.setAttribute('role','alertdialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-labelledby','cmfin-confirm-title');
-      var top=el('div','cmfin-confirm-top');var symbol=el('div','cmfin-confirm-symbol',tipo==='exclusao'?'!':'✓');symbol.setAttribute('aria-hidden','true');
-      var head=el('div','cmfin-confirm-head');head.append(el('div','cmfin-confirm-eyebrow',tipo==='exclusao'?'ATENÇÃO · AÇÃO DE EXCLUSÃO':'CONFIRMAÇÃO DE PAGAMENTO'));
-      var title=el('h2','cmfin-confirm-title',config.titulo||(tipo==='exclusao'?'Confirmar Exclusão':'Confirmar Recebimento'));title.id='cmfin-confirm-title';head.append(title);top.append(symbol,head);panel.append(top);
-      var desc=el('div','cmfin-confirm-desc',tipo==='exclusao'?'Confira o lançamento antes de continuar.':'Confira os dados antes de registrar o recebimento e gerar o comprovante.');panel.append(desc);
-      var info=el('div','cmfin-confirm-information');
-      if(config.valor){info.append(el('div','cmfin-confirm-sum-label','Valor do recebimento'),el('div','cmfin-confirm-amount',config.valor));}
-      var meta=el('div','cmfin-confirm-meta');
-      if(config.valor){addRow(meta,'Pessoa',config.pessoa);addRow(meta,'Referência',config.referencia);addRow(meta,'Tipo',config.parcial?'Pagamento parcial':'Pagamento integral');if(config.parcial)addRow(meta,'Saldo restante',config.saldo);}
-      else {
-        var partes=String(mensagem||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean);
-        var principais=[];
-        partes.forEach(function(linha,i){
-          var found=linha.match(/^([^:]{2,35}):\s*(.+)$/);
-          if(found){addRow(meta,found[1],found[2]);}
-          else if(i>0&&!/outros lançamentos|parcelas anteriores|não serão alterados|será mantid/i.test(linha))principais.push(linha);
-        });
-        if(principais.length){info.append(el('div','cmfin-confirm-sum-label','Lançamento'),el('div','',principais.join(' · ')));}
-      }
-      if(meta.childNodes.length)info.append(meta);
-      if(info.childNodes.length)panel.append(info);
-      if(tipo==='exclusao')panel.append(el('div','cmfin-confirm-warning','A exclusão não poderá ser desfeita. Os demais lançamentos permanecerão sem alterações.'));
-      else if(config.parcial)panel.append(el('div','cmfin-confirm-warning','Este recebimento será registrado como parcial. Confira o saldo restante antes de confirmar.'));
-      var bottom=el('div','cmfin-confirm-bottom');var cancel=el('button','cmfin-confirm-cancel','Cancelar');cancel.type='button';var ok=el('button','cmfin-confirm-ok',config.botao||'Confirmar');ok.type='button';bottom.append(cancel,ok);panel.append(bottom);overlay.append(panel);
-      var finished=false;
-      function finish(value){if(finished)return;finished=true;document.removeEventListener('keydown',keys,true);overlay.remove();try{if(before&&before.isConnected)before.focus({preventScroll:true});}catch(e){}resolve(value);}
-      function keys(e){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(false);}else if(e.key==='Tab'){var arr=[cancel,ok];var n=arr.indexOf(document.activeElement);if(e.shiftKey&&n<=0){e.preventDefault();ok.focus();}else if(!e.shiftKey&&n===1){e.preventDefault();cancel.focus();}}}
-      // Não fechar ao clicar fora: evita perda de contexto por clique ou arrasto.
-      cancel.addEventListener('click',function(){finish(false)});ok.addEventListener('click',function(){finish(true)});
-      document.body.append(overlay);document.addEventListener('keydown',keys,true);cancel.focus({preventScroll:true});
-    });
-  };
-})();
-</script>
+
 
 </body></html>`;
 
@@ -53979,6 +53886,103 @@ Os outros lançamentos não serão alterados.`;
   const obs=new MutationObserver(enhance);
   function boot(){enhance();try{const old=window.dtcRenderizar;if(typeof old==='function'&&!old.__cmfinV5970){const wrapped=function(){const r=old.apply(this,arguments);setTimeout(refreshRepassePanel,0);return r;};wrapped.__cmfinV5970=true;window.dtcRenderizar=wrapped;try{dtcRenderizar=wrapped;}catch(e){}}}catch(e){}obs.observe(document.body,{childList:true,subtree:true});console.info('CMFin V'+V+' carregado.');}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
+<!-- CMFin V59.70.9 - Proteção contra fechamento acidental ao clicar/soltar fora dos formulários -->
+<script id="cmfin-v59709-protecao-formularios">
+(function(){
+  'use strict';
+  if (window.cmfinV59709ProtecaoFormularios) return;
+  window.cmfinV59709ProtecaoFormularios = true;
+
+  // Captura antes das rotinas legadas (inclusive onclick inline) que fecham os modais.
+  // Botões de Fechar/Cancelar/Salvar dentro da janela continuam funcionando.
+  document.addEventListener('click', function(event){
+    var target = event.target;
+    if (!(target instanceof Element)) return;
+    var overlay = target.closest('.modal-backdrop, .cmfin-v52-modal, .cmfin-v53-modal, .cmfin-v59-modal');
+    if (!overlay || target !== overlay) return;
+    // Nunca encaminhar um clique no fundo para os fechamentos automáticos.
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }, true);
+})();
+</script>
+
+<!-- CMFin V59.70.10 - Confirmações visuais padronizadas, sem alteração das regras financeiras -->
+<style>
+#cmfin-confirm-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(11,24,35,.62);backdrop-filter:blur(3px);font-family:inherit}
+#cmfin-confirm-overlay[hidden]{display:none!important}
+.cmfin-confirm-panel{width:min(100%,495px);max-height:min(88vh,730px);overflow-y:auto;border-radius:18px;background:#fff;box-shadow:0 24px 90px rgba(8,20,30,.25);color:#192a33;border:1px solid rgba(224,233,234,.95);animation:cmfinConfirmIn .16s ease-out}
+@keyframes cmfinConfirmIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+.cmfin-confirm-top{display:flex;align-items:flex-start;gap:13px;padding:24px 24px 12px}
+.cmfin-confirm-symbol{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:#e7f5f2;color:#087f75}
+.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-symbol{background:#fff0ef;color:#cd4040}
+.cmfin-confirm-head{flex:1;min-width:0}
+.cmfin-confirm-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.1px;color:#6e858a;text-transform:uppercase;margin-bottom:5px}
+.cmfin-confirm-title{font-size:20px;font-weight:800;line-height:1.28;letter-spacing:-.45px;color:#172e30;margin:0}
+.cmfin-confirm-desc{font-size:13px;line-height:1.65;color:#607279;padding:0 24px 12px;white-space:pre-line}
+.cmfin-confirm-information{margin:4px 24px 20px;padding:15px 16px;border-radius:12px;border:1px solid #e7ecec;background:#f8fbfa}
+.cmfin-confirm-sum-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#637c7d;margin-bottom:5px}
+.cmfin-confirm-amount{font-size:29px;letter-spacing:-.8px;color:#087f75;font-weight:850;line-height:1.25;font-variant-numeric:tabular-nums}
+.cmfin-confirm-meta{margin-top:12px;display:grid;gap:10px;border-top:1px solid #e2e9e9;padding-top:12px}
+.cmfin-confirm-meta-row{display:flex;align-items:start;justify-content:space-between;gap:16px;font-size:12px}
+.cmfin-confirm-meta-row span{color:#74868b}.cmfin-confirm-meta-row strong{text-align:right;color:#1d3234;font-weight:750;overflow-wrap:anywhere}
+.cmfin-confirm-warning{margin:0 24px 20px;background:#fff7ed;border:1px solid #f4dfbd;border-radius:10px;color:#855c24;font-size:12px;line-height:1.5;padding:11px 13px}
+.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-warning{background:#fff5f4;border-color:#f5d8d6;color:#a74640}
+.cmfin-confirm-bottom{padding:16px 24px 20px;border-top:1px solid #ebeff0;display:flex;justify-content:flex-end;gap:10px;background:#fcfdfd}
+.cmfin-confirm-bottom button{font:inherit;font-size:13px;font-weight:750;border-radius:10px;padding:12px 18px;cursor:pointer;min-height:43px;transition:filter .15s,transform .15s}
+.cmfin-confirm-bottom button:active{transform:scale(.98)}
+.cmfin-confirm-cancel{border:1px solid #dae3e4;color:#263b40;background:white}
+.cmfin-confirm-ok{border:1px solid #087c72;background:#087c72;color:#fff;box-shadow:0 2px 7px #087c722a}
+.cmfin-confirm-panel[data-tipo="exclusao"] .cmfin-confirm-ok{border-color:#d13d42;background:#d13d42;box-shadow:0 2px 7px #d13d422a}
+.cmfin-confirm-bottom button:hover{filter:brightness(.96)}
+@media(max-width:520px){.cmfin-confirm-top{padding:19px 18px 12px}.cmfin-confirm-title{font-size:18px}.cmfin-confirm-desc{padding-left:18px;padding-right:18px}.cmfin-confirm-information{margin-left:18px;margin-right:18px}.cmfin-confirm-warning{margin-left:18px;margin-right:18px}.cmfin-confirm-bottom{padding:14px 18px;flex-wrap:wrap}.cmfin-confirm-bottom button{flex:1}}
+</style>
+<script>
+(function(){
+  'use strict';
+  function el(tag,cls,txt){var node=document.createElement(tag);if(cls)node.className=cls;if(txt!=null)node.textContent=String(txt);return node;}
+  function addRow(parent,label,value){if(value==null||value==='')return;var row=el('div','cmfin-confirm-meta-row');row.append(el('span','',label),el('strong','',value));parent.append(row);}
+  window.cmfinConfirmarVisual=function(mensagem,config){
+    config=config||{};
+    return new Promise(function(resolve){
+      var tipo=config.tipo==='exclusao'?'exclusao':'recebimento';
+      var before=document.activeElement;
+      var overlay=el('div');overlay.id='cmfin-confirm-overlay';overlay.setAttribute('role','presentation');
+      var panel=el('section','cmfin-confirm-panel');panel.dataset.tipo=tipo;panel.setAttribute('role','alertdialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-labelledby','cmfin-confirm-title');
+      var top=el('div','cmfin-confirm-top');var symbol=el('div','cmfin-confirm-symbol',tipo==='exclusao'?'!':'✓');symbol.setAttribute('aria-hidden','true');
+      var head=el('div','cmfin-confirm-head');head.append(el('div','cmfin-confirm-eyebrow',tipo==='exclusao'?'ATENÇÃO · AÇÃO DE EXCLUSÃO':'CONFIRMAÇÃO DE PAGAMENTO'));
+      var title=el('h2','cmfin-confirm-title',config.titulo||(tipo==='exclusao'?'Confirmar Exclusão':'Confirmar Recebimento'));title.id='cmfin-confirm-title';head.append(title);top.append(symbol,head);panel.append(top);
+      var desc=el('div','cmfin-confirm-desc',tipo==='exclusao'?'Confira o lançamento antes de continuar.':'Confira os dados antes de registrar o recebimento e gerar o comprovante.');panel.append(desc);
+      var info=el('div','cmfin-confirm-information');
+      if(config.valor){info.append(el('div','cmfin-confirm-sum-label','Valor do recebimento'),el('div','cmfin-confirm-amount',config.valor));}
+      var meta=el('div','cmfin-confirm-meta');
+      if(config.valor){addRow(meta,'Pessoa',config.pessoa);addRow(meta,'Referência',config.referencia);addRow(meta,'Tipo',config.parcial?'Pagamento parcial':'Pagamento integral');if(config.parcial)addRow(meta,'Saldo restante',config.saldo);}
+      else {
+        var partes=String(mensagem||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean);
+        var principais=[];
+        partes.forEach(function(linha,i){
+          var found=linha.match(/^([^:]{2,35}):\s*(.+)$/);
+          if(found){addRow(meta,found[1],found[2]);}
+          else if(i>0&&!/outros lançamentos|parcelas anteriores|não serão alterados|será mantid/i.test(linha))principais.push(linha);
+        });
+        if(principais.length){info.append(el('div','cmfin-confirm-sum-label','Lançamento'),el('div','',principais.join(' · ')));}
+      }
+      if(meta.childNodes.length)info.append(meta);
+      if(info.childNodes.length)panel.append(info);
+      if(tipo==='exclusao')panel.append(el('div','cmfin-confirm-warning','A exclusão não poderá ser desfeita. Os demais lançamentos permanecerão sem alterações.'));
+      else if(config.parcial)panel.append(el('div','cmfin-confirm-warning','Este recebimento será registrado como parcial. Confira o saldo restante antes de confirmar.'));
+      var bottom=el('div','cmfin-confirm-bottom');var cancel=el('button','cmfin-confirm-cancel','Cancelar');cancel.type='button';var ok=el('button','cmfin-confirm-ok',config.botao||'Confirmar');ok.type='button';bottom.append(cancel,ok);panel.append(bottom);overlay.append(panel);
+      var finished=false;
+      function finish(value){if(finished)return;finished=true;document.removeEventListener('keydown',keys,true);overlay.remove();try{if(before&&before.isConnected)before.focus({preventScroll:true});}catch(e){}resolve(value);}
+      function keys(e){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(false);}else if(e.key==='Tab'){var arr=[cancel,ok];var n=arr.indexOf(document.activeElement);if(e.shiftKey&&n<=0){e.preventDefault();ok.focus();}else if(!e.shiftKey&&n===1){e.preventDefault();cancel.focus();}}}
+      // Não fechar ao clicar fora: evita perda de contexto por clique ou arrasto.
+      cancel.addEventListener('click',function(){finish(false)});ok.addEventListener('click',function(){finish(true)});
+      document.body.append(overlay);document.addEventListener('keydown',keys,true);cancel.focus({preventScroll:true});
+    });
+  };
 })();
 </script>
 
