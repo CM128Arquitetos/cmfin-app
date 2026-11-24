@@ -1,3 +1,4 @@
+<!-- CMFin V59.70.17 - Forma original restaurada; somente cor do valor selecionado, opções neutras -->
 <!-- CMFin V59.70.14 - Gastos por Terceiros: cores de bancos/cartões padronizadas com Fixos e Variáveis -->
 <!-- CMFin V59.70.13 - Gastos Fixos: cálculo único do parcelamento antes de persistir -->
 <!-- CMFin V59.70.3 - Sócios e Pró-Labore: remoção dos avatares de iniciais e compactação para telas menores - 2026-10-06 -->
@@ -16548,7 +16549,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
     }
 
     function formaCartaoTerceiroSelect(id, valorAtual) {
-      return `<select class="terc-inline-select terc-inline-forma" style="--terc-bank-color:${corMarcaFinanceira(valorAtual)};" aria-label="Alterar banco ou forma de pagamento" title="Alterar banco/cartão" onchange="alterarCampoTerceiroInline(${id}, 'formaCartao', this.value)">${opcoesFormaCartaoTerceiro(valorAtual)}</select>`;
+      return `<select class="terc-inline-select terc-inline-forma" style="--terc-bank-color:${corMarcaFinanceira(valorAtual)};color:var(--terc-bank-color) !important;" title="Alterar forma/cartão" onchange="alterarCampoTerceiroInline(${id}, 'formaCartao', this.value)">${opcoesFormaCartaoTerceiro(valorAtual)}</select>`;
     }
 
     function categoriaTerceiroSelect(id, categoriaAtual) {
@@ -17650,7 +17651,7 @@ Os outros lançamentos não serão alterados.`;
                 <div class="terc-row-desc">${t.descricao}</div>
                 <div class="terc-row-obs">${observacao}</div>
                 <div class="terc-row-meta terc-row-meta-v13">
-                  <div class="terc-meta-mini terc-meta-bank"><span class="k">Banco / Cartão</span>${formaCartaoTerceiroSelect(t.id, formaCartao)}</div>
+                  <div class="terc-meta-mini"><span class="k">Forma</span>${formaCartaoTerceiroSelect(t.id, formaCartao)}</div>
                   <div class="terc-meta-dot"></div>
                   <div class="terc-meta-mini"><span class="k">Categoria</span>${categoriaTerceiroSelect(t.id, t.categoria || "Outros")}</div>
                   <div class="terc-meta-dot"></div>
@@ -26020,6 +26021,9 @@ Os outros lançamentos não serão alterados.`;
 
 
 
+<style id="cmfin-v597017-bank-color-only">
+#terceiros select.terc-inline-forma option {color:#253246 !important;background:#fff !important;}
+</style>
 </body></html>`;
 
     const w=window.open('','_blank');
@@ -53945,15 +53949,6 @@ Os outros lançamentos não serão alterados.`;
   border-color:#f2d2d2 !important;
   color:#e33a35 !important;
 }
-</style>
-
-<!-- CMFin V59.70.16 - Banco/Cartão em Terceiros com visual de texto dos Gastos Fixos e Variáveis -->
-<style id="cmfin-v597016-bank-text">
-#terceiros .terc-row-card-v13 .terc-meta-bank{display:inline-flex!important;flex-direction:column!important;align-items:flex-start!important;gap:3px!important;}
-#terceiros .terc-row-card-v13 .terc-meta-bank .k{font-size:10px!important;font-weight:800!important;letter-spacing:.55px!important;text-transform:uppercase;color:#64748b!important;}
-#terceiros .terc-row-card-v13 .terc-meta-bank select.terc-inline-forma{appearance:none!important;-webkit-appearance:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;margin:0!important;width:auto!important;min-width:0!important;max-width:180px!important;height:auto!important;min-height:0!important;line-height:1.3!important;font-size:12px!important;font-weight:800!important;color:var(--terc-bank-color,#64748b)!important;cursor:pointer!important;}
-#terceiros .terc-row-card-v13 .terc-meta-bank select.terc-inline-forma:focus-visible{outline:2px solid #64748b!important;outline-offset:2px!important;}
-#terceiros .terc-row-card-v13 .terc-meta-bank select.terc-inline-forma option{color:#253246!important;background:#fff!important;font-weight:normal!important;}
 </style>
 </body>
 </html>
