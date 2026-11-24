@@ -1,3 +1,4 @@
+<!-- CMFin V59.70.13 - Gastos Fixos: cálculo único do parcelamento antes de persistir -->
 <!-- CMFin V59.70.3 - Sócios e Pró-Labore: remoção dos avatares de iniciais e compactação para telas menores - 2026-10-06 -->
 <!-- CMFin V59.70.2 - Upload estilo Google: card focável para Ctrl+V, botão Selecionar arquivo e remoção individual com X - 2026-10-06 -->
 <!-- CMFin V59.70.1 - Correção: upload por arrastar/colar somente dentro dos formulários de cadastro; removido do cabeçalho - 2026-10-06 -->
@@ -14691,13 +14692,16 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
 
     async function salvarGastoFixo() {
       const nome = document.getElementById("fixoNome").value.trim();
-      const valor = limparMoeda(document.getElementById("fixoValor").value);
-      if (!nome || !valor) return alert("Preencha Nome e Valor.");
+      const informado = limparMoeda(document.getElementById("fixoValor").value);
+      if (!nome || !informado) return alert("Preencha Nome e Valor.");
 
       const tipo = document.getElementById("fixoTipo").value;
       const mesReferencia = document.getElementById("fixoMesReferencia").value || document.getElementById("dashboardMes").value || mesAtual();
       const mesInicial = document.getElementById("fixoMesInicial").value || mesReferencia;
-      const totalParcelas = Number(document.getElementById("fixoTotalParcelas").value || 1);
+      const totalParcelas = Math.max(1, Math.floor(Number(document.getElementById("fixoTotalParcelas").value) || 1));
+      const modoValor = document.getElementById("fixoModoValorParcelado")?.value === "parcela" ? "parcela" : "total";
+      const valor = tipo === "Parcelado" && modoValor === "total" ? informado / totalParcelas : informado;
+      const totalCompra = modoValor === "parcela" ? informado * totalParcelas : informado;
       const editId = document.getElementById("fixoEditId").value;
       const formaFixo = document.getElementById("fixoForma").value;
       const novoComprovante = aplicarNomesComprovantes(await lerArquivosComoBase64(document.getElementById("fixoComprovante")?.files), "fixoComprovanteNome");
@@ -14709,6 +14713,11 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
         categoria: document.getElementById("fixoCategoria").value,
         tipologia: document.getElementById("fixoTipologia")?.value || tipologiaPorCategoria(document.getElementById("fixoCategoria").value),
         valor,
+        valorParcela: tipo === "Parcelado" ? valor : null,
+        valorTotalParcelamento: tipo === "Parcelado" ? totalCompra : null,
+        modoValorParcelamento: tipo === "Parcelado" ? modoValor : null,
+        valorInformadoParcelamento: tipo === "Parcelado" ? informado : null,
+        cmfinModoValorParceladoV5912: tipo === "Parcelado",
         vencimento: Number(document.getElementById("fixoVencimento").value),
         banco: ["Pix", "Dinheiro"].includes(formaFixo) ? "" : document.getElementById("fixoBanco").value,
         forma: formaFixo,
@@ -44100,16 +44109,7 @@ Os outros lançamentos não serão alterados.`;
       try{salvarLancamentoTerceiro=salvarTerceiroNovo;}catch(e){}
     }
 
-    if(typeof window.salvarGastoFixo==='function'&&!window.salvarGastoFixo.__cmfinAutoDivisao){
-      var salvarFixoOriginal=window.salvarGastoFixo;
-      var salvarFixoNovo=function(){
-        var dividir=(el('fixoTipo')?.value||'Recorrente')==='Parcelado';
-        return executarComValorMensal(salvarFixoOriginal,'fixoValor','fixoTotalParcelas',dividir,arguments,this);
-      };
-      salvarFixoNovo.__cmfinAutoDivisao=true;
-      window.salvarGastoFixo=salvarFixoNovo;
-      try{salvarGastoFixo=salvarFixoNovo;}catch(e){}
-    }
+    // V59.70.13: Gastos Fixos calculados exclusivamente no salvamento principal.
 
     if(typeof window.editarLancamentoTerceiro==='function'&&!window.editarLancamentoTerceiro.__cmfinTotalEdicao){
       var editarTerceiroOriginal=window.editarLancamentoTerceiro;
@@ -48451,37 +48451,7 @@ Os outros lançamentos não serão alterados.`;
     return item;
   }
 
-  var salvarAnterior=window.salvarGastoFixo;
-  if(typeof salvarAnterior==='function'&&!salvarAnterior[FLAG]){
-    var salvarNovo=async function(){
-      var tipo=el('fixoTipo')?.value||'Recorrente';
-      var totalParcelas=parcelasCampo();
-      var totalInformado=lerMoeda(el('fixoValor')?.value||'');
-      var editId=String(el('fixoEditId')?.value||'');
-      var idsAntes=new Set(lista().map(function(i){return String(i&&i.id);}));
-
-      var retorno=await Promise.resolve(salvarAnterior.apply(this,arguments));
-      if(tipo!=='Parcelado'||totalParcelas<=1||!(totalInformado>0)) return retorno;
-
-      try{
-        var atual=lista();
-        var alvo=null;
-        if(editId) alvo=atual.find(function(i){return String(i&&i.id)===editId;});
-        if(!alvo) alvo=atual.find(function(i){return i&&!idsAntes.has(String(i.id));});
-        if(!alvo) return retorno;
-
-        corrigirRegistro(alvo,totalInformado,totalParcelas);
-        definirLista(atual);
-        if(typeof salvarDados==='function') salvarDados();
-        if(typeof renderizarTudo==='function') renderizarTudo();
-      }catch(e){ console.warn('CMFin V59.11 - falha ao fixar valor mensal do Gasto Fixo parcelado:',e); }
-      return retorno;
-    };
-    salvarNovo[FLAG]=true;
-    salvarNovo.__cmfinAutoDivisao=true;
-    window.salvarGastoFixo=salvarNovo;
-    try{ salvarGastoFixo=salvarNovo; }catch(_){ }
-  }
+  // V59.70.13: cálculo centralizado; nenhum segundo cálculo após salvar.
 
   /*
     Compatibilidade com registros feitos na V59.7-V59.10 usando "Parcela Atual".
@@ -48745,58 +48715,7 @@ Os outros lançamentos não serão alterados.`;
     editarNovo[FLAG]=true;window.editarGastoFixo=editarNovo;try{editarGastoFixo=editarNovo;}catch(_){ }
   }
 
-  var salvarAnterior=window.salvarGastoFixo;
-  if(typeof salvarAnterior==='function'&&!salvarAnterior[FLAG]){
-    var salvarNovo=async function(){
-      var tipo=el('fixoTipo')?.value||'Recorrente';
-      var m=modo();
-      var parcelas=qtd();
-      var informado=valorInformado();
-      var mensal=m==='parcela'?informado:(parcelas>0?informado/parcelas:0);
-      var total=m==='parcela'?informado*parcelas:informado;
-      var editId=String(el('fixoEditId')?.value||'');
-      var idsAntes=new Set(lista().map(function(i){return String(i&&i.id);}));
-      var input=el('fixoValor');
-      var textoOriginal=input?input.value:'';
-
-      /*
-        As rotinas anteriores esperam receber o VALOR TOTAL quando o gasto é parcelado.
-        Se o usuário informou o valor da parcela, convertemos apenas durante o salvamento.
-        Isso preserva todas as regras já existentes de histórico, parcela atual e caixa.
-      */
-      if(tipo==='Parcelado'&&m==='parcela'&&parcelas>0&&informado>0&&input){
-        input.value=dinheiro(total);
-      }
-
-      var retorno=await Promise.resolve(salvarAnterior.apply(this,arguments));
-      if(tipo!=='Parcelado'||!(informado>0))return retorno;
-
-      try{
-        var atual=lista();
-        var item=editId?atual.find(function(i){return String(i&&i.id)===editId;}):atual.find(function(i){return i&&!idsAntes.has(String(i.id));});
-        if(!item){
-          if(input)input.value=textoOriginal;
-          atualizarInterface();
-          return retorno;
-        }
-        item.valor=mensal;
-        item.valorParcela=mensal;
-        item.valorTotalParcelamento=total;
-        item.modoValorParcelamento=m;
-        item.valorInformadoParcelamento=informado;
-        item.cmfinModoValorParceladoV5912=true;
-        try{if(typeof salvarDados==='function')salvarDados();}catch(_){ }
-        try{if(typeof renderizarTudo==='function')renderizarTudo();}catch(_){ }
-      }catch(e){
-        if(input)input.value=textoOriginal;
-        console.warn('CMFin V59.12 - falha ao consolidar valor do parcelamento:',e);
-      }
-      return retorno;
-    };
-    salvarNovo[FLAG]=true;
-    salvarNovo.__cmfinAutoDivisao=true;
-    window.salvarGastoFixo=salvarNovo;try{salvarGastoFixo=salvarNovo;}catch(_){ }
-  }
+  // V59.70.13: cálculo centralizado; nenhum segundo cálculo após salvar.
 
   function iniciar(){
     bind();
