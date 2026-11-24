@@ -1,3 +1,4 @@
+<!-- CMFin V59.70.18 - cores individuais nas opções do seletor original de terceiros -->
 <!-- CMFin V59.70.17 - Forma original restaurada; somente cor do valor selecionado, opções neutras -->
 <!-- CMFin V59.70.14 - Gastos por Terceiros: cores de bancos/cartões padronizadas com Fixos e Variáveis -->
 <!-- CMFin V59.70.13 - Gastos Fixos: cálculo único do parcelamento antes de persistir -->
@@ -16545,7 +16546,7 @@ body.ello-modo-trocando .module.active{min-height:70vh;}
       const cartoes = bancos.filter(b => b.modalidade === "Crédito" || b.modalidade === "Crédito e Débito").map(b => b.nome);
       const formas = ["Pix", "Dinheiro", "Transferência", ...cartoes];
       const opcoes = [...new Set([...formas, valorAtual].filter(Boolean))];
-      return opcoes.map(op => `<option value="${escaparHtml(op)}" ${op === valorAtual ? "selected" : ""}>${escaparHtml(op)}</option>`).join("");
+      return opcoes.map(op => `<option style="color:${corMarcaFinanceira(op)} !important;background-color:#fff;" value="${escaparHtml(op)}" ${op === valorAtual ? "selected" : ""}>${escaparHtml(op)}</option>`).join("");
     }
 
     function formaCartaoTerceiroSelect(id, valorAtual) {
@@ -26021,9 +26022,7 @@ Os outros lançamentos não serão alterados.`;
 
 
 
-<style id="cmfin-v597017-bank-color-only">
-#terceiros select.terc-inline-forma option {color:#253246 !important;background:#fff !important;}
-</style>
+
 </body></html>`;
 
     const w=window.open('','_blank');
